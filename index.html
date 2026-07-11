@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>2000 SLOV — denní slovní výzva</title>
+<meta name="description" content="100 dní. 2000 nejčastějších českých slov. Každý den 20 slov, jedna chyba a den opakuješ. Odkryješ všechna?">
+<meta property="og:title" content="2000 SLOV — denní slovní výzva">
+<meta property="og:description" content="100 dní. 2000 slov. Jedna chyba = opakuješ den. Zvládneš to?">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#121213">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2218%22 fill=%22%23538d4e%22/><text x=%2250%22 y=%2268%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22 font-weight=%22bold%22>2K</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <button class="icon-btn" id="btn-help" aria-label="Nápověda">?</button>
+  <h1>2000<span>SLOV</span></h1>
+  <div class="header-right">
+    <button class="icon-btn" id="btn-collection" aria-label="Sbírka slov">📖</button>
+    <button class="icon-btn" id="btn-stats" aria-label="Statistiky">📊</button>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- INTRO SCREEN -->
+  <section id="screen-intro" class="screen">
+    <div class="day-badge">DEN <b id="intro-day">1</b>/100</div>
+    <p class="intro-uncovered">Odkryto <b id="intro-uncovered">0</b> / 2000 slov</p>
+    <div class="progress-2000"><div id="intro-bar"></div></div>
+    <p class="intro-text">Dnes tě čeká <b>20 slov</b> s přeházenými písmeny.<br>
+    Slož všech 20 správně a odkryješ je.</p>
+    <p class="intro-warning">⚠️ Máš jen <b>jeden pokus denně</b>.<br>Jedna chyba a celý den opakuješ zítra.</p>
+    <p class="intro-retry" id="intro-retry" hidden>🔁 Tento den opakuješ — už jsi ho viděl(a), dnes to dáš!</p>
+    <button class="big-btn" id="btn-start">HRÁT</button>
+    <button class="text-btn" id="btn-practice-intro" hidden>Trénink odkrytých slov</button>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section id="screen-game" class="screen" hidden>
+    <div class="game-top">
+      <div class="word-counter">Slovo <b id="word-num">1</b>/20</div>
+      <div class="day-mini">Den <b id="game-day">1</b></div>
+    </div>
+    <div class="progress-day"><div id="day-bar"></div></div>
+
+    <div id="slots" class="slots"></div>
+    <div id="tiles" class="tiles"></div>
+
+    <div class="game-actions">
+      <button class="action-btn" id="btn-erase">⌫ Smazat</button>
+      <button class="action-btn" id="btn-shuffle">🔀 Zamíchat</button>
+      <button class="action-btn primary" id="btn-submit" disabled>Potvrdit</button>
+    </div>
+    <p class="practice-note" id="practice-note" hidden>🏋️ Trénink — bez rizika <button class="text-btn" id="btn-practice-exit">ukončit</button></p>
+  </section>
+
+  <!-- RESULT SCREEN -->
+  <section id="screen-result" class="screen" hidden>
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <h2 id="result-title">Den zvládnut!</h2>
+    <p class="result-sub" id="result-sub"></p>
+    <div class="result-words" id="result-words"></div>
+    <div class="result-stats-row">
+      <div><b id="result-uncovered">0</b><span>odkryto</span></div>
+      <div><b id="result-streak">0</b><span>🔥 série</span></div>
+      <div><b id="result-day">1</b><span>den</span></div>
+    </div>
+    <div class="share-row">
+      <button class="big-btn" id="btn-share">📤 Sdílet</button>
+      <button class="big-btn challenge" id="btn-challenge">⚔️ Vyzvat kamaráda</button>
+    </div>
+    <button class="text-btn" id="btn-practice-result">Trénink odkrytých slov</button>
+    <p class="countdown">Další den za <b id="countdown">--:--:--</b></p>
+  </section>
+
+  <!-- FINISHED ALL -->
+  <section id="screen-finished" class="screen" hidden>
+    <div class="result-emoji">🏆</div>
+    <h2>Odkryl(a) jsi všech 2000 slov!</h2>
+    <p class="result-sub">Patříš mezi absolutní elitu. Klobouk dolů.</p>
+    <button class="big-btn" id="btn-share-finished">📤 Pochlubit se</button>
+    <button class="text-btn" id="btn-practice-finished">Trénink slov</button>
+  </section>
+
+</main>
+
+<!-- HELP MODAL -->
+<div class="modal-overlay" id="modal-help" hidden>
+  <div class="modal">
+    <button class="modal-close" data-close>&times;</button>
+    <h2>Jak hrát</h2>
+    <ul class="help-list">
+      <li>🇨🇿 Ve hře je <b>2000 nejčastějších českých slov</b> rozdělených do <b>100 dní</b> po 20 slovech.</li>
+      <li>🔤 Každé slovo dostaneš s <b>přeházenými písmeny</b> — slož ho klepáním na písmena nebo psaním na klávesnici.</li>
+      <li>✅ Slož správně <b>všech 20 slov</b> a postoupíš do dalšího dne.</li>
+      <li>❌ <b>Jedna chyba</b> a den končí — stejných 20 slov opakuješ zítra.</li>
+      <li>⏳ Hraje se <b>jednou denně</b>. Nové kolo o půlnoci.</li>
+      <li>🔥 Za každý zvládnutý den v řadě roste tvoje série.</li>
+    </ul>
+    <p class="help-tagline">100 dní. 2000 slov. Jedna chyba = opakuješ den.<br>Dokážeš odkrýt všechna?</p>
+  </div>
+</div>
+
+<!-- STATS MODAL -->
+<div class="modal-overlay" id="modal-stats" hidden>
+  <div class="modal">
+    <button class="modal-close" data-close>&times;</button>
+    <h2>Statistiky</h2>
+    <div class="stats-grid">
+      <div><b id="stat-day">1</b><span>aktuální den</span></div>
+      <div><b id="stat-uncovered">0</b><span>odkrytých slov</span></div>
+      <div><b id="stat-streak">0</b><span>🔥 série</span></div>
+      <div><b id="stat-best">0</b><span>nejdelší série</span></div>
+      <div><b id="stat-attempts">0</b><span>pokusů celkem</span></div>
+      <div><b id="stat-rate">0%</b><span>úspěšnost</span></div>
+    </div>
+    <button class="big-btn" id="btn-share-stats">📤 Sdílet</button>
+  </div>
+</div>
+
+<!-- COLLECTION MODAL -->
+<div class="modal-overlay" id="modal-collection" hidden>
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close>&times;</button>
+    <h2>Sbírka slov <span class="collection-count" id="collection-count">0/2000</span></h2>
+    <div id="collection" class="collection"></div>
+  </div>
+</div>
+
+<!-- SHARE PREVIEW MODAL -->
+<div class="modal-overlay" id="modal-share" hidden>
+  <div class="modal modal-share">
+    <button class="modal-close" data-close>&times;</button>
+    <div class="share-preview" id="share-preview"></div>
+    <button class="big-btn" id="btn-share-confirm">📤 Sdílet</button>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<script src="words.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
