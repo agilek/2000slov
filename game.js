@@ -805,15 +805,25 @@ function buildShareMessage(mode) {
     return msg;
 }
 
+function copyFallback(msg, blocked) {
+    const note = blocked
+        ? 'Zkopírováno! (Nativní sdílení tu prohlížeč blokuje)'
+        : 'Zkopírováno do schránky!';
+    navigator.clipboard?.writeText(msg).then(() => showToast(note)).catch(() => alert(msg));
+}
+
 function shareText(msg) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
         ('ontouchstart' in window && window.innerWidth < 768);
     if (isMobile && navigator.share) {
-        navigator.share({ text: msg }).catch(() => {
-            navigator.clipboard?.writeText(msg).then(() => showToast('Zkopírováno do schránky!')).catch(() => alert(msg));
+        // Musí běžet přímo v gestu uživatele, jinak iOS sheet neotevře.
+        navigator.share({ text: msg }).catch(err => {
+            if (err && err.name === 'AbortError') return; // uživatel jen zavřel sheet
+            // NotAllowedError = web-share blokované (např. sandboxovaný iframe)
+            copyFallback(msg, err && err.name === 'NotAllowedError');
         });
     } else {
-        navigator.clipboard?.writeText(msg).then(() => showToast('Zkopírováno do schránky!')).catch(() => alert(msg));
+        copyFallback(msg, false);
     }
 }
 
