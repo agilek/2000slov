@@ -1,95 +1,109 @@
-# 2000 SLOV — Game Design
+# 2000 slov — Game Design
 
-> **100 dní. 2000 slov. Jedna chyba = opakuješ den.**
+> **100 dní. 2000 slov. 30 sekund na slovo. Jedna chyba = celý den znovu.**
+
+Věrná česká adaptace hry [18words.com](https://18words.com/) — stejný vizuál
+(světlé pozadí, fonty Baloo 2 + Nunito, kulaté dlaždice, pilulková tlačítka),
+stejný herní pocit, ale s vlastní progresí přes 2000 nejčastějších českých slov.
 
 ## 1. Základní smyčka
 
-- Ve hře je **2000 nejčastějších českých slov**, rozdělených do **100 dní** po 20 slovech
-  (2000 ÷ 20 = přesně 100 — „stodenní výzva" je sama o sobě marketingový příběh).
-- Každé slovo se zobrazí s **přeházenými písmeny** (anagram). Hráč ho složí klepáním
-  na dlaždice nebo psaním na klávesnici.
-- **Všech 20 správně** → den zvládnut, slova se „odkryjí" do sbírky, zítra další den.
-- **První chyba den okamžitě končí.** Stejných 20 slov se opakuje zítra.
-- **Jeden pokus denně.** Nové kolo o půlnoci (lokální čas).
+- Ve hře je **2000 nejčastějších českých slov** rozdělených do **100 dní** po 20 slovech.
+- Každé slovo se zobrazí jako **kruhové dlaždice s přeházenými písmeny**.
+  Hráč má **30 sekund** složit slovo klepáním na písmena (nebo psaním na klávesnici).
+- Po vybrání všech písmen se slovo **vyhodnotí automaticky** (žádné tlačítko Potvrdit):
+  - správně → zelený puls, další slovo (časovač se animovaně dotočí zpět na 30 s),
+  - špatně → červené zatřesení, výběr se vrátí, **časovač běží dál** — zkoušíš znovu,
+  - vyprší čas → hledané slovo se červeně odhalí, políčko v mřížce zčervená a **hraje se dál**.
+- Hraje se vždy **všech 20 slov**. Mřížka 4×5 nahoře se plní zeleně/červeně.
+- **Všech 20 zelených** → den zvládnut, slova se odkryjí do sbírky, zítra další den.
+- **Jakékoli červené** → stejných 20 slov se opakuje zítra.
+- **Jeden pokus denně**, nové kolo o půlnoci. Rozehraný den přežije reload
+  (stav se ukládá každou sekundu), opuštěný nedohraný den se druhý den zahodí.
+
+### Uznávání přesmyček
+
+Jako správná odpověď se uznává i **jiné platné české slovo ze stejných písmen**
+(otec/ocet, mezi/zemi…). Mapa alternativ je předpočítaná (`ALTS` ve `words.js`)
+z frekvenčního seznamu validovaného slovníkem hunspell — 178 slov má alternativu.
 
 ### Proč to funguje psychologicky
 
 | Prvek | Efekt |
 |---|---|
-| Jeden pokus denně | Vzácnost → napětí, rituál, důvod se vracet |
-| Jedna chyba = konec | Vysoké sázky, každé slovo je „match point" |
-| Opakování dne | Není to trest — hráč už slova zná, zítřek je snazší (skryté učení) |
-| Odkrývání 2000 slov | Sběratelský progres, „ještě 60 dní a mám všechno" |
-| Frekvence = obtížnost | Den 1 hravě zvládne každý (onboarding), den 90 je pro elitu |
-| 🔥 série | Ztráta série bolí víc než ztráta dne — retenční háček |
+| 30s časovač | Napětí v každém slově, chybný pokus pálí čas |
+| Jeden pokus denně | Vzácnost → rituál, důvod se vracet |
+| Dohrání všech 20 | I prohraný den dá kompletní, sdílitelnou mřížku |
+| Opakování dne | Není trest — slova už znáš, zítřek je snazší (skryté učení) |
+| Odkrývání 2000 slov | Sběratelský progres („ještě 38 dní!") |
+| Frekvence = obtížnost | Den 1 zvládne každý, den 90 je pro elitu |
 
-### Detaily mechaniky
+## 2. Obrazovky (zrcadlí originál)
 
-- **Deterministické míchání**: zadání dne je pro všechny hráče stejné (seed = datum + slovo)
-  → výsledky jsou porovnatelné, dá se o nich bavit.
-- **Tlačítko Zamíchat** přehází volné dlaždice náhodně (jen vizuální pomůcka).
-- Po prohře se **prozradí hledané slovo** — hráč se poučí a zítra ho už dá.
-- Slova, která hráč ten den ještě neviděl, se po prohře **neprozrazují**.
-- Nedohraný den (zavřený tab) se počítá jako nehraný — zítra se hraje znovu od začátku.
-- Slovník je očištěný o **anagramové duplicity** (žádné slovo ve hře nemá ve hře
-  přesmyčku), takže „správná odpověď, jiné slovo" nemůže nastat.
+1. **Welcome** — šedá mřížka 4×5 (po odehrání barevná), nadpis, instrukce,
+   klikací řádek „DEN 12/100 · 220/2000 SLOV" (otevře sbírku), zelené tlačítko Hrát.
+2. **Hra** — mřížka, „SLOVO 3/20", velký časovač, rámečky pro odpověď, kruhová písmena.
+   Klik na rámečky zruší výběr, Shift zamíchá písmena (FLIP animace, 1× na slovo).
+3. **Pauza** — celoobrazovkově při přepnutí okna/tabu; jen Pokračovat (žádný restart —
+   restart by obcházel pravidlo jednoho pokusu).
+4. **Výsledek** — mřížka se přesune nahoru, postupné odkrývání řádků:
+   „Máš všech 20 slov!" / „Máš 17 z 20 slov!", trofejová řádka, věta o postupu/opakování,
+   Sdílet skóre (zelená) + Vyzvat kamaráda (modrá), odpočet do půlnoci,
+   Sbírka slov + Trénink, řádek se zpětnou vazbou. Perfektní den = konfety.
+5. **Sbírka** (modal ve stylu archivu originálu) — 100 dní, zvládnuté se rozbalí
+   na 20 slov, aktuální „dnes", zbytek zamčený.
+6. **Trénink** — slova z už odkrytých, na přežití: první nestihnuté slovo končí
+   („X slov v řadě!"). Bez vlivu na denní hru.
 
-## 2. Obrazovky
+## 3. Trofeje a sdílení
 
-1. **Intro** — číslo dne, progress 2000 slov, varování „jeden pokus", tlačítko HRÁT.
-   Při opakování dne povzbuzení „🔁 už jsi ho viděl(a), dnes to dáš!".
-2. **Hra** — počítadlo Slovo X/20, progress bar, sloty + dlaždice, Smazat / Zamíchat / Potvrdit.
-3. **Výsledek** — 🎉/😤, odkrytá slova jako čipy, statistiky (odkryto / 🔥 série / den),
-   Sdílet + Vyzvat kamaráda, odpočet do půlnoci.
-4. **Sbírka** (📖) — 100 dní jako rozbalovací seznam, odkrytá slova, zamčený zbytek.
-5. **Statistiky** (📊) — den, odkrytá slova, série, rekord, pokusy, úspěšnost.
-6. **Trénink** — procvičování už odkrytých slov bez rizika (drží hráče u hry i po prohře).
+Trofejová hláška je (stejně jako v originále) **statická tabulka** — žádný backend:
 
-## 3. Viralita
+| Skóre | Hláška |
+|---|---|
+| 20 | Top 1 % hráčů dneška 👑 |
+| 19 | Top 2 % hráčů dneška 🏆 |
+| 18 | Top 3 % hráčů dneška 🏆 |
+| 17 | Top 5 % hráčů dneška 🏆 |
+| 15–16 | Top 10 % hráčů dneška 🏅 |
+| 13–14 | Top 20 % hráčů dneška 🏅 |
+| 9–12 | Top 50 % hráčů dneška 🏅 |
+| 0–8 | Dnes bez trofeje 💔 |
 
-### Zabudováno
+Text sdílení (formát originálu, mřížka 4×5):
 
-- **Náhled sdílení** (po vzoru 18words) — hráč před odesláním vidí přesně, co pošle.
-- **Emoji mřížka** à la Wordle — čitelná na první pohled, funguje v každém chatu:
-  ```
-  2000 SLOV — den 12/100 ✅ 🔥5
-  🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩
-  🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩 20/20
-  Odkryto 240/2000 slov
-  ```
-  Prohra je stejně sdílitelná („podívej, kde jsem umřel"):
-  ```
-  🟩🟩🟩🟥⬛⬛⬛⬛⬛⬛
-  ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛ 3/20
-  ```
-- **⚔️ Vyzvat kamaráda** — samostatné CTA s vlastním textem („Já jsem na dni 12/100 —
-  překonáš mě?"). Výzva funguje i pro toho, kdo prohrál.
-- `navigator.share` na mobilu (nativní share sheet), fallback do schránky.
-- OG metatagy pro náhledy odkazů.
+```
+⏳ 2000 slov — den #12
 
-### Roadmapa virality (potřebuje mini-backend, např. Cloudflare Worker + KV)
+🔥 Získáno 18/20 slov
 
-1. **„🏆 Top X % hráčů dneška"** ve sdílení — nejsilnější řádek z 18words; potřebuje
-   anonymní agregaci výsledků (POST den+skóre, GET percentil).
-2. **Globální statistika dne** na výsledkové obrazovce: „Dnešní den 12 zvládlo jen 34 % hráčů."
-3. **Souboj přes odkaz**: `?vyzva=<den>` — kamarád hraje stejný den jako ty a porovnáte se.
-4. **OG obrázek s mřížkou** generovaný pro sdílený výsledek (worker vrací SVG/PNG).
-5. Denní hashtag `#2000slov` + launch na českém X/Facebooku (skupiny slovních her),
-   Reddit r/czech.
+🟩🟩🟩🟥🟩
+🟩🟩🟩🟩🟩
+🟩🟩🟩🟩🟩
+🟩🟥🟩🟩🟩
 
-### Další nápady do zásobníku
+🏆 Top 10 % hráčů dneška      | 🫵 Překonáš mě?  (varianta Vyzvat kamaráda)
 
-- PWA manifest (ikona na ploše, offline hraní).
-- Notifikace „🔥 Nepřijdeš o sérii?" (push přes PWA).
-- Archiv/statistiky týdne, „týdenní recap" ke sdílení v neděli.
-- Lehká obfuskace `words.js` proti podvádění (aktuálně čitelné — pro casual hru OK).
-- Monetizace až po trakci: „podpoř hru" / kosmetická témata. Žádné reklamy v MVP.
+https://…
+```
 
-## 4. Technika
+Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toast.
 
-- Čistý HTML/CSS/JS, žádný build, žádné závislosti → GitHub Pages zdarma.
-- Stav v `localStorage` (klíč `slov2000_v1`): úroveň, rozehraný pokus, série, statistiky.
-- Pokus se ukládá **po každém slově** — refresh stránky nic neresetuje ani neobejde.
-- Slovník: OpenSubtitles 2018 frekvenční seznam → filtr: 4–11 písmen, jen česká
-  abeceda, validace hunspell `cs_CZ` (vyhodí jména, angličtinu, překlepy), blocklist
-  vulgarismů, deduplikace anagramů, top 2000 podle frekvence.
+## 4. Roadmapa
+
+1. **Skutečný percentil** — mini-backend (Cloudflare Worker + KV): POST den+skóre,
+   GET rozložení. Tabulku nahradí reálná čísla + „Dnešní den zvládlo jen 34 % hráčů."
+2. **Souboj přes odkaz** `?vyzva=<den>` — kamarád si zahraje tvůj den a porovnáte se.
+3. OG obrázek výsledku, PWA manifest + push „🔥 Nepřijdeš o sérii?", `#2000slov`.
+4. Lehká obfuskace slovníku (aktuálně čitelný — pro casual hru OK).
+
+## 5. Technika
+
+- Čistý HTML/CSS/JS bez buildu a závislostí → GitHub Pages zdarma.
+- `index.html` + `style.css` + `game.js` + `words.js` (WORDS + ALTS).
+- Stav v `localStorage` (`slov2000_v2`): úroveň, série, statistiky, rozehraný den.
+- Slovník: OpenSubtitles 2018 → 4–11 písmen, jen česká abeceda, validace hunspell
+  `cs_CZ` (vyřadí jména, angličtinu, překlepy), blocklist vulgarismů, deduplikace
+  anagramů uvnitř hry, top 2000 podle frekvence.
+- Testovací nasazení: jednosouborová verze (`inline` CSS/JS/slovník/fonty) se
+  generuje skriptem a publikuje jako Claude Artifact; produkce = GitHub Pages.

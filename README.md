@@ -1,10 +1,11 @@
-# 2000 SLOV 🇨🇿
+# 2000 slov 🇨🇿
 
-**100 dní. 2000 nejčastějších českých slov. Jedna chyba = opakuješ den.**
+**100 dní. 2000 nejčastějších českých slov. 30 sekund na slovo. Jedna chyba = celý den znovu.**
 
-Denní slovní hra inspirovaná [18words.com](https://18words.com/). Každý den dostaneš
-20 českých slov s přeházenými písmeny. Slož všech 20 správně a postoupíš do dalšího dne.
-Jedna chyba a celý den opakuješ zítra. Hraje se jednou denně.
+Česká denní slovní hra po vzoru [18words.com](https://18words.com/) — stejný vizuál
+i herní pocit. Každý den 20 slov s přeházenými písmeny, na každé 30 sekund.
+Nestihnuté slovo se v mřížce zbarví červeně a hraje se dál — ale postoupíš jen
+se všemi 20 zelenými, jinak stejný den opakuješ zítra. Hraje se jednou denně.
 
 ## Spuštění
 
@@ -23,9 +24,9 @@ Není potřeba žádný build.
 | Soubor | Obsah |
 |---|---|
 | `index.html` | struktura aplikace (obrazovky, modaly) |
-| `style.css` | tmavý mobile-first design |
-| `game.js` | herní logika, stav v localStorage, sdílení |
-| `words.js` | 2000 slov seřazených podle frekvence |
+| `style.css` | světlý design po vzoru originálu (Baloo 2 + Nunito) |
+| `game.js` | herní logika, časovač, stav v localStorage, sdílení |
+| `words.js` | 2000 slov podle frekvence + mapa uznávaných přesmyček |
 | `GAME_DESIGN.md` | kompletní game design + plán virality |
 
 ## Slovní zásoba

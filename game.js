@@ -1,520 +1,963 @@
-/* 2000 SLOV — denní slovní hra
- * 100 dní × 20 slov. Jedna chyba = den se opakuje. Jeden pokus denně. */
+/* 2000 slov — česká denní slovní hra po vzoru 18words.com
+ * 100 dní × 20 slov. Slož slovo ze všech písmen do 30 s.
+ * Všech 20 zelených = postup, jinak den zítra opakuješ. Jeden pokus denně. */
 'use strict';
 
+const START_TIME = 30;
 const WORDS_PER_DAY = 20;
-const TOTAL_WORDS = WORDS.length;           // 2000
+const TOTAL_WORDS = WORDS.length;                 // 2000
 const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 100
-const STORAGE_KEY = 'slov2000_v1';
+const STORAGE_KEY = 'slov2000_v2';
 const FALLBACK_URL = 'https://agilek.github.io/2000slov/';
 
-/* ---------------- state ---------------- */
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+const IS_DESKTOP = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-const defaultState = () => ({
-  level: 0,               // počet dokončených dnů = index aktuálního dne
-  attempt: null,          // { date, wordIdx, status: 'playing'|'won'|'lost', failedWord }
-  streak: 0,
-  bestStreak: 0,
-  lastWinDate: null,
-  attempts: 0,
-  wins: 0,
-  lastLostLevel: null,
-  seenHelp: false,
-});
+/* ---------------- trvalý stav ---------------- */
 
-let state = loadState();
-let practice = null;      // { word, tiles, picks } když běží trénink
-let round = null;         // { target, tiles: [{ch,used}], picks: [tileIdx] }
-let countdownTimer = null;
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return Object.assign(defaultState(), JSON.parse(raw));
-  } catch (e) { /* poškozený stav → začínáme znovu */ }
-  return defaultState();
+function defaultPersist() {
+    return {
+        level: 0,            // počet zvládnutých dnů = index aktuálního dne
+        streak: 0,
+        bestStreak: 0,
+        lastWinDate: null,
+        attempts: 0,
+        wins: 0,
+        kbHintShown: false,
+        day: null,           // { date, level, wordIdx, marks, time, done, perfect }
+    };
 }
 
-function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+let persist = loadPersist();
+
+function loadPersist() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return Object.assign(defaultPersist(), JSON.parse(raw));
+    } catch (e) {}
+    return defaultPersist();
 }
 
-/* ---------------- utils ---------------- */
+function savePersist() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(persist)); } catch (e) {}
+}
 
 function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function hashStr(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
+function uncoveredCount() { return Math.min(persist.level * WORDS_PER_DAY, TOTAL_WORDS); }
 
-function mulberry32(seed) {
-  return function () {
-    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/* Deterministické zamíchání — všichni mají ve stejný den stejné zadání. */
-function scramble(word, seedStr) {
-  const chars = [...word];
-  const rnd = mulberry32(hashStr(seedStr));
-  for (let attempt = 0; attempt < 10; attempt++) {
-    for (let i = chars.length - 1; i > 0; i--) {
-      const j = Math.floor(rnd() * (i + 1));
-      [chars[i], chars[j]] = [chars[j], chars[i]];
-    }
-    if (chars.join('') !== word) break;
-  }
-  if (chars.join('') === word && chars.length > 1) chars.push(chars.shift());
-  return chars;
-}
-
-function dayWords(level) {
-  return WORDS.slice(level * WORDS_PER_DAY, (level + 1) * WORDS_PER_DAY);
-}
-
-function uncoveredCount() {
-  return Math.min(state.level * WORDS_PER_DAY, TOTAL_WORDS);
-}
+function dayWords(level) { return WORDS.slice(level * WORDS_PER_DAY, (level + 1) * WORDS_PER_DAY); }
 
 function siteUrl() {
-  if (location.protocol.startsWith('http')) return location.origin + location.pathname;
-  return FALLBACK_URL;
+    if (location.protocol.startsWith('http') && !location.hostname.includes('localhost')) {
+        return location.origin + location.pathname;
+    }
+    return FALLBACK_URL;
 }
 
-const $ = (id) => document.getElementById(id);
+/* ---------------- herní stav (runtime) ---------------- */
 
-function show(screenId) {
-  for (const s of document.querySelectorAll('.screen')) s.hidden = (s.id !== screenId);
+let state = {
+    mode: 'daily', words: [], wordIdx: 0, marks: [], solved: 0,
+    time: START_TIME, letters: [], selected: [], timer: null,
+    processing: false, incorrectTimeout: null, shuffledThisWord: false,
+    practiceCount: 0,
+};
+let countdownInterval = null;
+
+/* ---------------- UI helpery ---------------- */
+
+let toastTimeout = null;
+function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-let toastTimer = null;
-function toast(msg, ms = 2200) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.hidden = true; }, ms);
+function showScreen(id) {
+    $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
 }
 
-/* ---------------- day/screen routing ---------------- */
+/* ---------------- welcome ---------------- */
 
-function refresh() {
-  practice = null;
-  $('practice-note').hidden = true;
-  const today = todayStr();
-
-  // pokus z jiného dne, který nebyl dohraný → zahodit (den se hraje znovu)
-  if (state.attempt && state.attempt.date !== today && state.attempt.status === 'playing') {
-    state.attempt = null;
-    saveState();
-  }
-
-  if (state.level >= TOTAL_LEVELS) { showFinished(); return; }
-
-  if (state.attempt && state.attempt.date === today) {
-    if (state.attempt.status === 'playing') { resumeGame(); return; }
-    showResult();  // dnes už odehráno (won/lost)
-    return;
-  }
-  showIntro();
+function renderWelcomeGrid() {
+    const el = $('welcomeGrid');
+    el.innerHTML = '';
+    const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
+    for (let i = 0; i < WORDS_PER_DAY; i++) {
+        const c = document.createElement('div');
+        c.className = 'pg-cell';
+        if (todayDone && persist.day.marks[i] !== undefined) {
+            c.classList.add(persist.day.marks[i] ? 'solved' : 'missed');
+        }
+        el.appendChild(c);
+    }
 }
 
-function showIntro() {
-  const dayNum = state.level + 1;
-  $('intro-day').textContent = dayNum;
-  $('intro-uncovered').textContent = uncoveredCount();
-  $('intro-bar').style.width = (uncoveredCount() / TOTAL_WORDS * 100) + '%';
-  const isRetry = state.attempts > 0 && state.lastLostLevel === state.level;
-  $('intro-retry').hidden = !isRetry;
-  $('btn-practice-intro').hidden = state.level === 0;
-  show('screen-intro');
+function showWelcome() {
+    stopConfetti();
+    placeGameGrid('game');
+    renderWelcomeGrid();
+    const dayNum = Math.min(persist.level + 1, TOTAL_LEVELS);
+    $('welcomeDate').textContent = `Den ${dayNum}/${TOTAL_LEVELS} · ${uncoveredCount()}/${TOTAL_WORDS} slov`;
+    const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
+    $('playBtn').textContent = todayDone ? 'Výsledek' : 'Hrát';
+    const retry = !todayDone && persist.attempts > 0;
+    $('welcomeRules').innerHTML = persist.level >= TOTAL_LEVELS
+        ? 'Máš odkryto všech 2000 slov. 🏆'
+        : (retry
+            ? 'Zvládni všech 20 slov a postoupíš dál.<br>Jedno nestihneš? Celý den si zítra zopakuješ.'
+            : 'Zvládni všech 20 slov a odkryj dalších 20<br>z 2000 nejčastějších českých slov.');
+    showScreen('welcome');
 }
 
-function showFinished() {
-  show('screen-finished');
+function playToday() {
+    const today = todayStr();
+    if (persist.day && persist.day.done && persist.day.date === today) {
+        restoreFinishedDay();
+        showResult(true);
+        return;
+    }
+    if (persist.level >= TOTAL_LEVELS) { startPracticeGame(); return; }
+    startGame();
 }
 
-/* ---------------- game ---------------- */
+/* ---------------- start hry ---------------- */
 
-function startDay() {
-  state.attempt = { date: todayStr(), wordIdx: 0, status: 'playing', failedWord: null };
-  state.attempts++;
-  saveState();
-  resumeGame();
+function shuffleArr(arr) {
+    for (let attempts = 0; attempts < 200; attempts++) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        if (arr.join('') !== state.words[state.wordIdx]) break;
+    }
+    return arr;
+}
+
+function startGame() {
+    const today = todayStr();
+    state.mode = 'daily';
+    state.words = dayWords(persist.level);
+
+    const d = persist.day;
+    if (d && !d.done && d.date === today && d.level === persist.level && d.wordIdx < WORDS_PER_DAY) {
+        // rozehraný dnešek — pokračujeme, kde jsme skončili
+        state.wordIdx = d.wordIdx;
+        state.marks = d.marks.slice();
+        state.time = Math.max(1, Math.min(START_TIME, d.time || START_TIME));
+        state.resumed = true;
+    } else {
+        state.wordIdx = 0;
+        state.marks = [];
+        state.time = START_TIME;
+        state.resumed = false;
+        persist.day = { date: today, level: persist.level, wordIdx: 0, marks: [], time: START_TIME, done: false, perfect: false };
+        savePersist();
+    }
+    state.solved = state.marks.filter(Boolean).length;
+    placeGameGrid('game');
+    showScreen('game');
+    if (IS_DESKTOP && !persist.kbHintShown) {
+        persist.kbHintShown = true;
+        savePersist();
+        setTimeout(() => showToast('Můžeš psát i na klávesnici'), 800);
+    }
+    loadWord();
+}
+
+function startPracticeGame() {
+    const pool = uncoveredCount() > 0 ? WORDS.slice(0, uncoveredCount()) : dayWords(0);
+    state.mode = 'practice';
+    state.pool = pool;
+    state.words = [];
+    state.wordIdx = 0;
+    state.marks = [];
+    state.solved = 0;
+    state.practiceCount = 0;
+    state.time = START_TIME;
+    stopConfetti();
+    placeGameGrid('game');
+    showScreen('game');
+    loadWord();
+}
+
+function pickPracticeWord() {
+    return state.pool[Math.floor(Math.random() * state.pool.length)];
+}
+
+/* ---------------- kolo (jedno slovo) ---------------- */
+
+function loadWord() {
+    if (state.mode === 'daily' && state.wordIdx >= WORDS_PER_DAY) return finishDay();
+    if (state.mode === 'practice' && !state.words[state.wordIdx]) {
+        state.words[state.wordIdx] = pickPracticeWord();
+    }
+    const target = state.words[state.wordIdx];
+    state.letters = target.split('');
+    state.selected = [];
+    state.processing = false;
+    state.shuffledThisWord = false;
+    shuffleArr(state.letters);
+    const isResume = state.resumed;
+    state.resumed = false;
+    const shouldAnimate = !isResume && state.wordIdx > 0;
+    const leftover = state.time;
+    renderLetters(shouldAnimate);
+    renderGameGrid();
+    if (shouldAnimate && leftover < START_TIME) {
+        updateUI();
+        animateTimerUp(leftover);
+    } else {
+        if (!isResume) state.time = START_TIME;
+        startTimer();
+    }
+}
+
+function getMaxPerRow(n) {
+    if (n <= 4) return 2;
+    if (n <= 6) return 3;
+    return 4;
+}
+
+function renderSlots(container, n, animate) {
+    container.innerHTML = '';
+    const avail = Math.min(window.innerWidth - 48, 420);
+    const size = Math.max(28, Math.min(46, Math.floor((avail - (n - 1) * 6) / n)));
+    for (let i = 0; i < n; i++) {
+        const s = document.createElement('div');
+        s.className = 'answer-slot' + (animate ? ' entering' : '');
+        if (animate) s.style.animationDelay = (i * 40) + 'ms';
+        s.style.width = size + 'px';
+        s.style.height = Math.round(size * 1.08) + 'px';
+        s.style.fontSize = Math.round(size * 0.56) + 'px';
+        container.appendChild(s);
+    }
+}
+
+function renderLetters(animate) {
+    const row = $('letterRow');
+    row.innerHTML = '';
+    const n = state.letters.length;
+    const cols = getMaxPerRow(n);
+    row.style.width = (cols * 76 + (cols - 1) * 6) + 'px';
+
+    renderSlots($('wordDisplay'), n, animate);
+
+    state.letters.forEach((letter, i) => {
+        const el = document.createElement('div');
+        el.className = 'letter' + (animate ? ' entering' : '');
+        el.textContent = letter;
+        el.dataset.index = i;
+        if (animate) el.style.animationDelay = (i * 40) + 'ms';
+        el.addEventListener('pointerdown', e => { e.preventDefault(); handleTap(el); });
+        row.appendChild(el);
+    });
+}
+
+function clearIncorrectState() {
+    if (!state.incorrectTimeout) return;
+    clearTimeout(state.incorrectTimeout);
+    state.incorrectTimeout = null;
+    $('wordDisplay').classList.remove('shake');
+    $('letterRow').classList.remove('shake');
+    $$('#letterRow .letter').forEach(l => l.classList.remove('incorrect', 'selected'));
+    state.selected = [];
+}
+
+function selectLetter(el) {
+    if (state.incorrectTimeout) { clearIncorrectState(); updateUI(); }
+    const idx = +el.dataset.index;
+    if (state.selected.includes(idx)) return;
+    state.selected.push(idx);
+    el.classList.add('selected');
+    updateUI();
+}
+
+function handleTap(el) {
+    if (state.processing) return;
+    const idx = +el.dataset.index;
+    const pos = state.selected.indexOf(idx);
+    if (pos !== -1) {
+        state.selected.splice(pos);
+        $$('#letterRow .letter').forEach(l => {
+            if (!state.selected.includes(+l.dataset.index)) l.classList.remove('selected');
+        });
+    } else {
+        selectLetter(el);
+        if (state.selected.length === state.letters.length) checkWord();
+    }
+    if (!state.processing) updateUI();
+}
+
+function resetSelection() {
+    if (state.processing) return;
+    clearIncorrectState();
+    state.selected = [];
+    $$('#letterRow .letter').forEach(l => l.classList.remove('selected'));
+    updateUI();
+}
+
+function isAcceptedWord(word, target) {
+    if (word === target) return true;
+    const alts = (typeof ALTS !== 'undefined' && ALTS[target]) || [];
+    return alts.includes(word);
+}
+
+function checkWord() {
+    if (state.processing) return;
+    const word = state.selected.map(i => state.letters[i]).join('');
+    const target = state.words[state.wordIdx] || '';
+
+    if (word.length !== state.letters.length || !isAcceptedWord(word, target)) {
+        $('wordDisplay').classList.add('shake');
+        $('letterRow').classList.add('shake');
+        $$('#letterRow .letter.selected').forEach(l => l.classList.add('incorrect'));
+        state.incorrectTimeout = setTimeout(() => {
+            $('wordDisplay').classList.remove('shake');
+            $('letterRow').classList.remove('shake');
+            $$('#letterRow .letter.selected').forEach(l => l.classList.remove('incorrect'));
+            resetSelection();
+            state.incorrectTimeout = null;
+        }, 400);
+        return;
+    }
+
+    state.processing = true;
+    clearInterval(state.timer);
+    $('wordDisplay').classList.add('pulse', 'found');
+    $('letterRow').classList.add('pulse');
+    $$('#letterRow .letter.selected').forEach(l => l.classList.add('correct'));
+
+    state.wordIdx++;
+    state.solved++;
+    state.marks.push(true);
+    if (state.mode === 'practice') state.practiceCount++;
+    updateGameGrid(state.marks.length - 1);
+    saveDayProgress();
+
+    setTimeout(() => {
+        $('wordDisplay').classList.remove('pulse');
+        $('letterRow').classList.remove('pulse');
+        const els = [$('wordDisplay'), ...$$('#letterRow .letter')];
+        els.forEach(el => {
+            el.classList.remove('entering');
+            el.style.animation = 'none';
+            el.style.transition = 'none';
+            el.style.opacity = '1';
+            el.style.transform = 'scale(1)';
+        });
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                els.forEach(el => {
+                    el.style.transition = 'opacity 0.25s ease-out, transform 0.25s ease-out';
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.85)';
+                });
+            });
+        });
+    }, 450);
+
+    setTimeout(() => {
+        $('wordDisplay').classList.remove('found');
+        $('wordDisplay').style.cssText = '';
+        loadWord();
+    }, 750);
+}
+
+function handleTimeout() {
+    if (state.processing) return;
+    state.processing = true;
+    clearIncorrectState();
+
+    const wd = $('wordDisplay');
+    const target = state.words[state.wordIdx] || '';
+    const slots = [...wd.querySelectorAll('.answer-slot')];
+
+    slots.forEach(s => {
+        s.textContent = '';
+        s.classList.remove('filled');
+        s.style.animation = 'none';
+    });
+
+    // Postupně odhalit hledané slovo červeně.
+    const stagger = 65;
+    slots.forEach((s, i) => {
+        setTimeout(() => {
+            s.textContent = target[i] || '';
+            s.classList.add('filled', 'missed');
+            s.style.animation = 'missedReveal .34s cubic-bezier(.34,1.56,.64,1) both';
+        }, i * stagger);
+    });
+
+    if (state.mode === 'practice') {
+        // Trénink je na přežití — první nestihnuté slovo končí.
+        setTimeout(() => showResult(false, target), slots.length * stagger + 1200);
+        return;
+    }
+
+    state.wordIdx++;
+    state.marks.push(false);
+    updateGameGrid(state.marks.length - 1);
+    saveDayProgress();
+
+    const revealDone = slots.length * stagger + 340;
+    const hold = 850;
+
+    setTimeout(() => {
+        const els = [wd, ...$$('#letterRow .letter')];
+        els.forEach(el => {
+            el.style.transition = 'opacity .3s ease-out, transform .3s ease-out';
+            el.style.opacity = '0';
+            el.style.transform = 'scale(.85)';
+        });
+    }, revealDone + hold);
+
+    setTimeout(() => {
+        wd.style.cssText = '';
+        loadWord();
+    }, revealDone + hold + 320);
+}
+
+/* ---------------- FLIP zamíchání (Shift) ---------------- */
+
+function shuffleLetters() {
+    if (state.processing || state.shuffledThisWord) return;
+    const row = $('letterRow');
+    const tiles = [...row.children];
+    if (tiles.length < 2) return;
+    state.shuffledThisWord = true;
+
+    tiles.forEach(t => { t.classList.remove('entering'); t.style.animation = 'none'; });
+    const firstRects = tiles.map(t => t.getBoundingClientRect());
+
+    let order;
+    do {
+        order = tiles.map((_, i) => i);
+        for (let i = order.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [order[i], order[j]] = [order[j], order[i]];
+        }
+    } while (order.some((v, i) => v === i));
+
+    order.forEach(i => row.appendChild(tiles[i]));
+
+    tiles.forEach((t, i) => {
+        const last = t.getBoundingClientRect();
+        const dx = firstRects[i].left - last.left;
+        const dy = firstRects[i].top - last.top;
+        t.style.transition = 'none';
+        t.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    requestAnimationFrame(() => {
+        tiles.forEach(t => {
+            t.style.transition = 'transform .34s cubic-bezier(.34,1.56,.64,1)';
+            t.style.transform = '';
+        });
+    });
+    setTimeout(() => {
+        tiles.forEach(t => { t.style.transition = ''; t.style.transform = ''; });
+    }, 420);
+}
+
+/* ---------------- grid + progress UI ---------------- */
+
+function placeGameGrid(screen) {
+    const grid = $('gameGrid');
+    if (screen === 'result') {
+        $('result').insertBefore(grid, $('winBanner'));
+        grid.classList.add('result-grid');
+    } else {
+        $('game').insertBefore(grid, $('progress'));
+        grid.classList.remove('result-grid');
+    }
+}
+
+function renderGameGrid() {
+    const el = $('gameGrid');
+    if (state.mode === 'practice') { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = 'grid';
+    if (el.children.length !== WORDS_PER_DAY) {
+        el.innerHTML = '';
+        for (let i = 0; i < WORDS_PER_DAY; i++) {
+            const c = document.createElement('div');
+            c.className = 'pg-cell';
+            el.appendChild(c);
+        }
+    }
+    updateGameGrid();
+}
+
+function updateGameGrid(popIndex) {
+    const el = $('gameGrid');
+    const marks = state.marks || [];
+    [...el.children].forEach((c, i) => {
+        c.classList.toggle('solved', i < marks.length && marks[i]);
+        c.classList.toggle('missed', i < marks.length && !marks[i]);
+        if (popIndex === i) { c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); }
+    });
+}
+
+function updateUI() {
+    const chosen = state.selected.map(i => state.letters[i]);
+    $('wordDisplay').querySelectorAll('.answer-slot').forEach((s, i) => {
+        if (i < chosen.length) {
+            s.textContent = chosen[i];
+            s.classList.add('filled');
+        } else {
+            s.textContent = '';
+            s.classList.remove('filled');
+        }
+    });
+    const low = state.time <= 0 ? ' zero' : (state.time <= 10 ? ' low' : '');
+    const label = state.mode === 'practice'
+        ? `Slovo ${state.wordIdx + 1}`
+        : `Slovo ${state.wordIdx + 1}/${WORDS_PER_DAY}`;
+    $('progress').innerHTML = `<div class="gp-headline">${label}</div><div class="gp-timer${low}">${state.time}<span class="gp-timer-unit">s</span></div>`;
+}
+
+/* ---------------- časovač ---------------- */
+
+function startTimer() {
+    clearInterval(state.timer);
+    updateUI();
+    state.timer = setInterval(() => {
+        state.time--;
+        if (state.time <= 0) {
+            clearInterval(state.timer);
+            state.time = 0;
+            updateUI();
+            handleTimeout();
+            return;
+        }
+        updateUI();
+        saveDayProgress();
+    }, 1000);
+}
+
+function animateTimerUp(from) {
+    clearInterval(state.timer);
+    const to = START_TIME;
+    state.time = from;
+    const steps = to - from;
+    if (steps <= 0) { state.time = to; startTimer(); return; }
+    let current = from;
+    const iv = setInterval(() => {
+        current++;
+        state.time = current;
+        updateUI();
+        if (current >= to) { clearInterval(iv); startTimer(); }
+    }, Math.max(12, Math.floor(500 / steps)));
+}
+
+function saveDayProgress() {
+    if (state.mode !== 'daily' || !persist.day) return;
+    persist.day.wordIdx = state.wordIdx;
+    persist.day.marks = state.marks.slice();
+    persist.day.time = state.time;
+    savePersist();
+}
+
+/* ---------------- pauza ---------------- */
+
+function pauseGame() {
+    if (state.mode !== 'daily' && state.mode !== 'practice') return;
+    if (!$('game').classList.contains('active') || state.processing) return;
+    clearInterval(state.timer);
+    $('pauseOverlay').classList.add('active');
 }
 
 function resumeGame() {
-  $('game-day').textContent = state.level + 1;
-  startRound(currentTarget());
-  show('screen-game');
+    $('pauseOverlay').classList.remove('active');
+    startTimer();
 }
 
-function currentTarget() {
-  return dayWords(state.level)[state.attempt.wordIdx];
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseGame();
+});
+
+/* ---------------- konec dne + výsledek ---------------- */
+
+function finishDay() {
+    clearInterval(state.timer);
+    const perfect = state.marks.length === WORDS_PER_DAY && state.marks.every(Boolean);
+    persist.day.done = true;
+    persist.day.perfect = perfect;
+    persist.day.marks = state.marks.slice();
+    persist.attempts++;
+    if (perfect) {
+        persist.wins++;
+        persist.level++;
+        const y = new Date(); y.setDate(y.getDate() - 1);
+        const yesterday = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+        persist.streak = (persist.lastWinDate === yesterday) ? persist.streak + 1 : 1;
+        persist.bestStreak = Math.max(persist.bestStreak, persist.streak);
+        persist.lastWinDate = todayStr();
+    } else {
+        persist.streak = 0;
+    }
+    savePersist();
+    showResult(false);
 }
 
-function startRound(target, seedExtra = '') {
-  const seed = (practice ? 'practice' + seedExtra : state.attempt.date) + '|' + target;
-  round = {
-    target,
-    tiles: scramble(target, seed).map((ch) => ({ ch, used: false })),
-    picks: [],
-  };
-  renderRound();
+function restoreFinishedDay() {
+    // obnova stavu pro zobrazení výsledku už odehraného dneška
+    state.mode = 'daily';
+    state.marks = persist.day.marks.slice();
+    state.solved = state.marks.filter(Boolean).length;
 }
 
-function renderRound() {
-  if (!practice) {
-    $('word-num').textContent = state.attempt.wordIdx + 1;
-    $('day-bar').style.width = (state.attempt.wordIdx / WORDS_PER_DAY * 100) + '%';
-  } else {
-    $('word-num').textContent = practice.count + 1;
-    $('day-bar').style.width = '0%';
-  }
-  renderTiles();
-  renderSlots();
+function getPercentileText(survived) {
+    if (survived === 20) return 'Top 1 % hráčů dneška 👑';
+    if (survived === 19) return 'Top 2 % hráčů dneška 🏆';
+    if (survived === 18) return 'Top 3 % hráčů dneška 🏆';
+    if (survived === 17) return 'Top 5 % hráčů dneška 🏆';
+    if (survived >= 15) return 'Top 10 % hráčů dneška 🏅';
+    if (survived >= 13) return 'Top 20 % hráčů dneška 🏅';
+    if (survived >= 9) return 'Top 50 % hráčů dneška 🏅';
+    return 'Dnes bez trofeje 💔';
 }
 
-function renderTiles() {
-  const cont = $('tiles');
-  cont.innerHTML = '';
-  round.tiles.forEach((t, i) => {
-    const b = document.createElement('button');
-    b.className = 'tile' + (t.used ? ' used' : '');
-    b.textContent = t.ch;
-    b.onclick = () => pickTile(i);
-    cont.appendChild(b);
-  });
+function showResult(instant, failedWord) {
+    clearInterval(state.timer);
+    const isPractice = state.mode === 'practice';
+    const survived = state.solved;
+    const perfect = !isPractice && survived === WORDS_PER_DAY;
+
+    const grid = $('gameGrid');
+    if (!isPractice) {
+        placeGameGrid('result');
+        grid.style.display = 'grid';
+        if (instant) { renderGameGrid(); }
+    } else {
+        grid.style.display = 'none';
+    }
+
+    showScreen('result');
+
+    $('winBanner').innerHTML = '';
+    $('failedWord').textContent = isPractice ? (failedWord || '') : '';
+    if (isPractice) {
+        $('survivedCount').textContent = `${state.practiceCount} ${plural(state.practiceCount, 'slovo', 'slova', 'slov')} v řadě!`;
+        $('percentile').textContent = '';
+        $('progressLine').textContent = '';
+    } else {
+        $('survivedCount').textContent = perfect
+            ? 'Máš všech 20 slov!'
+            : `Máš ${survived} z 20 slov!`;
+        $('percentile').textContent = getPercentileText(survived);
+        const dayNum = persist.day.level + 1;
+        $('progressLine').textContent = perfect
+            ? (persist.level >= TOTAL_LEVELS
+                ? '🏆 Odkryto všech 2000 slov. Neuvěřitelné!'
+                : `🔓 Odkryto ${uncoveredCount()}/2000 slov. Zítra tě čeká den ${dayNum + 1}!`)
+            : `Den ${dayNum} si zítra zopakuješ — příště to dáš!`;
+    }
+    $('shareActions').style.display = isPractice ? 'none' : 'flex';
+    $('collectionBtn').style.display = isPractice ? 'none' : 'inline-flex';
+    $('practiceBtn').style.display = (!isPractice && uncoveredCount() > 0) ? 'inline-flex' : 'none';
+    $('practiceAgainBtn').style.display = isPractice ? 'inline-flex' : 'none';
+    $('backBtn').style.display = isPractice ? 'inline-flex' : 'none';
+    $('countdown').style.marginTop = isPractice ? '8px' : '';
+
+    startCountdown();
+    animateResultReveal(perfect, instant);
 }
 
-function renderSlots(flash = '') {
-  const cont = $('slots');
-  cont.innerHTML = '';
-  for (let i = 0; i < round.target.length; i++) {
-    const s = document.createElement('div');
-    const tileIdx = round.picks[i];
-    s.className = 'slot' + (tileIdx !== undefined ? ' filled' : '') + (flash ? ' ' + flash : '');
-    s.textContent = tileIdx !== undefined ? round.tiles[tileIdx].ch : '';
-    if (tileIdx !== undefined && !flash) s.onclick = () => unpick(i);
-    cont.appendChild(s);
-  }
-  $('btn-submit').disabled = round.picks.length !== round.target.length || !!flash;
+function plural(n, one, few, many) {
+    if (n === 1) return one;
+    if (n >= 2 && n <= 4) return few;
+    return many;
 }
 
-function pickTile(i) {
-  if (round.tiles[i].used || round.picks.length >= round.target.length) return;
-  round.tiles[i].used = true;
-  round.picks.push(i);
-  renderTiles();
-  renderSlots();
+let revealTimeouts = [];
+function animateResultReveal(perfect, instant) {
+    revealTimeouts.forEach(clearTimeout);
+    revealTimeouts = [];
+    const items = [...$$('#result .reveal-item')].filter(el => {
+        if (el.id === 'winBanner') return false;
+        const empty = !el.textContent.trim() && !el.querySelector('button');
+        return !empty && el.style.display !== 'none';
+    });
+    if (instant) {
+        items.forEach(el => el.classList.add('show'));
+        return;
+    }
+    items.forEach(el => el.classList.remove('show'));
+    items.forEach((el, i) => {
+        revealTimeouts.push(setTimeout(() => el.classList.add('show'), 250 + i * 350));
+    });
+    if (perfect) revealTimeouts.push(setTimeout(launchConfetti, 400));
 }
 
-function unpick(slotIdx) {
-  const [tileIdx] = round.picks.splice(slotIdx, 1);
-  round.tiles[tileIdx].used = false;
-  renderTiles();
-  renderSlots();
+/* ---------------- konfety (perfektní den) ---------------- */
+
+let confettiRaf = null;
+function stopConfetti() {
+    if (confettiRaf) cancelAnimationFrame(confettiRaf);
+    confettiRaf = null;
+    $('confetti').classList.remove('on');
 }
 
-function eraseLast() {
-  if (round.picks.length) unpick(round.picks.length - 1);
+function launchConfetti() {
+    const canvas = $('confetti');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth * devicePixelRatio;
+    canvas.height = innerHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    canvas.classList.add('on');
+
+    const colors = ['#2e9e5b', '#4169f1', '#f59e0b', '#e0524a', '#9b59b6'];
+    const parts = [];
+    for (let i = 0; i < 140; i++) {
+        parts.push({
+            x: Math.random() * innerWidth,
+            y: -20 - Math.random() * innerHeight * 0.4,
+            w: 6 + Math.random() * 6,
+            h: 8 + Math.random() * 8,
+            vy: 2 + Math.random() * 3,
+            vx: -1.2 + Math.random() * 2.4,
+            rot: Math.random() * Math.PI,
+            vr: -0.12 + Math.random() * 0.24,
+            color: colors[i % colors.length],
+        });
+    }
+    const start = performance.now();
+    function frame(now) {
+        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        let alive = false;
+        for (const p of parts) {
+            p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+            if (p.y < innerHeight + 30) alive = true;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+        }
+        if (alive && now - start < 6000) {
+            confettiRaf = requestAnimationFrame(frame);
+        } else {
+            stopConfetti();
+        }
+    }
+    confettiRaf = requestAnimationFrame(frame);
 }
 
-function reshuffle() {
-  // vrátit vše a zamíchat volné dlaždice náhodně (jen vizuální pomoc)
-  round.picks = [];
-  const chars = round.tiles.map((t) => t.ch);
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  round.tiles = chars.map((ch) => ({ ch, used: false }));
-  renderRound();
-}
-
-function submit() {
-  if (round.picks.length !== round.target.length) return;
-  const guess = round.picks.map((i) => round.tiles[i].ch).join('');
-  if (practice) { submitPractice(guess); return; }
-
-  if (guess === round.target) {
-    state.attempt.wordIdx++;
-    const done = state.attempt.wordIdx >= WORDS_PER_DAY;
-    if (done) winDay(); else saveState();
-    renderSlots('correct');
-    setTimeout(() => {
-      if (done) showResult();
-      else { startRound(currentTarget()); }
-    }, 550);
-  } else {
-    loseDay();
-    renderSlots('wrong');
-    setTimeout(showResult, 900);
-  }
-}
-
-function winDay() {
-  state.attempt.status = 'won';
-  state.level++;
-  state.wins++;
-  const y = new Date(); y.setDate(y.getDate() - 1);
-  const yesterday = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
-  state.streak = (state.lastWinDate === yesterday) ? state.streak + 1 : 1;
-  state.bestStreak = Math.max(state.bestStreak, state.streak);
-  state.lastWinDate = todayStr();
-  saveState();
-}
-
-function loseDay() {
-  state.attempt.status = 'lost';
-  state.attempt.failedWord = round.target;
-  state.lastLostLevel = state.level;
-  state.streak = 0;
-  saveState();
-}
-
-/* ---------------- result ---------------- */
-
-function showResult() {
-  const a = state.attempt;
-  const won = a.status === 'won';
-  // po výhře je state.level už posunutý — slova dne jsou o level zpět
-  const lvl = won ? state.level - 1 : state.level;
-  const words = dayWords(lvl);
-
-  $('result-emoji').textContent = won ? '🎉' : '😤';
-  $('result-title').textContent = won ? `Den ${lvl + 1} zvládnut!` : 'Dnes to nevyšlo';
-  $('result-sub').innerHTML = won
-    ? `Odkryl(a) jsi dalších 20 slov. Zítra tě čeká den ${lvl + 2}.`
-    : `Zvládnuto <b>${a.wordIdx}/20</b>. Hledané slovo bylo <b>${(a.failedWord || '').toUpperCase()}</b>.<br>Zítra stejných 20 slov — teď už je znáš!`;
-
-  const cont = $('result-words');
-  cont.innerHTML = '';
-  words.forEach((w, i) => {
-    if (!won && i > a.wordIdx) return; // neprozrazovat slova, která ještě nehrál
-    const s = document.createElement('span');
-    s.textContent = w;
-    if (!won && i === a.wordIdx) s.className = 'missed';
-    cont.appendChild(s);
-  });
-
-  $('result-uncovered').textContent = uncoveredCount();
-  $('result-streak').textContent = state.streak;
-  $('result-day').textContent = lvl + 1;
-  $('btn-practice-result').hidden = uncoveredCount() === 0;
-
-  startCountdown();
-  show('screen-result');
-}
+/* ---------------- odpočet ---------------- */
 
 function startCountdown() {
-  clearInterval(countdownTimer);
-  const el = $('countdown');
-  const tick = () => {
-    const now = new Date();
-    const mid = new Date(now); mid.setHours(24, 0, 0, 0);
-    const ms = mid - now;
-    if (ms <= 0) { clearInterval(countdownTimer); refresh(); return; }
-    const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
-    el.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-  };
-  tick();
-  countdownTimer = setInterval(tick, 1000);
+    clearInterval(countdownInterval);
+    function update() {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setHours(24, 0, 0, 0);
+        const diff = tomorrow - now;
+        if (diff <= 0) { clearInterval(countdownInterval); showWelcome(); return; }
+        const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+        const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+        $('countdown').textContent = `Další výzva za ${h}:${m}:${s}`;
+    }
+    update();
+    countdownInterval = setInterval(update, 1000);
 }
 
 /* ---------------- sdílení ---------------- */
 
-function shareText() {
-  const a = state.attempt;
-  const won = a && a.date === todayStr() && a.status === 'won';
-  const lost = a && a.date === todayStr() && a.status === 'lost';
-  const dayNum = won ? state.level : state.level + 1;
-
-  let lines = [];
-  if (won) {
-    lines.push(`2000 SLOV — den ${dayNum}/100 ✅` + (state.streak > 1 ? ` 🔥${state.streak}` : ''));
-    lines.push('🟩'.repeat(10) + '\n' + '🟩'.repeat(10) + ' 20/20');
-  } else if (lost) {
-    const k = a.wordIdx;
-    // pole emoji (ne string.slice — emoji jsou surrogate páry)
-    const cells = [...Array(k).fill('🟩'), '🟥', ...Array(WORDS_PER_DAY - k - 1).fill('⬛')];
-    lines.push(`2000 SLOV — den ${dayNum}/100`);
-    lines.push(cells.slice(0, 10).join('') + '\n' + cells.slice(10).join('') + ` ${k}/20`);
-  } else {
-    lines.push(`2000 SLOV — jsem na dni ${dayNum}/100` + (state.streak > 1 ? ` 🔥${state.streak}` : ''));
-  }
-  lines.push(`Odkryto ${uncoveredCount()}/2000 slov`);
-  lines.push(siteUrl());
-  return lines.join('\n');
-}
-
-function challengeText() {
-  const dayNum = Math.min(state.level + 1, TOTAL_LEVELS);
-  return [
-    `⚔️ Vyzývám tě na 2000 SLOV!`,
-    `20 českých slov denně s přeházenými písmeny.`,
-    `Jedna chyba = opakuješ celý den. 😈`,
-    `Já jsem na dni ${dayNum}/100 — překonáš mě?`,
-    siteUrl(),
-  ].join('\n');
-}
-
-/* Náhled sdílení (jako 18words) — hráč vidí, co pošle, pak teprve share sheet. */
-function openSharePreview(text) {
-  $('share-preview').textContent = text;
-  $('btn-share-confirm').onclick = () => { closeModals(); share(text); };
-  openModal('modal-share');
-}
-
-async function share(text) {
-  if (navigator.share) {
-    try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; }
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    toast('Zkopírováno! Vlož to kamarádům 😉');
-  } catch (e) {
-    toast('Sdílení se nepovedlo 😕');
-  }
-}
-
-/* ---------------- trénink ---------------- */
-
-function startPractice() {
-  const pool = WORDS.slice(0, uncoveredCount());
-  if (!pool.length) return;
-  practice = { count: 0 };
-  $('practice-note').hidden = false;
-  $('game-day').textContent = state.level + 1;
-  nextPracticeWord();
-  show('screen-game');
-}
-
-function nextPracticeWord() {
-  const pool = WORDS.slice(0, uncoveredCount());
-  const target = pool[Math.floor(Math.random() * pool.length)];
-  startRound(target, '|' + Date.now());
-}
-
-function submitPractice(guess) {
-  if (guess === round.target) {
-    practice.count++;
-    renderSlots('correct');
-    setTimeout(nextPracticeWord, 450);
-  } else {
-    renderSlots('wrong');
-    setTimeout(() => {
-      round.picks.forEach((i) => { round.tiles[i].used = false; });
-      round.picks = [];
-      renderRound();
-    }, 500);
-  }
-}
-
-/* ---------------- sbírka + statistiky ---------------- */
-
-function renderCollection() {
-  $('collection-count').textContent = uncoveredCount() + '/2000';
-  const cont = $('collection');
-  cont.innerHTML = '';
-  for (let lvl = 0; lvl < TOTAL_LEVELS; lvl++) {
-    if (lvl > state.level) {
-      const d = document.createElement('div');
-      d.className = 'locked';
-      d.textContent = `🔒 Zbývá ${TOTAL_LEVELS - lvl} dní (${(TOTAL_LEVELS - lvl) * 20} slov)`;
-      cont.appendChild(d);
-      break;
+function buildEmojiGrid() {
+    const marks = persist.day ? persist.day.marks : [];
+    let out = '';
+    for (let i = 0; i < WORDS_PER_DAY; i++) {
+        out += marks[i] ? '🟩' : '🟥';
+        if (i % 5 === 4 && i !== WORDS_PER_DAY - 1) out += '\n';
     }
-    const det = document.createElement('details');
-    const sum = document.createElement('summary');
-    const done = lvl < state.level;
-    sum.innerHTML = `Den ${lvl + 1} <span class="lvl-state">${done ? '✅ 20 slov' : '▶️ hraje se'}</span>`;
-    det.appendChild(sum);
-    if (done) {
-      const w = document.createElement('div');
-      w.className = 'words';
-      dayWords(lvl).forEach((word) => {
-        const s = document.createElement('span');
-        s.textContent = word;
-        w.appendChild(s);
-      });
-      det.appendChild(w);
+    return out;
+}
+
+function getTrophyShareLine(survived) {
+    const text = getPercentileText(survived);
+    if (text.includes('bez trofeje')) return null;
+    const clean = text.replace(/[\s\p{Extended_Pictographic}️]+$/u, '');
+    return '🏆 ' + clean;
+}
+
+function buildShareMessage(mode) {
+    const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
+    const dayNum = (persist.day ? persist.day.level : persist.level) + 1;
+    const grid = buildEmojiGrid();
+    let msg = `⏳ 2000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
+    if (grid) msg += `\n\n${grid}`;
+    if (mode === 'score') {
+        const trophy = getTrophyShareLine(survived);
+        if (trophy) msg += `\n\n${trophy}`;
     } else {
-      const p = document.createElement('div');
-      p.className = 'words';
-      p.innerHTML = '<span>❓ slova se odkryjí po zvládnutí dne</span>';
-      det.appendChild(p);
+        msg += `\n\n🫵 Překonáš mě?`;
     }
-    cont.appendChild(det);
-  }
+    msg += `\n\n${siteUrl()}`;
+    return msg;
 }
 
-function renderStats() {
-  $('stat-day').textContent = Math.min(state.level + 1, TOTAL_LEVELS);
-  $('stat-uncovered').textContent = uncoveredCount();
-  $('stat-streak').textContent = state.streak;
-  $('stat-best').textContent = state.bestStreak;
-  $('stat-attempts').textContent = state.attempts;
-  $('stat-rate').textContent = state.attempts ? Math.round(state.wins / state.attempts * 100) + '%' : '0%';
+function shareText(msg) {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        ('ontouchstart' in window && window.innerWidth < 768);
+    if (isMobile && navigator.share) {
+        navigator.share({ text: msg }).catch(() => {
+            navigator.clipboard?.writeText(msg).then(() => showToast('Zkopírováno do schránky!')).catch(() => alert(msg));
+        });
+    } else {
+        navigator.clipboard?.writeText(msg).then(() => showToast('Zkopírováno do schránky!')).catch(() => alert(msg));
+    }
 }
 
-/* ---------------- modaly ---------------- */
+function shareScore() { shareText(buildShareMessage('score')); }
+function challengeFriend() { shareText(buildShareMessage('challenge')); }
 
-function openModal(id) { $(id).hidden = false; }
-function closeModals() { for (const m of document.querySelectorAll('.modal-overlay')) m.hidden = true; }
+/* ---------------- sbírka slov ---------------- */
+
+function showCollection() {
+    $('collectionCount').textContent = `${uncoveredCount()}/${TOTAL_WORDS}`;
+    const list = $('collectionList');
+    list.innerHTML = '';
+    for (let lvl = 0; lvl < TOTAL_LEVELS; lvl++) {
+        const li = document.createElement('li');
+        li.className = 'archive-item';
+        const done = lvl < persist.level;
+        const current = lvl === persist.level;
+        const label = document.createElement('span');
+        label.className = 'archive-date';
+        label.textContent = `Den ${lvl + 1}`;
+        const badge = document.createElement('span');
+        badge.className = 'archive-score';
+        if (done) {
+            badge.textContent = '✓ 20 slov';
+            const words = document.createElement('div');
+            words.className = 'archive-words';
+            dayWords(lvl).forEach(w => {
+                const s = document.createElement('span');
+                s.textContent = w;
+                words.appendChild(s);
+            });
+            li.append(label, badge, words);
+            li.onclick = () => li.classList.toggle('open');
+        } else {
+            badge.classList.add('not-played');
+            badge.textContent = current ? 'dnes' : '🔒';
+            li.classList.toggle('locked', !current);
+            li.append(label, badge);
+            if (!current) li.onclick = () => showToast('Nejdřív zvládni předchozí dny!');
+        }
+        list.appendChild(li);
+    }
+    $('collectionModal').classList.add('active');
+    // aktuální den nascrollovat do záběru
+    const cur = list.children[Math.min(persist.level, TOTAL_LEVELS - 1)];
+    if (cur) cur.scrollIntoView({ block: 'center' });
+}
+
+/* ---------------- zpětná vazba ---------------- */
+
+function openFeedbackModal() {
+    $('feedbackForm').style.display = 'flex';
+    $('feedbackSuccess').style.display = 'none';
+    $('feedbackError').style.display = 'none';
+    $('feedbackModal').classList.add('active');
+}
+
+function closeModal() {
+    $$('.modal').forEach(m => m.classList.remove('active'));
+}
+
+function submitFeedback(e) {
+    e.preventDefault();
+    const form = $('feedbackForm');
+    fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { Accept: 'application/json' },
+    }).then(r => {
+        if (!r.ok) throw new Error();
+        form.reset();
+        form.style.display = 'none';
+        $('feedbackSuccess').style.display = 'block';
+    }).catch(() => {
+        $('feedbackError').style.display = 'block';
+    });
+}
+
+document.addEventListener('pointerdown', e => {
+    const modal = e.target.closest('.modal');
+    if (modal && e.target === modal) closeModal();
+});
 
 /* ---------------- klávesnice ---------------- */
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { closeModals(); return; }
-  if ($('screen-game').hidden || !round) return;
-  if (e.key === 'Enter') { submit(); return; }
-  if (e.key === 'Backspace') { eraseLast(); return; }
-  if (e.key.length === 1) {
-    const ch = e.key.toLowerCase();
-    const i = round.tiles.findIndex((t) => !t.used && t.ch === ch);
-    if (i !== -1) pickTile(i);
-  }
-});
+const STRIP = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-/* ---------------- events ---------------- */
+document.onkeydown = e => {
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (
+        !$('game').classList.contains('active') ||
+        state.processing ||
+        $('collectionModal').classList.contains('active') ||
+        $('feedbackModal').classList.contains('active') ||
+        $('pauseOverlay').classList.contains('active')
+    ) return;
 
-$('btn-start').onclick = startDay;
-$('btn-erase').onclick = eraseLast;
-$('btn-shuffle').onclick = reshuffle;
-$('btn-submit').onclick = submit;
-$('btn-share').onclick = () => openSharePreview(shareText());
-$('btn-challenge').onclick = () => openSharePreview(challengeText());
-$('btn-share-stats').onclick = () => openSharePreview(shareText());
-$('btn-share-finished').onclick = () => openSharePreview(`2000 SLOV — HOTOVO! 🏆\nOdkryl(a) jsem všech 2000 slov za ${state.attempts} pokusů.\n${siteUrl()}`);
-$('btn-help').onclick = () => openModal('modal-help');
-$('btn-stats').onclick = () => { renderStats(); openModal('modal-stats'); };
-$('btn-collection').onclick = () => { renderCollection(); openModal('modal-collection'); };
-$('btn-practice-intro').onclick = startPractice;
-$('btn-practice-result').onclick = startPractice;
-$('btn-practice-finished').onclick = startPractice;
-$('btn-practice-exit').onclick = refresh;
-for (const b of document.querySelectorAll('[data-close]')) b.onclick = closeModals;
-for (const m of document.querySelectorAll('.modal-overlay')) {
-  m.addEventListener('click', (e) => { if (e.target === m) closeModals(); });
-}
+    if (state.incorrectTimeout && e.key !== 'Enter') {
+        clearIncorrectState();
+        updateUI();
+    }
+
+    if (e.key === 'Backspace' && state.selected.length > 0) {
+        e.preventDefault();
+        const idx = state.selected.pop();
+        const tile = $('letterRow').querySelector(`.letter[data-index="${idx}"]`);
+        if (tile) tile.classList.remove('selected');
+        updateUI();
+        return;
+    }
+
+    if (e.key === 'Enter' && state.selected.length === state.letters.length) {
+        e.preventDefault();
+        return checkWord();
+    }
+
+    if (e.key === 'Shift') { shuffleLetters(); return; }
+
+    if (e.key.length !== 1 || state.selected.length >= state.letters.length) return;
+    const key = e.key.toLowerCase();
+    // přesná shoda (č, š, ž…), pak shoda bez diakritiky (e → é/ě)
+    let tile = [...$$('#letterRow .letter')].find(l =>
+        !state.selected.includes(+l.dataset.index) && state.letters[+l.dataset.index] === key
+    );
+    if (!tile) {
+        tile = [...$$('#letterRow .letter')].find(l =>
+            !state.selected.includes(+l.dataset.index) && STRIP(state.letters[+l.dataset.index]) === STRIP(key)
+        );
+    }
+    if (tile) {
+        selectLetter(tile);
+        if (state.selected.length === state.letters.length) checkWord();
+    }
+};
+
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
 /* ---------------- start ---------------- */
 
-if (!state.seenHelp) {
-  openModal('modal-help');
-  state.seenHelp = true;
-  saveState();
-}
-refresh();
+(function init() {
+    // rozehraný, ale nedokončený den z minulosti zahodit (hraje se znovu)
+    if (persist.day && !persist.day.done && persist.day.date !== todayStr()) {
+        persist.day = null;
+        savePersist();
+    }
+    showWelcome();
+})();
