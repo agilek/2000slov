@@ -1,12 +1,17 @@
-/* 2000 slov — česká denní slovní hra po vzoru 18words.com
- * 100 dní × 20 slov. Slož slovo ze všech písmen do 30 s.
+/* 10 000 slov — česká denní slovní hra po vzoru 18words.com
+ * 500 dní × 20 slov (ČNK SYN2005). Slož slovo ze všech písmen do 30 s.
  * Všech 20 zelených = postup, jinak den zítra opakuješ. Jeden pokus denně. */
 'use strict';
 
 const START_TIME = 30;
 const WORDS_PER_DAY = 20;
-const TOTAL_WORDS = WORDS.length;                 // 2000
-const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 100
+const TOTAL_WORDS = WORDS.length;                 // 10000
+const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 500
+
+const LETTER_RE = /[a-záčďéěíňóřšťúůýž]/;
+// hratelná písmena hesla (bez mezer, teček, pomlček — ty jsou ve slotech pevně)
+const lettersOf = w => [...w].filter(c => LETTER_RE.test(c)).join('');
+const fmtNum = n => n.toLocaleString('cs-CZ');
 const STORAGE_KEY = 'slov2000_v2';
 const FALLBACK_URL = 'https://agilek.github.io/2000slov/';
 
@@ -105,15 +110,15 @@ function showWelcome() {
     placeGameGrid('game');
     renderWelcomeGrid();
     const dayNum = Math.min(persist.level + 1, TOTAL_LEVELS);
-    $('welcomeDate').textContent = `Den ${dayNum}/${TOTAL_LEVELS} · ${uncoveredCount()}/${TOTAL_WORDS} slov`;
+    $('welcomeDate').textContent = `Den ${dayNum}/${TOTAL_LEVELS} · ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
     const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
     $('playBtn').textContent = todayDone ? 'Výsledek' : 'Hrát';
     const retry = !todayDone && persist.attempts > 0;
     $('welcomeRules').innerHTML = persist.level >= TOTAL_LEVELS
-        ? 'Máš odkryto všech 2000 slov. 🏆'
+        ? `Máš odkryto všech ${fmtNum(TOTAL_WORDS)} slov. 🏆`
         : (retry
             ? 'Zvládni všech 20 slov a postoupíš dál.<br>Jedno nestihneš? Celý den si zítra zopakuješ.'
-            : 'Zvládni všech 20 slov a odkryj dalších 20<br>z 2000 nejčastějších českých slov.');
+            : `Zvládni všech 20 slov a odkryj dalších 20<br>z ${fmtNum(TOTAL_WORDS)} nejčastějších českých slov.`);
     showScreen('welcome');
 }
 
@@ -131,12 +136,13 @@ function playToday() {
 /* ---------------- start hry ---------------- */
 
 function shuffleArr(arr) {
+    const original = lettersOf(state.words[state.wordIdx] || '');
     for (let attempts = 0; attempts < 200; attempts++) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [arr[i], arr[j]] = [arr[j], arr[i]];
         }
-        if (arr.join('') !== state.words[state.wordIdx]) break;
+        if (arr.join('') !== original) break;
     }
     return arr;
 }
@@ -200,7 +206,7 @@ function loadWord() {
         state.words[state.wordIdx] = pickPracticeWord();
     }
     const target = state.words[state.wordIdx];
-    state.letters = target.split('');
+    state.letters = lettersOf(target).split('');
     state.selected = [];
     state.processing = false;
     state.shuffledThisWord = false;
@@ -223,22 +229,36 @@ function loadWord() {
 function getMaxPerRow(n) {
     if (n <= 4) return 2;
     if (n <= 6) return 3;
-    return 4;
+    if (n <= 9) return 4;
+    return 5;
 }
 
-function renderSlots(container, n, animate) {
+function letterSize(n) {
+    if (n <= 8) return { d: 76, f: 34 };
+    if (n <= 12) return { d: 62, f: 28 };
+    return { d: 50, f: 23 };
+}
+
+// Sloty podle celého hesla: nepísmenné znaky (mezera, tečka, pomlčka)
+// jsou pevně předvyplněné a neskládají se.
+function renderSlots(container, target, animate) {
     container.innerHTML = '';
+    const chars = [...target];
+    const n = chars.length;
     const avail = Math.min(window.innerWidth - 48, 420);
-    const size = Math.max(28, Math.min(46, Math.floor((avail - (n - 1) * 6) / n)));
-    for (let i = 0; i < n; i++) {
+    const perRow = Math.min(n, 10);
+    const size = Math.max(24, Math.min(46, Math.floor((avail - (perRow - 1) * 6) / perRow)));
+    chars.forEach((ch, i) => {
         const s = document.createElement('div');
-        s.className = 'answer-slot' + (animate ? ' entering' : '');
+        const locked = !LETTER_RE.test(ch);
+        s.className = 'answer-slot' + (locked ? ' locked filled' : '') + (animate ? ' entering' : '');
+        if (locked) s.textContent = ch === ' ' ? '␣' : ch;
         if (animate) s.style.animationDelay = (i * 40) + 'ms';
         s.style.width = size + 'px';
         s.style.height = Math.round(size * 1.08) + 'px';
         s.style.fontSize = Math.round(size * 0.56) + 'px';
         container.appendChild(s);
-    }
+    });
 }
 
 function renderLetters(animate) {
@@ -246,15 +266,19 @@ function renderLetters(animate) {
     row.innerHTML = '';
     const n = state.letters.length;
     const cols = getMaxPerRow(n);
-    row.style.width = (cols * 76 + (cols - 1) * 6) + 'px';
+    const { d, f } = letterSize(n);
+    row.style.width = (cols * d + (cols - 1) * 6) + 'px';
 
-    renderSlots($('wordDisplay'), n, animate);
+    renderSlots($('wordDisplay'), state.words[state.wordIdx], animate);
 
     state.letters.forEach((letter, i) => {
         const el = document.createElement('div');
         el.className = 'letter' + (animate ? ' entering' : '');
         el.textContent = letter;
         el.dataset.index = i;
+        el.style.width = d + 'px';
+        el.style.height = d + 'px';
+        el.style.fontSize = f + 'px';
         if (animate) el.style.animationDelay = (i * 40) + 'ms';
         el.addEventListener('pointerdown', e => { e.preventDefault(); handleTap(el); });
         row.appendChild(el);
@@ -305,9 +329,9 @@ function resetSelection() {
 }
 
 function isAcceptedWord(word, target) {
-    if (word === target) return true;
+    if (word === lettersOf(target)) return true;
     const alts = (typeof ALTS !== 'undefined' && ALTS[target]) || [];
-    return alts.includes(word);
+    return alts.some(a => lettersOf(a) === word);
 }
 
 function checkWord() {
@@ -378,11 +402,14 @@ function handleTimeout() {
 
     const wd = $('wordDisplay');
     const target = state.words[state.wordIdx] || '';
+    const chars = [...target];
     const slots = [...wd.querySelectorAll('.answer-slot')];
 
     slots.forEach(s => {
-        s.textContent = '';
-        s.classList.remove('filled');
+        if (!s.classList.contains('locked')) {
+            s.textContent = '';
+            s.classList.remove('filled');
+        }
         s.style.animation = 'none';
     });
 
@@ -390,7 +417,7 @@ function handleTimeout() {
     const stagger = 65;
     slots.forEach((s, i) => {
         setTimeout(() => {
-            s.textContent = target[i] || '';
+            s.textContent = chars[i] === ' ' ? '␣' : (chars[i] || '');
             s.classList.add('filled', 'missed');
             s.style.animation = 'missedReveal .34s cubic-bezier(.34,1.56,.64,1) both';
         }, i * stagger);
@@ -506,14 +533,17 @@ function updateGameGrid(popIndex) {
 
 function updateUI() {
     const chosen = state.selected.map(i => state.letters[i]);
-    $('wordDisplay').querySelectorAll('.answer-slot').forEach((s, i) => {
-        if (i < chosen.length) {
-            s.textContent = chosen[i];
+    let li = 0; // index do vybraných písmen — zamčené sloty se přeskakují
+    $('wordDisplay').querySelectorAll('.answer-slot').forEach(s => {
+        if (s.classList.contains('locked')) return;
+        if (li < chosen.length) {
+            s.textContent = chosen[li];
             s.classList.add('filled');
         } else {
             s.textContent = '';
             s.classList.remove('filled');
         }
+        li++;
     });
     const low = state.time <= 0 ? ' zero' : (state.time <= 10 ? ' low' : '');
     const label = state.mode === 'practice'
@@ -655,8 +685,8 @@ function showResult(instant, failedWord) {
         const dayNum = persist.day.level + 1;
         $('progressLine').textContent = perfect
             ? (persist.level >= TOTAL_LEVELS
-                ? '🏆 Odkryto všech 2000 slov. Neuvěřitelné!'
-                : `🔓 Odkryto ${uncoveredCount()}/2000 slov. Zítra tě čeká den ${dayNum + 1}!`)
+                ? `🏆 Odkryto všech ${fmtNum(TOTAL_WORDS)} slov. Neuvěřitelné!`
+                : `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov. Zítra tě čeká den ${dayNum + 1}!`)
             : `Den ${dayNum} si zítra zopakuješ — příště to dáš!`;
     }
     $('shareActions').style.display = isPractice ? 'none' : 'flex';
@@ -793,7 +823,7 @@ function buildShareMessage(mode) {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
     const dayNum = (persist.day ? persist.day.level : persist.level) + 1;
     const grid = buildEmojiGrid();
-    let msg = `⏳ 2000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
+    let msg = `⏳ 10 000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
     if (grid) msg += `\n\n${grid}`;
     if (mode === 'score') {
         const trophy = getTrophyShareLine(survived);
@@ -833,7 +863,7 @@ function challengeFriend() { shareText(buildShareMessage('challenge')); }
 /* ---------------- sbírka slov ---------------- */
 
 function showCollection() {
-    $('collectionCount').textContent = `${uncoveredCount()}/${TOTAL_WORDS}`;
+    $('collectionCount').textContent = `${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)}`;
     const list = $('collectionList');
     list.innerHTML = '';
     for (let lvl = 0; lvl < TOTAL_LEVELS; lvl++) {

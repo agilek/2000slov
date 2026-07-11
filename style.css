@@ -303,6 +303,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 .word-display {
     min-height: 62px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 6px;
@@ -334,6 +335,13 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 .answer-slot.filled {
     border-color: currentColor;
     transform: translateY(-2px);
+}
+/* Pevné znaky hesla (mezera, tečka, pomlčka) — neskládají se */
+.answer-slot.locked {
+    border-style: dashed;
+    border-color: var(--muted);
+    color: var(--muted);
+    transform: none;
 }
 .answer-slot.missed {
     color: var(--red);
