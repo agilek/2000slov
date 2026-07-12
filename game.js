@@ -275,6 +275,7 @@ function startPracticeGame() {
     const pool = uncoveredCount() > 0 ? WORDS.slice(0, uncoveredCount()) : dayWords(0);
     state.mode = 'practice';
     state.pool = pool;
+    state.practiceQueue = shuffleCopy(pool);
     state.words = [];
     state.wordIdx = 0;
     state.marks = [];
@@ -287,8 +288,26 @@ function startPracticeGame() {
     loadWord();
 }
 
+function shuffleCopy(arr) {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+// Bere slova z promíchané fronty bez opakování; když dojde, znovu promíchá
+// celý pool (a snaží se nezopakovat úplně poslední slovo hned znovu).
 function pickPracticeWord() {
-    return state.pool[Math.floor(Math.random() * state.pool.length)];
+    if (state.practiceQueue.length === 0) {
+        state.practiceQueue = shuffleCopy(state.pool);
+        const last = state.words[state.wordIdx - 1];
+        if (state.practiceQueue.length > 1 && state.practiceQueue[0] === last) {
+            [state.practiceQueue[0], state.practiceQueue[1]] = [state.practiceQueue[1], state.practiceQueue[0]];
+        }
+    }
+    return state.practiceQueue.pop();
 }
 
 /* ---------------- kolo (jedno slovo) ---------------- */
