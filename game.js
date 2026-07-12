@@ -1,14 +1,14 @@
-/* 20 000 slov — česká denní slovní hra po vzoru 18words.com
- * Slovník: jen podstatná jména (Wikislovník), seřazená podle délky od 3 písmen
- * a v rámci délky podle frekvence — obtížnost roste postupně, den za dnem.
+/* 13 000 slov — česká denní slovní hra po vzoru 18words.com
+ * Slovník: jen podstatná jména (Wikislovník), seřazená čistě podle frekvence
+ * výskytu — obtížnost roste přirozeně tím, jak slova řídnou v běžné řeči.
  * Slož slovo ze všech písmen do 30 s. Všech 20 zelených = postup,
  * jinak den zítra opakuješ. Jeden pokus denně. */
 'use strict';
 
 const START_TIME = 30;
 const WORDS_PER_DAY = 20;
-const TOTAL_WORDS = WORDS.length;                 // 20020
-const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 1001
+const TOTAL_WORDS = WORDS.length;                 // 13000
+const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 650
 
 const LETTER_RE = /[a-záčďéěíňóřšťúůýž]/;
 // hratelná písmena hesla (bez mezer, teček, pomlček — ty jsou ve slotech pevně)
@@ -997,7 +997,7 @@ function buildShareMessage(mode) {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
     const dayNum = (persist.day ? persist.day.level : persist.level) + 1;
     const grid = buildEmojiGrid();
-    let msg = `⏳ 20 000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
+    let msg = `⏳ 13 000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
     if (grid) msg += `\n\n${grid}`;
     if (mode === 'score') {
         const trophy = getTrophyShareLine(survived);
