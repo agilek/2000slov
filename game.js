@@ -245,6 +245,7 @@ function shuffleArr(arr) {
 function startGame() {
     const today = todayStr();
     state.mode = 'daily';
+    $('closeGameBtn').style.display = 'none';
     state.words = dayWords(persist.level);
 
     const d = persist.day;
@@ -276,6 +277,7 @@ function startGame() {
 function startPracticeGame() {
     const pool = PRACTICE_WORDS;
     state.mode = 'practice';
+    $('closeGameBtn').style.display = 'flex';
     state.pool = pool;
     state.practiceQueue = shuffleCopy(pool);
     state.words = [];
@@ -727,6 +729,13 @@ function pauseGame() {
 function resumeGame() {
     $('pauseOverlay').classList.remove('active');
     startTimer();
+}
+
+function exitPractice() {
+    if (state.mode !== 'practice') return;
+    clearInterval(state.timer);
+    state.processing = false;
+    showWelcome();
 }
 
 document.addEventListener('visibilitychange', () => {
