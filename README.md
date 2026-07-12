@@ -1,6 +1,6 @@
-# 13 000 slov 🇨🇿
+# 2000 slov 🇨🇿
 
-**650 dní. Jen podstatná jména, od nejběžnějších po nejvzácnější. 30 sekund na slovo. Jedna chyba = celý den znovu.**
+**100 dní. Jen podstatná jména, od nejběžnějších po nejvzácnější. 30 sekund na slovo. Jedna chyba = celý den znovu.**
 
 Česká denní slovní hra po vzoru [18words.com](https://18words.com/) — stejný vizuál
 i herní pocit. Každý den 20 slov s přeházenými písmeny, na každé 30 sekund.
@@ -11,6 +11,9 @@ Obtížnost roste **přirozeně podle frekvence slova**: den 1 jsou nejběžněj
 podstatná jména (moc, den, život, práce, čas…), a jak dny přibývají, slova
 řídnou v běžné řeči — až po vzácné a knižní výrazy na konci hry. Délka slova
 nehraje roli, řadí se čistě podle toho, jak často se slovo vyskytuje.
+
+Denní hra má přesně **2000 slov (100 dní)**. Trénink navíc čerpá z celého
+podkladového **frekvenčního poolu 13 000 slov**, bez omezení na odemčený postup.
 
 ## Spuštění
 
@@ -32,7 +35,7 @@ Workflow `.github/workflows/pages.yml` nasadí při každém pushi. Není potře
 | `index.html` | struktura aplikace (obrazovky, modaly) |
 | `style.css` | světlý design po vzoru originálu (Baloo 2 + Nunito) |
 | `game.js` | herní logika, časovač, stav v localStorage, sdílení |
-| `words.js` | 13 000 podstatných jmen řazených podle frekvence + mapa uznávaných přesmyček |
+| `words.js` | 2000 podstatných jmen pro denní hru (`WORDS`) + širší pool 13 000 pro trénink (`PRACTICE_WORDS`), řazeno podle frekvence + mapa uznávaných přesmyček |
 | `GAME_DESIGN.md` | kompletní game design + plán virality |
 | `worker/` | volitelný backend (Cloudflare Worker + D1) pro skutečné „Top X % hráčů dneška" — viz `worker/README.md` |
 
@@ -56,7 +59,10 @@ Zpracování:
    (celý korpus `cs_full`, práh výskytu ≥ 5 — vyřadí ultra-vzácný šum a překlepy).
    Podstatná jména, která ve frekvenčním korpusu vůbec nejsou, se do hry
    **nepřidávají** — každé slovo má tedy reálnou frekvenci a délka nehraje roli.
-6. Zaokrouhleno na **13 000 slov, 650 dní** (ořízne 320 nejvzácnějších z ~13 320).
+6. Zaokrouhleno na **13 000 slov** (ořízne 320 nejvzácnějších z ~13 320) — to je celý
+   podkladový pool, ze kterého čerpá trénink (`PRACTICE_WORDS`).
+7. Denní hra (`WORDS`) používá jen prvních **2000 slov** (100 dní) z tohoto
+   frekvenčně seřazeného poolu — nejběžnější podstatná jména.
 
 Jako správná odpověď se navíc uznává i jiné platné české slovo složené ze
 stejných písmen (1234 hesel má alternativu, např. rok/okr, zem/mez).
