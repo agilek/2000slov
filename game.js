@@ -102,19 +102,27 @@ const HAPTIC_PATTERNS = {
     tick: 8,                          // poslední vteřiny časovače
 };
 
-// iOS Vibration API nemá, ale Safari 17.4+ vydá haptické ťuknutí při přepnutí
-// <input type="checkbox" switch>. Skrytý přepínač klikáme programově.
-const hapticSwitch = (() => {
-    if ('vibrate' in navigator) return null;
-    const el = document.createElement('input');
-    el.type = 'checkbox';
-    el.setAttribute('switch', '');
-    el.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;pointer-events:none;';
-    el.tabIndex = -1;
-    el.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(el);
-    return el;
-})();
+const COARSE_POINTER = window.matchMedia('(pointer: coarse)').matches;
+
+// iOS Vibration API nemá, ale přepnutí <input type="checkbox" switch>
+// (Safari 17.4+) vydá nativní haptické ťuknutí. Programově ale funguje jen
+// klik na obalující <label> — přímý klik na input haptiku nespustí.
+// Apple to v iOS 26.5 zalepil, proto níže ještě překryvné přepínače.
+function iosTap() {
+    if (!COARSE_POINTER) return;
+    try {
+        const label = document.createElement('label');
+        label.ariaHidden = 'true';
+        label.style.display = 'none';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.setAttribute('switch', '');
+        label.appendChild(input);
+        document.head.appendChild(label);
+        label.click();
+        document.head.removeChild(label);
+    } catch (e) {}
+}
 
 function haptic(kind) {
     const pattern = HAPTIC_PATTERNS[kind] || HAPTIC_PATTERNS.tap;
@@ -122,21 +130,41 @@ function haptic(kind) {
         try { navigator.vibrate(pattern); } catch (e) {}
         return;
     }
-    if (!hapticSwitch) return;
-    // Přepínač neumí délku ani sílu — vzor převedeme na jedno ťuknutí
-    // za každý vibrační úsek, v odpovídajících rozestupech.
+    // iOS: ťuknutí neumí délku ani sílu — vzor převedeme na jedno ťuknutí
+    // za každý vibrační úsek, s rozestupem aspoň 120 ms, ať jdou rozeznat.
     const segs = Array.isArray(pattern) ? pattern : [pattern];
     let t = 0;
     for (let i = 0; i < segs.length; i += 2) {
-        if (t === 0) hapticSwitch.click();
-        else setTimeout(() => hapticSwitch.click(), t);
-        t += segs[i] + (segs[i + 1] || 0);
+        if (t === 0) iosTap();
+        else setTimeout(iosTap, t);
+        t += Math.max(segs[i] + (segs[i + 1] || 0), 120);
     }
 }
 
-// Lehké ťuknutí při kliku na jakékoli tlačítko (včetně prvků s role="button").
+// Skutečný, neviditelný přepínač přes celé tlačítko: dotyk ho přepne a iOS
+// vydá haptiku nativně — funguje i na iOS 26.5+, kde programový trik nejde.
+// Klik dál probublá na tlačítko, takže onclick funguje beze změny.
+function addHapticOverlays() {
+    if ('vibrate' in navigator || !COARSE_POINTER) return;
+    $$('button:not([type="submit"])').forEach(el => {
+        const sw = document.createElement('input');
+        sw.type = 'checkbox';
+        sw.setAttribute('switch', '');
+        sw.setAttribute('aria-hidden', 'true');
+        sw.tabIndex = -1;
+        sw.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
+        if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+        el.appendChild(sw);
+    });
+}
+
+// Lehké ťuknutí při kliku na tlačítko. Na iOS mají skutečná tlačítka
+// překryvný přepínač (nativní haptika), programově ťukáme jen na prvky
+// s role="button", které překrýt nejdou.
 document.addEventListener('pointerdown', e => {
-    if (e.target.closest('button, [role="button"]')) haptic('button');
+    const btn = e.target.closest('button, [role="button"]');
+    if (!btn) return;
+    if ('vibrate' in navigator || !btn.matches('button')) haptic('button');
 });
 
 /* ---------------- UI helpery ---------------- */
@@ -1126,5 +1154,6 @@ document.addEventListener('dblclick', e => e.preventDefault(), { passive: false 
         persist.day = null;
         savePersist();
     }
+    addHapticOverlays();
     showWelcome();
 })();
