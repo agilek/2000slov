@@ -1,0 +1,8 @@
+name = "slov2000-api"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "slov2000"
+database_id = "REPLACE_ME"          # doplní se po `wrangler d1 create slov2000`

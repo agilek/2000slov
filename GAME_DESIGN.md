@@ -99,8 +99,11 @@ Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toas
 
 ## 4. Roadmapa
 
-1. **Skutečný percentil** — mini-backend (Cloudflare Worker + KV): POST den+skóre,
-   GET rozložení. Tabulku nahradí reálná čísla + „Dnešní den zvládlo jen 34 % hráčů."
+1. ~~**Skutečný percentil**~~ — **hotovo.** Cloudflare Worker + D1
+   (`worker/`) počítá skutečné „Top X % hráčů dneška" ze skutečných
+   výsledků. Dokud den nemá aspoň 15 odeslaných výsledků, hra tiše
+   zůstává u statického odhadu. Volitelné — dokud worker není nasazený
+   (`API_BASE` prázdné v `game.js`), hra funguje jako dřív. Deploy: `worker/README.md`.
 2. **Souboj přes odkaz** `?vyzva=<den>` — kamarád si zahraje tvůj den a porovnáte se.
 3. OG obrázek výsledku, PWA manifest + push „🔥 Nepřijdeš o sérii?", `#2000slov`.
 4. Lehká obfuskace slovníku (aktuálně čitelný — pro casual hru OK).
@@ -118,3 +121,6 @@ Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toas
   20 020 (1001 dní). Anagramové kolize řeší mapa ALTS (uznaná alternativa = správně).
 - Testovací nasazení: jednosouborová verze (`inline` CSS/JS/slovník/fonty) se
   generuje skriptem a publikuje jako Claude Artifact; produkce = GitHub Pages.
+- Backend (volitelný): `worker/` — Cloudflare Worker + D1 pro skutečné
+  percentily. Bez něj hra běží stejně, jen se statickým odhadem. Viz
+  `worker/README.md`.

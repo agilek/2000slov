@@ -34,6 +34,7 @@ Workflow `.github/workflows/pages.yml` nasadí při každém pushi. Není potře
 | `game.js` | herní logika, časovač, stav v localStorage, sdílení |
 | `words.js` | 20 020 podstatných jmen řazených podle délky + mapa uznávaných přesmyček |
 | `GAME_DESIGN.md` | kompletní game design + plán virality |
+| `worker/` | volitelný backend (Cloudflare Worker + D1) pro skutečné „Top X % hráčů dneška" — viz `worker/README.md` |
 
 ## Slovní zásoba
 
