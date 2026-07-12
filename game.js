@@ -17,6 +17,12 @@ const fmtNum = n => n.toLocaleString('cs-CZ');
 const STORAGE_KEY = 'slov2000_v2';
 const FALLBACK_URL = 'https://agilek.github.io/2000slov/';
 
+// Backend pro skutečné percentily ("Top X % hráčů dneška"). Prázdné = hra
+// používá jen statický odhad níže. Po nasazení workeru (worker/README.md)
+// sem vlož jeho URL, např. https://slov2000-api.TVUJ-SUBDOMAIN.workers.dev
+const API_BASE = '';
+const API_TIMEOUT_MS = 1500;
+
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 const IS_DESKTOP = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -32,8 +38,14 @@ function defaultPersist() {
         attempts: 0,
         wins: 0,
         kbHintShown: false,
-        day: null,           // { date, level, wordIdx, marks, time, done, perfect }
+        day: null,           // { date, level, wordIdx, marks, time, done, perfect, realTopPct }
+        clientId: genClientId(), // anonymní ID pro leaderboard backend (jen počítadlo, žádná osobní data)
     };
+}
+
+function genClientId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return 'c-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 let persist = loadPersist();
@@ -680,6 +692,7 @@ function finishDay() {
     persist.day.done = true;
     persist.day.perfect = perfect;
     persist.day.marks = state.marks.slice();
+    persist.day.realTopPct = persist.day.realTopPct ?? null;
     persist.attempts++;
     if (perfect) {
         persist.wins++;
@@ -694,6 +707,43 @@ function finishDay() {
     }
     savePersist();
     showResult(false);
+    refreshRealPercentile(); // dozdobí % v pozadí, jakmile (a pokud) dorazí z backendu
+}
+
+/* ---------------- skutečný percentil (volitelný backend) ---------------- */
+
+async function fetchRealPercentile(day, score) {
+    if (!API_BASE) return null;
+    try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
+        const res = await fetch(API_BASE + '/api/result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ day, score, clientId: persist.clientId }),
+            signal: ctrl.signal,
+        });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return (data && data.real) ? data : null;
+    } catch (e) {
+        return null; // offline, timeout, nenasazený backend… vždy potichu spadnout na statický odhad
+    }
+}
+
+async function refreshRealPercentile() {
+    const day = persist.day;
+    if (!day) return;
+    const dayNum = day.level + 1;
+    const survived = day.marks.filter(Boolean).length;
+    const real = await fetchRealPercentile(dayNum, survived);
+    if (!real || persist.day !== day) return; // mezitím mohl začít další den
+    persist.day.realTopPct = real.topPct;
+    savePersist();
+    if ($('result').classList.contains('active')) {
+        $('percentile').textContent = formatRealPercentileText(real.topPct);
+    }
 }
 
 function restoreFinishedDay() {
@@ -703,6 +753,8 @@ function restoreFinishedDay() {
     state.solved = state.marks.filter(Boolean).length;
 }
 
+// Statický odhad — použije se, dokud nedorazí (nebo není nasazený) skutečný
+// percentil z backendu. Založeno na typickém rozložení skóre u podobných her.
 function getPercentileText(survived) {
     if (survived === 20) return 'Top 1 % hráčů dneška 👑';
     if (survived === 19) return 'Top 2 % hráčů dneška 🏆';
@@ -712,6 +764,20 @@ function getPercentileText(survived) {
     if (survived >= 13) return 'Top 20 % hráčů dneška 🏅';
     if (survived >= 9) return 'Top 50 % hráčů dneška 🏅';
     return 'Dnes bez trofeje 💔';
+}
+
+// Skutečný percentil spočítaný backendem ze skutečných výsledků dneška.
+function formatRealPercentileText(topPct) {
+    if (topPct <= 1) return 'Top 1 % hráčů dneška 👑';
+    if (topPct <= 50) {
+        const emoji = topPct <= 5 ? '🏆' : '🏅';
+        return `Top ${topPct} % hráčů dneška ${emoji}`;
+    }
+    return 'Dnes bez trofeje 💔';
+}
+
+function percentileDisplayText(survived, realTopPct) {
+    return (typeof realTopPct === 'number') ? formatRealPercentileText(realTopPct) : getPercentileText(survived);
 }
 
 function showResult(instant, failedWord) {
@@ -741,7 +807,7 @@ function showResult(instant, failedWord) {
         $('survivedCount').textContent = perfect
             ? 'Máš všech 20 slov!'
             : `Máš ${survived} z 20 slov!`;
-        $('percentile').textContent = getPercentileText(survived);
+        $('percentile').textContent = percentileDisplayText(survived, persist.day.realTopPct);
         const dayNum = persist.day.level + 1;
         $('progressLine').textContent = perfect
             ? (persist.level >= TOTAL_LEVELS
@@ -873,7 +939,8 @@ function buildEmojiGrid() {
 }
 
 function getTrophyShareLine(survived) {
-    const text = getPercentileText(survived);
+    const realTopPct = persist.day ? persist.day.realTopPct : null;
+    const text = percentileDisplayText(survived, realTopPct);
     if (text.includes('bez trofeje')) return null;
     const clean = text.replace(/[\s\p{Extended_Pictographic}️]+$/u, '');
     return '🏆 ' + clean;
