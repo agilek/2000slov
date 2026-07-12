@@ -76,6 +76,30 @@ let state = {
 };
 let countdownInterval = null;
 
+/* ---------------- haptika ---------------- */
+
+// Vibrační vzory (ms): číslo = jedna vibrace, pole = vibrace/pauza/vibrace…
+// Na zařízeních bez podpory (iOS, desktop) se tiše nic nestane.
+const HAPTIC_PATTERNS = {
+    tap: 10,                          // výběr/odebrání písmene, zamíchání
+    button: 15,                       // klik na tlačítko
+    success: [15, 50, 30],            // správně složené slovo
+    error: [45, 40, 45],              // špatné slovo
+    miss: [60, 50, 60, 50, 100],      // nestihnuté slovo
+    win: [20, 40, 20, 40, 20, 40, 80],// perfektní den (konfety)
+    tick: 8,                          // poslední vteřiny časovače
+};
+
+function haptic(kind) {
+    if (!('vibrate' in navigator)) return;
+    try { navigator.vibrate(HAPTIC_PATTERNS[kind] || HAPTIC_PATTERNS.tap); } catch (e) {}
+}
+
+// Lehké ťuknutí při kliku na jakékoli tlačítko (včetně prvků s role="button").
+document.addEventListener('pointerdown', e => {
+    if (e.target.closest('button, [role="button"]')) haptic('button');
+});
+
 /* ---------------- UI helpery ---------------- */
 
 let toastTimeout = null;
@@ -301,6 +325,7 @@ function selectLetter(el) {
     if (state.incorrectTimeout) { clearIncorrectState(); updateUI(); }
     const idx = +el.dataset.index;
     if (state.selected.includes(idx)) return;
+    haptic('tap');
     state.selected.push(idx);
     el.classList.add('selected');
     updateUI();
@@ -311,6 +336,7 @@ function handleTap(el) {
     const idx = +el.dataset.index;
     const pos = state.selected.indexOf(idx);
     if (pos !== -1) {
+        haptic('tap');
         state.selected.splice(pos);
         $$('#letterRow .letter').forEach(l => {
             if (!state.selected.includes(+l.dataset.index)) l.classList.remove('selected');
@@ -342,6 +368,7 @@ function checkWord() {
     const target = state.words[state.wordIdx] || '';
 
     if (word.length !== state.letters.length || !isAcceptedWord(word, target)) {
+        haptic('error');
         $('wordDisplay').classList.add('shake');
         $('letterRow').classList.add('shake');
         $$('#letterRow .letter.selected').forEach(l => l.classList.add('incorrect'));
@@ -357,6 +384,7 @@ function checkWord() {
 
     state.processing = true;
     clearInterval(state.timer);
+    haptic('success');
     $('wordDisplay').classList.add('pulse', 'found');
     $('letterRow').classList.add('pulse');
     $$('#letterRow .letter.selected').forEach(l => l.classList.add('correct'));
@@ -400,6 +428,7 @@ function checkWord() {
 function handleTimeout() {
     if (state.processing) return;
     state.processing = true;
+    haptic('miss');
     clearIncorrectState();
 
     const wd = $('wordDisplay');
@@ -462,6 +491,7 @@ function shuffleLetters() {
     const tiles = [...row.children];
     if (tiles.length < 2) return;
     state.shuffledThisWord = true;
+    haptic('tap');
 
     tiles.forEach(t => { t.classList.remove('entering'); t.style.animation = 'none'; });
     const firstRects = tiles.map(t => t.getBoundingClientRect());
@@ -568,6 +598,7 @@ function startTimer() {
             handleTimeout();
             return;
         }
+        if (state.time <= 3) haptic('tick');
         updateUI();
         saveDayProgress();
     }, 1000);
@@ -725,7 +756,7 @@ function animateResultReveal(perfect, instant) {
     items.forEach((el, i) => {
         revealTimeouts.push(setTimeout(() => el.classList.add('show'), 250 + i * 350));
     });
-    if (perfect) revealTimeouts.push(setTimeout(launchConfetti, 400));
+    if (perfect) revealTimeouts.push(setTimeout(() => { haptic('win'); launchConfetti(); }, 400));
 }
 
 /* ---------------- konfety (perfektní den) ---------------- */
