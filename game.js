@@ -90,9 +90,36 @@ const HAPTIC_PATTERNS = {
     tick: 8,                          // poslední vteřiny časovače
 };
 
+// iOS Vibration API nemá, ale Safari 17.4+ vydá haptické ťuknutí při přepnutí
+// <input type="checkbox" switch>. Skrytý přepínač klikáme programově.
+const hapticSwitch = (() => {
+    if ('vibrate' in navigator) return null;
+    const el = document.createElement('input');
+    el.type = 'checkbox';
+    el.setAttribute('switch', '');
+    el.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;pointer-events:none;';
+    el.tabIndex = -1;
+    el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(el);
+    return el;
+})();
+
 function haptic(kind) {
-    if (!('vibrate' in navigator)) return;
-    try { navigator.vibrate(HAPTIC_PATTERNS[kind] || HAPTIC_PATTERNS.tap); } catch (e) {}
+    const pattern = HAPTIC_PATTERNS[kind] || HAPTIC_PATTERNS.tap;
+    if ('vibrate' in navigator) {
+        try { navigator.vibrate(pattern); } catch (e) {}
+        return;
+    }
+    if (!hapticSwitch) return;
+    // Přepínač neumí délku ani sílu — vzor převedeme na jedno ťuknutí
+    // za každý vibrační úsek, v odpovídajících rozestupech.
+    const segs = Array.isArray(pattern) ? pattern : [pattern];
+    let t = 0;
+    for (let i = 0; i < segs.length; i += 2) {
+        if (t === 0) hapticSwitch.click();
+        else setTimeout(() => hapticSwitch.click(), t);
+        t += segs[i] + (segs[i + 1] || 0);
+    }
 }
 
 // Lehké ťuknutí při kliku na jakékoli tlačítko (včetně prvků s role="button").
