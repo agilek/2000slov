@@ -99,11 +99,13 @@ Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toas
 
 ## 4. Roadmapa
 
-1. ~~**Skutečný percentil**~~ — **hotovo.** Cloudflare Worker + D1
-   (`worker/`) počítá skutečné „Top X % hráčů dneška" ze skutečných
-   výsledků. Dokud den nemá aspoň 15 odeslaných výsledků, hra tiše
-   zůstává u statického odhadu. Volitelné — dokud worker není nasazený
-   (`API_BASE` prázdné v `game.js`), hra funguje jako dřív. Deploy: `worker/README.md`.
+1. ~~**Skutečný percentil**~~ — **hotovo a nasazeno.** Cloudflare Worker + D1
+   (`worker/`) na `https://slov2000-api.slov2000.workers.dev` počítá
+   skutečné „Top X % hráčů dneška" ze skutečných výsledků. Dokud den nemá
+   aspoň 15 odeslaných výsledků, hra tiše zůstává u statického odhadu.
+   Kdyby worker někdy spadl/přestal existovat, hra to potichu ustojí —
+   `API_BASE` v `game.js` je jediné místo, které to zapíná; prázdný
+   řetězec = jen statický odhad jako dřív. Deploy/redeploy: `worker/README.md`.
 2. **Souboj přes odkaz** `?vyzva=<den>` — kamarád si zahraje tvůj den a porovnáte se.
 3. OG obrázek výsledku, PWA manifest + push „🔥 Nepřijdeš o sérii?", `#2000slov`.
 4. Lehká obfuskace slovníku (aktuálně čitelný — pro casual hru OK).

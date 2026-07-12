@@ -20,7 +20,7 @@ const FALLBACK_URL = 'https://agilek.github.io/2000slov/';
 // Backend pro skutečné percentily ("Top X % hráčů dneška"). Prázdné = hra
 // používá jen statický odhad níže. Po nasazení workeru (worker/README.md)
 // sem vlož jeho URL, např. https://slov2000-api.TVUJ-SUBDOMAIN.workers.dev
-const API_BASE = '';
+const API_BASE = 'https://slov2000-api.slov2000.workers.dev';
 const API_TIMEOUT_MS = 1500;
 
 const $ = id => document.getElementById(id);
