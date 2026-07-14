@@ -207,7 +207,7 @@ function showWelcome() {
     const dayNum = Math.min(persist.level + 1, TOTAL_LEVELS);
     $('welcomeDate').textContent = `Den ${dayNum}/${TOTAL_LEVELS} · ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
     const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
-    $('playBtn').textContent = todayDone ? 'Výsledek' : 'Hrát';
+    $('playBtnLabel').textContent = todayDone ? 'Výsledek' : 'Hrát';
     const retry = !todayDone && persist.attempts > 0;
     $('welcomeRules').innerHTML = persist.level >= TOTAL_LEVELS
         ? `Máš odkryto všech ${fmtNum(TOTAL_WORDS)} slov. 🏆`
@@ -396,9 +396,30 @@ function renderLetters(animate) {
         el.style.height = d + 'px';
         el.style.fontSize = f + 'px';
         if (animate) el.style.animationDelay = (i * 40) + 'ms';
-        el.addEventListener('pointerdown', e => { e.preventDefault(); handleTap(el); });
+        el.addEventListener('pointerdown', e => {
+            if (e.target !== el) return; // dotyk šel na haptický přepínač níže, ten si volá handleTap sám
+            e.preventDefault();
+            handleTap(el);
+        });
         row.appendChild(el);
+        addLetterHapticOverlay(el); // až po appendChild — getComputedStyle potřebuje připojený element
     });
+}
+
+// Skutečný, neviditelný přepínač přes celé písmenko: na iOS 26.5+ funguje
+// nativní haptika jen na opravdový dotyk switch prvku, ne na programové
+// kliknutí (viz iosTap výše). 'input' event pak spustí stejnou herní logiku.
+function addLetterHapticOverlay(el) {
+    if ('vibrate' in navigator || !COARSE_POINTER) return;
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    const sw = document.createElement('input');
+    sw.type = 'checkbox';
+    sw.setAttribute('switch', '');
+    sw.setAttribute('aria-hidden', 'true');
+    sw.tabIndex = -1;
+    sw.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;border-radius:inherit;';
+    sw.addEventListener('input', () => handleTap(el));
+    el.appendChild(sw);
 }
 
 function clearIncorrectState() {
