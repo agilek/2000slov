@@ -1,14 +1,16 @@
-/* 20 000 slov — česká denní slovní hra po vzoru 18words.com
- * Slovník: jen podstatná jména (Wikislovník), seřazená podle délky od 3 písmen
- * a v rámci délky podle frekvence — obtížnost roste postupně, den za dnem.
+/* 2000 slov — česká denní slovní hra po vzoru 18words.com
+ * Slovník: jen podstatná jména (Wikislovník), seřazená čistě podle frekvence
+ * výskytu — obtížnost roste přirozeně tím, jak slova řídnou v běžné řeči.
  * Slož slovo ze všech písmen do 30 s. Všech 20 zelených = postup,
- * jinak den zítra opakuješ. Jeden pokus denně. */
+ * jinak den zítra opakuješ. Jeden pokus denně.
+ * Trénink čerpá z širšího poolu PRACTICE_WORDS (13 000 slov), denní hra
+ * (WORDS) má přesně 2000 slov / 100 dní. */
 'use strict';
 
 const START_TIME = 30;
 const WORDS_PER_DAY = 20;
-const TOTAL_WORDS = WORDS.length;                 // 20020
-const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 1001
+const TOTAL_WORDS = WORDS.length;                 // 2000
+const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 100
 
 const LETTER_RE = /[a-záčďéěíňóřšťúůýž]/;
 // hratelná písmena hesla (bez mezer, teček, pomlček — ty jsou ve slotech pevně)
@@ -243,6 +245,7 @@ function shuffleArr(arr) {
 function startGame() {
     const today = todayStr();
     state.mode = 'daily';
+    $('closeGameBtn').style.display = 'none';
     state.words = dayWords(persist.level);
 
     const d = persist.day;
@@ -272,9 +275,11 @@ function startGame() {
 }
 
 function startPracticeGame() {
-    const pool = uncoveredCount() > 0 ? WORDS.slice(0, uncoveredCount()) : dayWords(0);
+    const pool = PRACTICE_WORDS;
     state.mode = 'practice';
+    $('closeGameBtn').style.display = 'flex';
     state.pool = pool;
+    state.practiceQueue = shuffleCopy(pool);
     state.words = [];
     state.wordIdx = 0;
     state.marks = [];
@@ -287,8 +292,26 @@ function startPracticeGame() {
     loadWord();
 }
 
+function shuffleCopy(arr) {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+// Bere slova z promíchané fronty bez opakování; když dojde, znovu promíchá
+// celý pool (a snaží se nezopakovat úplně poslední slovo hned znovu).
 function pickPracticeWord() {
-    return state.pool[Math.floor(Math.random() * state.pool.length)];
+    if (state.practiceQueue.length === 0) {
+        state.practiceQueue = shuffleCopy(state.pool);
+        const last = state.words[state.wordIdx - 1];
+        if (state.practiceQueue.length > 1 && state.practiceQueue[0] === last) {
+            [state.practiceQueue[0], state.practiceQueue[1]] = [state.practiceQueue[1], state.practiceQueue[0]];
+        }
+    }
+    return state.practiceQueue.pop();
 }
 
 /* ---------------- kolo (jedno slovo) ---------------- */
@@ -708,6 +731,13 @@ function resumeGame() {
     startTimer();
 }
 
+function exitPractice() {
+    if (state.mode !== 'practice') return;
+    clearInterval(state.timer);
+    state.processing = false;
+    showWelcome();
+}
+
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) pauseGame();
 });
@@ -845,7 +875,7 @@ function showResult(instant, failedWord) {
     }
     $('shareActions').style.display = isPractice ? 'none' : 'flex';
     $('collectionBtn').style.display = isPractice ? 'none' : 'inline-flex';
-    $('practiceBtn').style.display = (!isPractice && uncoveredCount() > 0) ? 'inline-flex' : 'none';
+    $('practiceBtn').style.display = !isPractice ? 'inline-flex' : 'none';
     $('practiceAgainBtn').style.display = isPractice ? 'inline-flex' : 'none';
     $('backBtn').style.display = isPractice ? 'inline-flex' : 'none';
     $('countdown').style.marginTop = isPractice ? '8px' : '';
@@ -978,7 +1008,7 @@ function buildShareMessage(mode) {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
     const dayNum = (persist.day ? persist.day.level : persist.level) + 1;
     const grid = buildEmojiGrid();
-    let msg = `⏳ 20 000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
+    let msg = `⏳ 2000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
     if (grid) msg += `\n\n${grid}`;
     if (mode === 'score') {
         const trophy = getTrophyShareLine(survived);

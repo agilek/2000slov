@@ -357,7 +357,24 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 }
 
 /* Game */
-.game-screen { gap: 24px; padding: 16px; }
+.game-screen { gap: 24px; padding: 16px; position: relative; }
+.close-game-btn {
+    display: none;
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top));
+    right: max(14px, env(safe-area-inset-right));
+    align-items: center;
+    justify-content: center;
+    background: var(--card);
+    border: 2px solid var(--muted);
+    cursor: pointer;
+    color: var(--muted-text);
+    width: 36px; height: 36px; border-radius: 50%;
+    outline: none;
+    transition: background .12s, color .12s, border-color .12s;
+    z-index: 5;
+}
+.close-game-btn:hover { color: var(--ink); border-color: var(--ink); background: var(--hover-tint); }
 /* In-game progress grid: 4x5 grey squares that fill green/red as you play. */
 .game-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: clamp(5px, 1.6vw, 8px); width: fit-content; margin: 0 auto; }
 .game-grid.result-grid { margin-bottom: 30px; }

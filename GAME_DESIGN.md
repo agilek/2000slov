@@ -1,22 +1,23 @@
-# 20 000 slov — Game Design
+# 2000 slov — Game Design
 
-> **1001 dní. 20 020 podstatných jmen, od 3 písmen po nejdelší. 30 sekund na slovo. Jedna chyba = celý den znovu.**
+> **100 dní. 2000 podstatných jmen, od nejběžnějších po nejvzácnější. 30 sekund na slovo. Jedna chyba = celý den znovu.**
 
 Věrná česká adaptace hry [18words.com](https://18words.com/) — stejný vizuál
 (světlé pozadí, fonty Baloo 2 + Nunito, kulaté dlaždice, pilulková tlačítka),
-stejný herní pocit, ale s vlastní progresí přes **20 020 českých podstatných jmen**
-seřazených podle délky slova.
+stejný herní pocit, ale s vlastní progresí přes **2000 českých podstatných jmen**
+seřazených podle frekvence výskytu. Trénink navíc čerpá z celého podkladového
+poolu **13 000 slov**, bez omezení na denní postup.
 
 ## 1. Základní smyčka
 
-- Ve hře je **20 020 českých podstatných jmen** (Wikislovník, Kategorie:Česká
-  substantiva) rozdělených do **1001 dní** po 20 slovech.
-- **Obtížnost roste postupně podle délky slova**, ne podle frekvence: den 1
-  má nejkratší 3písmenná slova (moc, den, pár, čas…), a jak dny přibývají,
-  přidávají se čím dál delší slova — až po 15+ písmenná technická a knižní
-  substantiva na samém konci. V rámci každé délkové skupiny jsou napřed
-  slova, která hráč zná (řazeno podle frekvence z OpenSubtitles), teprve pak
-  vzácnější výrazy stejné délky — takže i "těžký" den začíná povědomým slovem.
+- Denní hra má **2000 českých podstatných jmen** (Wikislovník, Kategorie:Česká
+  substantiva) rozdělených do **100 dní** po 20 slovech. Jde o prvních 2000 slov
+  širšího frekvenčního poolu 13 000 slov — trénink čerpá z celého poolu (viz níže).
+- **Obtížnost roste přirozeně podle frekvence slova**, ne podle délky: den 1
+  jsou nejběžnější podstatná jména (moc, den, život, práce, čas… — různých
+  délek), a jak dny přibývají, slova řídnou v běžné řeči — až po vzácné
+  a knižní výrazy na samém konci. Řadí se čistě podle toho, jak často se slovo
+  vyskytuje v korpusu, délka nehraje roli.
 - Každé slovo se zobrazí jako **kruhové dlaždice s přeházenými písmeny**.
   Hráč má **30 sekund** složit slovo klepáním na písmena (nebo psaním na klávesnici).
 - Po vybrání všech písmen se slovo **vyhodnotí automaticky** (žádné tlačítko Potvrdit):
@@ -33,7 +34,7 @@ seřazených podle délky slova.
 
 Jako správná odpověď se uznává i **jiné platné české slovo ze stejných písmen**
 (rok/okr, zem/mez…). Mapa alternativ je předpočítaná (`ALTS` ve `words.js`)
-z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1594 hesel má alternativu.
+z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 hesel má alternativu.
 
 ### Proč to funguje psychologicky
 
@@ -43,13 +44,13 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1594 
 | Jeden pokus denně | Vzácnost → rituál, důvod se vracet |
 | Dohrání všech 20 | I prohraný den dá kompletní, sdílitelnou mřížku |
 | Opakování dne | Není trest — slova už znáš, zítřek je snazší (skryté učení) |
-| Odkrývání 20 000 slov | Sběratelský progres a dlouhodobý závazek (roky hraní) |
-| Délka = obtížnost | Den 1 zvládne každý (3 písmena), pozdní dny jsou expertní |
+| Odkrývání 2000 slov | Sběratelský progres a dlouhodobý závazek (100 dní hraní) |
+| Frekvence = obtížnost | Den 1 zvládne každý (nejběžnější slova), pozdní dny jsou expertní |
 
 ## 2. Obrazovky (zrcadlí originál)
 
 1. **Welcome** — šedá mřížka 4×5 (po odehrání barevná), nadpis, instrukce,
-   klikací řádek „DEN 12/1001 · 220/20 020 SLOV" (otevře sbírku), zelené tlačítko Hrát.
+   klikací řádek „DEN 12/100 · 220/2000 SLOV" (otevře sbírku), zelené tlačítko Hrát.
 2. **Hra** — mřížka, „SLOVO 3/20", velký časovač, rámečky pro odpověď, kruhová písmena.
    Klik na rámečky zruší výběr, Shift zamíchá písmena (FLIP animace, 1× na slovo).
 3. **Pauza** — celoobrazovkově při přepnutí okna/tabu; jen Pokračovat (žádný restart —
@@ -58,9 +59,10 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1594 
    „Máš všech 20 slov!" / „Máš 17 z 20 slov!", trofejová řádka, věta o postupu/opakování,
    Sdílet skóre (zelená) + Vyzvat kamaráda (modrá), odpočet do půlnoci,
    Sbírka slov + Trénink, řádek se zpětnou vazbou. Perfektní den = konfety.
-5. **Sbírka** (modal ve stylu archivu originálu) — 1001 dní, zvládnuté se rozbalí
+5. **Sbírka** (modal ve stylu archivu originálu) — 100 dní, zvládnuté se rozbalí
    na 20 slov, aktuální „dnes", zbytek zamčený.
-6. **Trénink** — slova z už odkrytých, na přežití: první nestihnuté slovo končí
+6. **Trénink** — volná hra na přežití ze **všech 13 000 slov** (širší pool než
+   denní hra, bez ohledu na denní postup), první nestihnuté slovo končí
    („X slov v řadě!"). Bez vlivu na denní hru.
 
 ## 3. Trofeje a sdílení
@@ -81,7 +83,7 @@ Trofejová hláška je (stejně jako v originále) **statická tabulka** — ž�
 Text sdílení (formát originálu, mřížka 4×5):
 
 ```
-⏳ 20 000 slov — den #12
+⏳ 2000 slov — den #12
 
 🔥 Získáno 18/20 slov
 
@@ -113,14 +115,20 @@ Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toas
 ## 5. Technika
 
 - Čistý HTML/CSS/JS bez buildu a závislostí → GitHub Pages zdarma.
-- `index.html` + `style.css` + `game.js` + `words.js` (WORDS + ALTS).
+- `index.html` + `style.css` + `game.js` + `words.js` (WORDS + PRACTICE_WORDS + ALTS).
 - Stav v `localStorage` (`slov2000_v2`): úroveň, série, statistiky, rozehraný den.
 - Slovník: 25 247 hesel z Kategorie:Česká substantiva (cs.wiktionary.org, MediaWiki
-  API), zúženo na jednoslovná malá písmena délky 3+ (20 194), odfiltrováno ~60
-  homografů-nesubstantiv (ověřeno křížovou kontrolou s kategoriemi příslovcí,
-  spojek, předložek, zájmen, číslovek, citoslovcí) a vulgarismy, seřazeno podle
-  délky a v rámci délky podle frekvence (OpenSubtitles 2018), zarovnáno na
-  20 020 (1001 dní). Anagramové kolize řeší mapa ALTS (uznaná alternativa = správně).
+  API), zúženo na jednoslovná malá písmena délky 3+ (20 194), odfiltrovány
+  homografy-nesubstantiva (ověřeno křížovou kontrolou s kategoriemi příslovcí,
+  spojek, předložek, zájmen, číslovek, citoslovcí) a vulgarismy, pak seřazeno
+  **čistě podle frekvence** (OpenSubtitles 2018 `cs_full`, práh výskytu ≥ 5).
+  Slova mimo frekvenční korpus se nepřidávají; zaokrouhleno na 13 000.
+  Anagramové kolize řeší mapa ALTS (uznaná alternativa = správně).
+- **Dva pooly ve `words.js`**: `WORDS` je prvních 2000 slov tohoto frekvenčního
+  poolu (denní hra, 100 dní × 20 slov, `TOTAL_WORDS`/`TOTAL_LEVELS` v `game.js`)
+  — jde tedy i o název hry. `PRACTICE_WORDS` je celý pool 13 000 slov a používá
+  ho jen trénink (`startPracticeGame()`), nezávisle na tom, kolik dní hráč
+  odemkl v denní hře.
 - Testovací nasazení: jednosouborová verze (`inline` CSS/JS/slovník/fonty) se
   generuje skriptem a publikuje jako Claude Artifact; produkce = GitHub Pages.
 - Backend (volitelný): `worker/` — Cloudflare Worker + D1 pro skutečné
