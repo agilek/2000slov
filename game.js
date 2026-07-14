@@ -169,6 +169,53 @@ document.addEventListener('pointerdown', e => {
     if ('vibrate' in navigator || !btn.matches('button')) haptic('button');
 });
 
+/* ---------------- zvuky ---------------- */
+
+// Tóny generované přes Web Audio API (žádné soubory ke stažení). AudioContext
+// se vytváří líně a probouzí při prvním doteku, aby to prošlo přes autoplay
+// omezení prohlížečů.
+let audioCtx = null;
+function getAudioCtx() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+
+function playTone(freq, dur, type, peak, delay) {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const t0 = ctx.currentTime + (delay || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(peak, t0 + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+}
+
+// Stoupající tón s každým dalším vybraným písmenem (á la Duolingo).
+const LETTER_NOTES = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50, 1174.66, 1318.51];
+function playLetterSound(count) {
+    playTone(LETTER_NOTES[Math.min(count - 1, LETTER_NOTES.length - 1)], 0.14, 'sine', 0.16);
+}
+function playRemoveSound() { playTone(392.00, 0.10, 'sine', 0.11); }
+function playSuccessSound() {
+    playTone(659.25, 0.11, 'sine', 0.2, 0);
+    playTone(783.99, 0.11, 'sine', 0.2, 0.09);
+    playTone(1046.50, 0.2, 'sine', 0.22, 0.18);
+}
+function playErrorSound() { playTone(196.00, 0.22, 'sawtooth', 0.11, 0); }
+function playMissSound() { playTone(174.61, 0.35, 'sawtooth', 0.1, 0); }
+function playWinSound() {
+    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => playTone(f, 0.2, 'sine', 0.2, i * 0.11));
+}
+
 /* ---------------- UI helpery ---------------- */
 
 let toastTimeout = null;
@@ -438,6 +485,7 @@ function selectLetter(el) {
     if (state.selected.includes(idx)) return;
     haptic('tap');
     state.selected.push(idx);
+    playLetterSound(state.selected.length);
     el.classList.add('selected');
     updateUI();
 }
@@ -448,6 +496,7 @@ function handleTap(el) {
     const pos = state.selected.indexOf(idx);
     if (pos !== -1) {
         haptic('tap');
+        playRemoveSound();
         state.selected.splice(pos);
         $$('#letterRow .letter').forEach(l => {
             if (!state.selected.includes(+l.dataset.index)) l.classList.remove('selected');
@@ -480,6 +529,7 @@ function checkWord() {
 
     if (word.length !== state.letters.length || !isAcceptedWord(word, target)) {
         haptic('error');
+        playErrorSound();
         $('wordDisplay').classList.add('shake');
         $('letterRow').classList.add('shake');
         $$('#letterRow .letter.selected').forEach(l => l.classList.add('incorrect'));
@@ -496,6 +546,7 @@ function checkWord() {
     state.processing = true;
     clearInterval(state.timer);
     haptic('success');
+    playSuccessSound();
     $('wordDisplay').classList.add('pulse', 'found');
     $('letterRow').classList.add('pulse');
     $$('#letterRow .letter.selected').forEach(l => l.classList.add('correct'));
@@ -540,6 +591,7 @@ function handleTimeout() {
     if (state.processing) return;
     state.processing = true;
     haptic('miss');
+    playMissSound();
     clearIncorrectState();
 
     const wd = $('wordDisplay');
@@ -928,7 +980,7 @@ function animateResultReveal(perfect, instant) {
     items.forEach((el, i) => {
         revealTimeouts.push(setTimeout(() => el.classList.add('show'), 250 + i * 350));
     });
-    if (perfect) revealTimeouts.push(setTimeout(() => { haptic('win'); launchConfetti(); }, 400));
+    if (perfect) revealTimeouts.push(setTimeout(() => { haptic('win'); playWinSound(); launchConfetti(); }, 400));
 }
 
 /* ---------------- konfety (perfektní den) ---------------- */
