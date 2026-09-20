@@ -58,16 +58,15 @@
         <p id="percentile" class="reveal-item"></p>
         <p id="progressLine" class="reveal-item"></p>
         <div id="shareActions" class="share-actions reveal-item">
-            <button id="shareBtn" class="btn btn-share" onclick="shareScore()">Sdílet skóre <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="3" stroke="#ffffff" fill="none" stroke-linecap="round" stroke-linejoin="round"> <path stroke="none" d="M0 0h24v24H0z" fill="none"/> <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M8.7 10.7l6.6 -3.4" /> <path d="M8.7 13.3l6.6 3.4" /> </svg></button>
-            <button id="challengeBtn" class="btn btn-challenge" onclick="challengeFriend()">Vyzvat kamaráda</button>
+            <button id="shareBtn" class="btn btn-share" onclick="shareScore()">Pochlubit se <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="3" stroke="#ffffff" fill="none" stroke-linecap="round" stroke-linejoin="round"> <path stroke="none" d="M0 0h24v24H0z" fill="none"/> <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M8.7 10.7l6.6 -3.4" /> <path d="M8.7 13.3l6.6 3.4" /> </svg></button>
         </div>
         <p id="countdown" class="reveal-item"></p>
         <div id="resultActions" class="result-actions reveal-item">
-            <button id="collectionBtn" class="btn btn-secondary" onclick="showCollection()">Sbírka slov</button>
             <button id="practiceBtn" class="btn btn-secondary" onclick="startPracticeGame()">Trénink</button>
             <button id="practiceAgainBtn" class="btn btn-secondary" style="display:none;" onclick="startPracticeGame()">Trénovat znovu</button>
             <button id="backBtn" class="btn btn-secondary" style="display:none;" onclick="showWelcome()">Zpět</button>
         </div>
+        <button id="collectionBtn" class="btn-tertiary reveal-item" onclick="showCollection()">Sbírka slov</button>
         <p id="feedbackLine" class="feedback-line reveal-item">Díky za hru! Můžeš mi <span class="feedback-link" role="button" tabindex="0" onclick="openFeedbackModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeedbackModal();}">poslat zpětnou vazbu</span>.</p>
     </div>
 

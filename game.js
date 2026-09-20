@@ -940,14 +940,14 @@ function showResult(instant, failedWord) {
             : `Máš ${survived} z 20 slov!`;
         $('percentile').textContent = percentileDisplayText(survived, persist.day.realTopPct);
         const dayNum = persist.day.level + 1;
-        $('progressLine').textContent = perfect
+        $('progressLine').innerHTML = perfect
             ? (persist.level >= TOTAL_LEVELS
                 ? `🏆 Odkryto všech ${fmtNum(TOTAL_WORDS)} slov. Neuvěřitelné!`
-                : `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov. Zítra tě čeká den ${dayNum + 1}!`)
+                : `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.<br>Zítra tě čeká den ${dayNum + 1}!`)
             : `Den ${dayNum} si zítra zopakuješ — příště to dáš!`;
     }
     $('shareActions').style.display = isPractice ? 'none' : 'flex';
-    $('collectionBtn').style.display = isPractice ? 'none' : 'inline-flex';
+    $('collectionBtn').style.display = isPractice ? 'none' : 'flex';
     $('practiceBtn').style.display = !isPractice ? 'inline-flex' : 'none';
     $('practiceAgainBtn').style.display = isPractice ? 'inline-flex' : 'none';
     $('backBtn').style.display = isPractice ? 'inline-flex' : 'none';
@@ -1077,18 +1077,15 @@ function getTrophyShareLine(survived) {
     return '🏆 ' + clean;
 }
 
-function buildShareMessage(mode) {
+function buildShareMessage() {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
     const dayNum = (persist.day ? persist.day.level : persist.level) + 1;
     const grid = buildEmojiGrid();
     let msg = `⏳ 2000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
     if (grid) msg += `\n\n${grid}`;
-    if (mode === 'score') {
-        const trophy = getTrophyShareLine(survived);
-        if (trophy) msg += `\n\n${trophy}`;
-    } else {
-        msg += `\n\n🫵 Překonáš mě?`;
-    }
+    const trophy = getTrophyShareLine(survived);
+    if (trophy) msg += `\n\n${trophy}`;
+    msg += `\n\n🫵 Překonáš mě?`;
     msg += `\n\n${siteUrl()}`;
     return msg;
 }
@@ -1115,8 +1112,7 @@ function shareText(msg) {
     }
 }
 
-function shareScore() { shareText(buildShareMessage('score')); }
-function challengeFriend() { shareText(buildShareMessage('challenge')); }
+function shareScore() { shareText(buildShareMessage()); }
 
 /* ---------------- sbírka slov ---------------- */
 

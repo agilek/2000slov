@@ -161,8 +161,6 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 .btn-primary:hover { background: var(--blue-dark); }
 .btn-share { background: var(--green); box-shadow: 0 8px 20px color-mix(in srgb, var(--green) 28%, transparent); }
 .btn-share:hover { background: var(--green-dark); }
-.btn-challenge { background: var(--blue); box-shadow: 0 8px 20px color-mix(in srgb, var(--blue) 28%, transparent); }
-.btn-challenge:hover { background: var(--blue-dark); }
 .btn-play {
     background: var(--green);
     box-shadow: 0 10px 28px color-mix(in srgb, var(--green) 32%, transparent);
@@ -186,7 +184,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     line-height: 1.45;
     margin-bottom: 0;
 }
-.welcome-instruction--second { margin-top: 14px; font-size: clamp(16px, 4.4vw, 19px) !important; color: var(--muted-text) !important; }
+.welcome-instruction--second { margin-top: 14px; font-size: clamp(16px, 4.4vw, 19px) !important; font-weight: 400 !important; color: var(--muted-text) !important; }
 .welcome-actions {
     display: flex;
     flex-direction: column;
@@ -248,7 +246,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 #survivedCount { color: var(--ink); font-size: clamp(22px, 6.5vw, 28px); white-space: nowrap; }
 #percentile { color: var(--muted-text); font-weight: 700; margin-bottom: 10px !important; }
 #percentile:empty { display: none; }
-#progressLine { color: var(--muted-text); font-weight: 700; }
+#progressLine { color: var(--muted-text); font-weight: 400; }
 #progressLine:empty { display: none; }
 
 /* Perfect-game celebration */
@@ -311,6 +309,8 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     gap: 10px;
     justify-content: center;
     width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
 }
 .result-actions .btn {
     margin: 0;
@@ -320,6 +320,28 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     font-size: 17px;
     white-space: nowrap;
 }
+#practiceBtn { flex: 1 1 100%; width: 100%; }
+.btn-tertiary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    width: 100%;
+    max-width: 400px;
+    margin: 16px auto 0;
+    background: var(--card);
+    border: 2px solid var(--muted);
+    border-radius: 999px;
+    padding: 8px 24px;
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--muted-text);
+    opacity: .7;
+    touch-action: manipulation;
+    cursor: pointer;
+}
+.btn-tertiary:hover { opacity: 1; color: var(--blue); border-color: var(--blue); }
 .feedback-line {
     margin-top: 40px;
     margin-bottom: 0 !important;
@@ -386,7 +408,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 .game-progress { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .gp-headline {
     font-family: 'Baloo 2', sans-serif;
-    font-weight: 800;
+    font-weight: 400;
     font-size: clamp(20px, 5.2vw, 24px);
     letter-spacing: .35px;
     text-transform: uppercase;
@@ -395,7 +417,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     white-space: nowrap;
 }
 .gp-timer {
-    font-family: 'Baloo 2', sans-serif; font-weight: 800;
+    font-family: 'Baloo 2', sans-serif; font-weight: 400;
     font-size: 52px; line-height: 1; color: var(--ink);
     font-variant-numeric: tabular-nums;
     transition: color .2s ease, transform .2s ease;
@@ -559,7 +581,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 .archive-item:hover { border-color: var(--blue); }
 .archive-item.locked { cursor: not-allowed; opacity: .55; }
 .archive-item.locked:hover { border-color: var(--line); }
-.archive-date { font-family: 'Baloo 2', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); }
+.archive-date { font-family: 'Baloo 2', sans-serif; font-size: 17px; font-weight: 400; color: var(--ink); }
 .archive-score {
     font-family: 'Baloo 2', sans-serif; font-size: 13px; font-weight: 800;
     padding: 5px 12px; border-radius: 999px;
