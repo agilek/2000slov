@@ -156,6 +156,7 @@ async function handleSubscribe(request, env, cors) {
 }
 
 async function sendDailyReminders(env) {
+    if (!env.VAPID_PRIVATE_JWK) return; // secret nenastaven (lokální dev, nebo zapomenuté nasazení) — cron tiše nic neudělá
     const privateJWK = JSON.parse(env.VAPID_PRIVATE_JWK);
     const { results } = await env.DB.prepare(
         'SELECT client_id, endpoint, p256dh, auth FROM subscriptions'
