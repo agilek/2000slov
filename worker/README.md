@@ -66,6 +66,42 @@ Worker poběží na `http://localhost:8787` s lokální (dočasnou) databází.
 V `game.js` dočasně nastav `API_BASE = 'http://localhost:8787'` a hru
 spusť přes `python3 -m http.server 8000` (port 8000 je v CORS povolený).
 
+## Denní připomínka (Web Push)
+
+Po dohrání dne hra na iOS nabídne přidání na plochu (Web Push na iOS
+funguje jen jako nainstalovaná PWA, od iOS 16.4), na Androidu/desktopu
+rovnou nabídne zapnutí notifikací. Odběr se pošle na `POST /api/subscribe`
+a uloží do tabulky `subscriptions`. Cron trigger (`[triggers]` ve
+`wrangler.toml`, běží denně v 7:00 UTC) pak každému odběrateli pošle
+"Dnešní slovo na tebe čeká!" přes `@pushforge/builder` — jediná knihovna
+z tohohle výběru, co posílá Web Push čistě přes Web Crypto API, takže
+funguje i ve Workers (klasický `web-push` balík potřebuje Node `crypto`/
+`https` a ve Workers neběží).
+
+Nasazení navíc oproti krokům výše:
+
+```bash
+cd worker
+npm install                          # stáhne @pushforge/builder
+
+npx wrangler d1 execute slov2000 --remote --file=schema.sql
+# (znovu — přidává tabulku subscriptions; je idempotentní, results nesáhne)
+
+npx @pushforge/builder vapid
+# vypíše "Public Key" a "Private Key (JWK)" — ulož obě, nikam je needituj do repa
+
+npx wrangler secret put VAPID_PRIVATE_JWK
+# vlož CELÝ JSON z "Private Key (JWK)" jako jeden řádek
+
+npx wrangler deploy
+```
+
+Veřejný klíč ("Public Key") vlož do `game.js` (kořen repa) jako
+`VAPID_PUBLIC_KEY`. Bez nastaveného `VAPID_PRIVATE_JWK` secretu cron
+notifikace prostě selžou (worker to nijak nerozbije, `/api/result` a
+`/api/percentile` jedou dál) — je to čistě volitelné vylepšení stejně
+jako percentily výš.
+
 ## Údržba
 
 - **Přehled dat**: `npx wrangler d1 execute slov2000 --remote --command "SELECT day, COUNT(*) FROM results GROUP BY day ORDER BY day"`

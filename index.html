@@ -11,7 +11,10 @@
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2218%22 fill=%22%232e9e5b%22/><text x=%2250%22 y=%2268%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22 font-weight=%22bold%22>2K</text></svg>">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
@@ -67,6 +70,11 @@
             <button id="backBtn" class="btn btn-secondary" style="display:none;" onclick="showWelcome()">Zpět</button>
         </div>
         <button id="collectionBtn" class="btn-tertiary reveal-item" onclick="showCollection()">Sbírka slov</button>
+        <div id="a2hsBanner" class="a2hs-banner reveal-item" style="display:none;">
+            <button class="a2hs-close" onclick="dismissA2hs()" aria-label="Zavřít">×</button>
+            <p>📲 Přidej si hru na plochu a nezmeškej žádný den — klepni na <strong>Sdílet</strong> a pak na <strong>Přidat na plochu</strong>.</p>
+        </div>
+        <button id="notifyBtn" class="btn-tertiary reveal-item" style="display:none;" onclick="enableNotifications()">🔔 Zapnout upozornění na další den</button>
         <p id="feedbackLine" class="feedback-line reveal-item">Díky za hru! Můžeš mi <span class="feedback-link" role="button" tabindex="0" onclick="openFeedbackModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeedbackModal();}">poslat zpětnou vazbu</span>.</p>
     </div>
 

@@ -25,9 +25,15 @@ const FALLBACK_URL = 'https://agilek.github.io/2000slov/';
 const API_BASE = 'https://slov2000-api.slov2000.workers.dev';
 const API_TIMEOUT_MS = 1500;
 
+// VAPID veřejný klíč pro Web Push denní připomínku (worker/README.md → sekce
+// "Denní připomínka"). Prázdný = nabídka notifikací se nezobrazí.
+const VAPID_PUBLIC_KEY = 'BIfOSyPsUDTwcGscDllPUF7bWF7iAMqJnMgwxlrDmUu0l3nQ_AySykBXvM_qzWk5v6HDzfvC57PYM0PHk7jRqbU';
+
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 const IS_DESKTOP = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
 /* ---------------- trvalý stav ---------------- */
 
@@ -42,6 +48,7 @@ function defaultPersist() {
         kbHintShown: false,
         day: null,           // { date, level, wordIdx, marks, time, done, perfect, realTopPct }
         clientId: genClientId(), // anonymní ID pro leaderboard backend (jen počítadlo, žádná osobní data)
+        a2hsPromptDismissed: false, // "přidej na plochu" nabídka na iOS se ukáže jen do prvního zavření
     };
 }
 
@@ -952,6 +959,7 @@ function showResult(instant, failedWord) {
     $('practiceAgainBtn').style.display = isPractice ? 'inline-flex' : 'none';
     $('backBtn').style.display = isPractice ? 'inline-flex' : 'none';
     $('countdown').style.marginTop = isPractice ? '8px' : '';
+    updateNotifyPrompt(isPractice);
 
     startCountdown();
     animateResultReveal(perfect, instant);
@@ -1114,6 +1122,66 @@ function shareText(msg) {
 
 function shareScore() { shareText(buildShareMessage()); }
 
+/* ---------------- web push: připomínka dalšího dne ---------------- */
+
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// Na iOS Push funguje jen z nainstalované PWA (Add to Home Screen), ne z karty
+// Safari — proto se tam nejdřív nabídne instalace, tlačítko notifikací přijde
+// na řadu až po ní. Jinde (Android/desktop) jde rovnou žádost o oprávnění.
+function updateNotifyPrompt(isPractice) {
+    const banner = $('a2hsBanner');
+    const notifyBtn = $('notifyBtn');
+    banner.style.display = 'none';
+    notifyBtn.style.display = 'none';
+    if (isPractice || !VAPID_PUBLIC_KEY) return;
+
+    if (IS_IOS && !IS_STANDALONE) {
+        if (!persist.a2hsPromptDismissed) banner.style.display = 'block';
+        return;
+    }
+    if ('Notification' in window && 'PushManager' in window && Notification.permission === 'default') {
+        notifyBtn.style.display = 'flex';
+    }
+}
+
+function dismissA2hs() {
+    persist.a2hsPromptDismissed = true;
+    savePersist();
+    $('a2hsBanner').style.display = 'none';
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from([...atob(base64)].map(c => c.charCodeAt(0)));
+}
+
+async function enableNotifications() {
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+        const { endpoint, keys } = sub.toJSON();
+        await fetch(API_BASE + '/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: persist.clientId, endpoint, keys }),
+        });
+        showToast('Upozornění zapnuto!');
+    } catch (e) {
+        // tichý fail — notifikace jsou čistě volitelné vylepšení
+    }
+    $('notifyBtn').style.display = 'none';
+}
+
 /* ---------------- sbírka slov ---------------- */
 
 function showCollection() {
@@ -1254,5 +1322,6 @@ document.addEventListener('dblclick', e => e.preventDefault(), { passive: false 
         savePersist();
     }
     addHapticOverlays();
+    registerServiceWorker();
     showWelcome();
 })();

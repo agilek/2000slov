@@ -10,3 +10,13 @@ CREATE TABLE IF NOT EXISTS results (
 );
 
 CREATE INDEX IF NOT EXISTS idx_results_day ON results(day);
+
+-- Web Push odběry pro denní připomínku ("zítra tě čeká další den").
+-- Jeden řádek na zařízení (client_id), přepisuje se při novém subscribe.
+CREATE TABLE IF NOT EXISTS subscriptions (
+  client_id TEXT PRIMARY KEY,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);

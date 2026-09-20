@@ -342,6 +342,32 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     cursor: pointer;
 }
 .btn-tertiary:hover { opacity: 1; color: var(--blue); border-color: var(--blue); }
+.a2hs-banner {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    margin: 16px auto 0;
+    padding: 14px 34px 14px 18px;
+    background: var(--card);
+    border: 2px solid var(--muted);
+    border-radius: 16px;
+    text-align: left;
+}
+.a2hs-banner p { margin: 0; font-size: 14px; font-weight: 600; color: var(--muted-text); line-height: 1.45; }
+.a2hs-close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 44px;
+    min-height: 44px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--muted-text);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.a2hs-close:hover { color: var(--blue); }
 .feedback-line {
     margin-top: 40px;
     margin-bottom: 0 !important;

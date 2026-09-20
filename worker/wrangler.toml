@@ -7,3 +7,7 @@ workers_dev = true
 binding = "DB"
 database_name = "slov2000"
 database_id = "485f2582-4efd-4d9e-abee-cbd4e32aa61b"
+
+[triggers]
+# 7:00 UTC ≈ 8-9 ráno v ČR — jednou denně pošle Web Push připomínku odběratelům.
+crons = ["0 7 * * *"]
