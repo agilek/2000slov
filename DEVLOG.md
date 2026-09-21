@@ -2,6 +2,42 @@
 
 ## 2026-09-21
 
+### Přesmyčky jen pro trénink + doplacení vlastních dluhů
+Přesmyčky se nově uznávají **jen v tréninku** — denní výzva je soutěž, všichni
+v ní mají stejných 20 slov, takže musí padnout přesně to hledané
+(`isAcceptedWord()` končí na `state.mode !== 'practice'`). K tomu tři věci,
+které jsem dlužil: spustitelná kontrola, edge cache na významy a konec
+mrtvého tlačítka „Přihlásit se".
+
+**Root cause / approach — a jedna chyba, která málem šla do produkce:**
+Pro `test.mjs` jsem nejdřív přidal `export { clean, defTextError, DEF_MAX… }`
+přímo do `worker/src/index.js`. Cloudflare ale kontroluje **každý pojmenovaný
+export vstupního modulu** jako handler, takže runtime odmítl nastartovat:
+*„Incorrect type for map entry 'DEF_MAX': the provided value is not of type
+'function or ExportedHandler'"*. Chytil to až `wrangler dev` — deploy by spadl.
+Validace se proto přestěhovala do `worker/src/validate.js`, odkud ji importuje
+worker i test.
+
+- **`node test.mjs`** — 18 kontrol, bez frameworku: validace významů (hranice
+  délky, sprostá slova, odkazy, řídicí znaky), vlastnosti slovníku (počty,
+  podmnožina, jedno slovo z každého pásma na den) a úplnost přesmyček.
+  Ověřeno mutací: když se z `ALTS` odebere vazba `síla→lísa`, test spadne
+  s exit 1 a vypíše, která vazba chybí.
+  Pozor na past: `words.js` se spouští ve `vm`, takže pole z něj mají prototyp
+  z jiného realmu a `deepStrictEqual` je odmítne — porovnává se proto obsah.
+- **Edge cache významů** po jednotlivých slovech (ne po dávce — fronty jsou
+  u každého hráče jiné). Klíč se staví ručně, nikdy z příchozího requestu:
+  ten nese cookie a `clientId` a cache by se roztříštila. Příznak `mine` je
+  na hráče, takže se dopočítává až po cache — ověřeno, že autor vidí `true`
+  a cizí `false` i při zásahu z cache. Zápis slovo zneplatní.
+- **Přezdívka má konečně kde bydlet.** Profil ji umí nastavit a změnit,
+  promítne se do avataru i do formuláře u významů. `promptLogin()`, které jen
+  ukázalo toast, je pryč.
+
+→ No new memory entries.
+
+## 2026-09-21
+
 ### Přesmyčky: hra uzná každé slovo, které sama zná
 Když šlo ze stejných písmen složit jiné slovo z poolu, hra ho přesto označila
 za chybu — `síla` nepřijala `lísa`, `vlas` nepřijal `sval`, `orkán` nepřijal

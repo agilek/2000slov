@@ -60,7 +60,12 @@
             <div class="profile-sub" id="profileSub"></div>
         </div>
 
-        <button class="btn btn-primary" id="profileLoginBtn" onclick="promptLogin()">Přihlásit se</button>
+        <form class="feedback-form profile-nick" id="profileNickForm" onsubmit="saveNick(event)" style="display:none;">
+            <input id="profileNickInput" type="text" maxlength="20" autocomplete="nickname" placeholder="Tvoje přezdívka" />
+            <button type="submit" class="btn btn-primary">Uložit</button>
+        </form>
+        <button class="btn btn-secondary" id="profileNickBtn" onclick="editNick()">Nastavit přezdívku</button>
+        <p class="profile-note" id="profileNote"></p>
 
         <div class="profile-section">
             <h3 class="profile-section-title">Statistiky</h3>

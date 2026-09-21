@@ -143,9 +143,10 @@ Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toas
   Pořadí = **průměr dvou pořadí** (OpenSubtitles + wordfreq `cs`), takže slovo
   musí být běžné v mluveném i psaném jazyce — tlumí to homografy, na kterých
   jeden zdroj přestřelí (`měl`, `plzeň`) i titulkový slang (`osle`, `lízo`).
-  Anagramové kolize řeší mapa ALTS (uznaná alternativa = správně); pokrývá
-  původní ruční kuraci a k ní automaticky dopočítané přesmyčky uvnitř poolu,
-  takže žádné slovo, které hra zná, neprojde jako chyba.
+  Anagramové kolize řeší mapa ALTS — **uplatní se ale jen v tréninku**
+  (`isAcceptedWord()` končí na `state.mode !== 'practice'`), protože denní výzva
+  je soutěž a musí v ní padnout přesně hledané slovo. ALTS drží původní ruční
+  kuraci a k ní automaticky dopočítané přesmyčky uvnitř poolu.
 - **Dva pooly ve `words.js`**: `WORDS` = 7300 slov denní výzvy **už v pořadí
   dnů** (365 × 20, `dayWords(dayIndex())` jen krájí po dvaceti), `PRACTICE_WORDS`
   = celý pool 15 000 slov seřazený podle frekvence, používá ho jen trénink

@@ -54,6 +54,23 @@ chráněné dvakrát: hlavička `Origin` musí sedět na vlastní doménu
 Kdyby někdy bylo potřeba volat API z jiné domény, je to vědomá změna:
 CORS se musí přidat zpátky.
 
+## Významy slov
+
+`/api/defs*` drží komunitní významy (tabulky `definitions`, `votes`, `reports`).
+Dvě věci, které se z kódu nevyčtou:
+
+- **Validace je ve `src/validate.js`, ne v `index.js`** — a je to schválně.
+  Cloudflare kontroluje každý pojmenovaný export vstupního modulu jako handler,
+  takže `export const DEF_MAX` tam runtime shodí hláškou
+  „not of type 'function or ExportedHandler'". Vlastní modul jde importovat
+  z workeru i z `test.mjs`.
+- **Edge cache se klíčuje po jednotlivých slovech**, ne po dávce (fronty jsou
+  u každého hráče jiné, klíč podle dávky by se netrefil). Klíč se staví ručně
+  z `https://cache.local/def/<slovo>` — nikdy z příchozího requestu, ten nese
+  cookie a `clientId`. Příznak `mine` je na hráče, a proto se dopočítává až
+  po cache. Purge je per-kolo, takže jiný region může mít až 300 s starou
+  odpověď; u hobby hry přijatelné.
+
 ## Lokální testování bez nasazení
 
 ```bash

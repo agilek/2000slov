@@ -5,6 +5,7 @@
 // a funguje tak přímo ve Workers.
 
 import { buildPushHTTPRequest } from '@pushforge/builder';
+import { clean, defTextError, validClient, VULGAR, AUTHOR_MAX } from './validate.js';
 
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
@@ -28,14 +29,9 @@ const ROUTES = {
 };
 
 // Limity na významy. Drží se v D1 dotazech, žádné nové úložiště.
-const DEF_MIN = 10;
-const DEF_MAX = 200;
 const DEF_PER_DAY = 20;
-const AUTHOR_MAX = 20;
 const BATCH_MAX = 20;
 const REPORTS_TO_HIDE = 3;
-// Stejný seznam jako tools/build_words.py — ať neprojde sprostota ani do významů.
-const VULGAR = /(kurv|prdel|hovn|hajzl|píč|čur|čůr|mrd|šuká|šulin|zkurv|sračk|chcank|kokot|debil|zmrd|buzer|sviň|prcá|kunda|kundič)/i;
 
 export default {
     async fetch(request, env, ctx) {
@@ -166,22 +162,6 @@ async function handleSubscribe(request, env) {
 /* ---------------- komunitní významy slov ---------------- */
 
 const now = () => Date.now();
-const clean = (t) => String(t).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
-
-function validClient(id) {
-    return typeof id === 'string' && id.length >= 8 && id.length <= 64;
-}
-
-// Vrací chybovou hlášku, nebo null když je text v pořádku.
-function defTextError(text) {
-    if (typeof text !== 'string') return 'chybí text';
-    const t = clean(text);
-    if (t.length < DEF_MIN) return `Napiš aspoň ${DEF_MIN} znaků.`;
-    if (t.length > DEF_MAX) return `Nejvýš ${DEF_MAX} znaků.`;
-    if (VULGAR.test(t)) return 'Bez sprostých slov, prosím.';
-    if (/https?:\/\//i.test(t)) return 'Odkazy sem nepatří.';
-    return null;
-}
 
 function defRow(r, clientId) {
     return {
@@ -194,24 +174,61 @@ function defRow(r, clientId) {
     };
 }
 
+// Klíč do edge cache. Staví se ručně, NIKDY z příchozího requestu — ten nese
+// cookies a dotaz clientId a cache by se roztříštila (nebo prosákla mezi hráče).
+const defCacheKey = (w) => new Request(`https://cache.local/def/${encodeURIComponent(w)}`);
+
 // Nejlépe hodnocený význam pro až BATCH_MAX slov naráz — hra si je natahuje
 // dopředu, aby přechodová obrazovka nikdy nečekala na síť.
-async function handleDefsBatch(request, env, url) {
+// Cachuje se po jednotlivých slovech, ne po dávce: fronty jsou u každého hráče
+// jiné, takže klíč podle složení dávky by se skoro netrefil.
+async function handleDefsBatch(request, env, url, ctx) {
     const raw = (url.searchParams.get('w') || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
     const words = [...new Set(raw)].slice(0, BATCH_MAX);
     if (!words.length) return json({ defs: {} }, 200);
     const clientId = url.searchParams.get('clientId');
-    const marks = words.map(() => '?').join(',');
-    const { results } = await env.DB.prepare(
-        `SELECT * FROM (
-           SELECT *, ROW_NUMBER() OVER (PARTITION BY word ORDER BY votes DESC, created_at ASC) AS rn
-           FROM definitions WHERE hidden = 0 AND word IN (${marks})
-         ) WHERE rn = 1`
-    ).bind(...words).all();
+
+    const cache = caches.default;
+    const rows = {};                                    // slovo -> řádek | null
+    const misses = [];
+    for (const w of words) {
+        const hit = await cache.match(defCacheKey(w));
+        if (hit) rows[w] = await hit.json();
+        else misses.push(w);
+    }
+
+    if (misses.length) {
+        const marks = misses.map(() => '?').join(',');
+        const { results } = await env.DB.prepare(
+            `SELECT * FROM (
+               SELECT *, ROW_NUMBER() OVER (PARTITION BY word ORDER BY votes DESC, created_at ASC) AS rn
+               FROM definitions WHERE hidden = 0 AND word IN (${marks})
+             ) WHERE rn = 1`
+        ).bind(...misses).all();
+        for (const w of misses) rows[w] = null;          // i prázdno je odpověď
+        for (const r of results) rows[r.word] = r;
+        // Ukládá se i to prázdno — slov bez významu je zdaleka nejvíc a právě
+        // ta nemá smysl pouštět na D1 pořád dokola.
+        for (const w of misses) {
+            const body = new Response(JSON.stringify(rows[w]), {
+                headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' },
+            });
+            ctx ? ctx.waitUntil(cache.put(defCacheKey(w), body)) : await cache.put(defCacheKey(w), body);
+        }
+    }
+
+    // `mine` je na hráče, takže se dopočítá až po cache.
     const defs = {};
-    for (const w of words) defs[w] = null;              // i prázdno je odpověď
-    for (const r of results) defs[r.word] = defRow(r, clientId);
+    for (const w of words) defs[w] = rows[w] ? defRow(rows[w], clientId) : null;
     return json({ defs }, 200);
+}
+
+// Po zápisu je uložené slovo neplatné. Purge je per-kolo, takže v jiném regionu
+// může být až max-age (300 s) stará odpověď — u hobby hry přijatelné.
+async function dropDefCache(word, ctx) {
+    if (!word) return;
+    const p = caches.default.delete(defCacheKey(word));
+    if (ctx) ctx.waitUntil(p); else await p;
 }
 
 async function handleDefsForWord(request, env, url) {
@@ -233,7 +250,7 @@ async function handleMyDefs(request, env, url) {
     return json({ defs: results.map(r => defRow(r, clientId)) }, 200);
 }
 
-async function handleDefCreate(request, env) {
+async function handleDefCreate(request, env, url, ctx) {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
     const { clientId, word, text, author } = body || {};
@@ -262,16 +279,17 @@ async function handleDefCreate(request, env) {
         // jediný unikátní index je (client_id, word)
         return json({ error: 'K tomuhle slovu už svůj význam máš.' }, 409);
     }
+    await dropDefCache(word.trim().toLowerCase(), ctx);
     return json({ ok: true, id }, 200);
 }
 
-async function handleDefVote(request, env) {
+async function handleDefVote(request, env, url, ctx) {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
     const { clientId, id } = body || {};
     if (!validClient(clientId) || typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
 
-    const { results: own } = await env.DB.prepare('SELECT client_id FROM definitions WHERE id = ?1').bind(id).all();
+    const { results: own } = await env.DB.prepare('SELECT client_id, word FROM definitions WHERE id = ?1').bind(id).all();
     if (!own.length) return json({ error: 'not found' }, 404);
     if (own[0].client_id === clientId) return json({ error: 'Svůj vlastní význam hodnotit nejde.' }, 400);
 
@@ -290,10 +308,11 @@ async function handleDefVote(request, env) {
         ]);
     }
     const { results } = await env.DB.prepare('SELECT votes FROM definitions WHERE id = ?1').bind(id).all();
+    await dropDefCache(own[0].word, ctx);
     return json({ ok: true, votes: results[0].votes, voted: !had.length }, 200);
 }
 
-async function handleDefReport(request, env) {
+async function handleDefReport(request, env, url, ctx) {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
     const { clientId, id } = body || {};
@@ -306,6 +325,8 @@ async function handleDefReport(request, env) {
              WHERE id = ?1`
         ).bind(id),
     ]);
+    const { results: w } = await env.DB.prepare('SELECT word FROM definitions WHERE id = ?1').bind(id).all();
+    if (w.length) await dropDefCache(w[0].word, ctx);
     return json({ ok: true }, 200);
 }
 

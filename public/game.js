@@ -546,6 +546,8 @@ async function submitDef(e) {
 /* ---------------- profil ---------------- */
 
 function showProfile() {
+    $('profileNickForm').style.display = 'none';
+    $('profileNickBtn').style.display = '';
     renderProfile();
     showScreen('profile');
 }
@@ -557,11 +559,16 @@ function renderProfile() {
 
     // Účty zatím neběží, takže je profil lokální — statistiky jsou skutečné,
     // jen se počítají z localStorage tohohle zařízení.
-    $('profileAvatar').textContent = 'H';
-    $('profileName').textContent = 'Host';
+    const nick = (persist.nick || '').trim();
+    $('profileAvatar').textContent = (nick || 'Host').charAt(0).toUpperCase();
+    $('profileName').textContent = nick || 'Host';
     $('profileSub').textContent = persist.bestStreak > 0
         ? `Nejdelší série: ${fmtNum(persist.bestStreak)}`
         : 'Zatím bez série';
+    $('profileNickBtn').textContent = nick ? 'Změnit přezdívku' : 'Nastavit přezdívku';
+    $('profileNote').textContent = nick
+        ? 'Přezdívka se ukazuje u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.'
+        : 'Přezdívkou se podepíšeš u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.';
 
     const tiles = [
         [fmtNum(persist.streak), 'dní v řadě'],
@@ -625,8 +632,21 @@ async function loadMyDefs() {
     box.appendChild(list);
 }
 
-function promptLogin() {
-    showToast('Účty připravujeme — zatím se postup ukládá jen v tomhle zařízení.');
+function editNick() {
+    $('profileNickForm').style.display = 'flex';
+    $('profileNickBtn').style.display = 'none';
+    $('profileNickInput').value = persist.nick || '';
+    $('profileNickInput').focus();
+}
+
+function saveNick(e) {
+    e.preventDefault();
+    persist.nick = $('profileNickInput').value.trim().slice(0, 20);
+    savePersist();
+    $('profileNickForm').style.display = 'none';
+    $('profileNickBtn').style.display = '';
+    renderProfile();
+    showToast(persist.nick ? 'Přezdívka uložená.' : 'Přezdívka zrušená.');
 }
 
 function playToday() {
@@ -889,6 +909,9 @@ function resetSelection() {
 
 function isAcceptedWord(word, target) {
     if (word === lettersOf(target)) return true;
+    // Přesmyčky uznává jen trénink. Denní výzva je soutěž — všichni mají dnes
+    // stejných 20 slov, takže musí padnout přesně to hledané.
+    if (state.mode !== 'practice') return false;
     const alts = (typeof ALTS !== 'undefined' && ALTS[target]) || [];
     return alts.some(a => lettersOf(a) === word);
 }

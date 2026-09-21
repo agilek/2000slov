@@ -37,6 +37,10 @@ npx wrangler dev --port 8787
 Samotná statika je pořád bez závislostí a bez buildu, takže na rychlou úpravu
 vzhledu stačí i `python3 -m http.server 8000` v `public/` — jen bez `/api/*`.
 
+**Kontrola:** `node test.mjs` — bez frameworku, ověří validaci významů,
+neporušitelné vlastnosti slovníku (počty, podmnožina, frekvenční pásma)
+a úplnost přesmyček.
+
 **Nasazení:** `npx wrangler deploy`, nebo automaticky workflow
 `.github/workflows/deploy.yml` při pushi do `main` (potřebuje secret
 `CLOUDFLARE_API_TOKEN`). Statika a worker jdou ven společně.
@@ -112,9 +116,10 @@ Zpracování:
    frekvenci, takže padnou do stejného pásma a do jednoho dne se nedostanou.
    Zbylých 6 dnů opraveno prohozením slova ve stejném pásmu.
 
-Jako správná odpověď se navíc uznává i jiné platné české slovo složené ze
-stejných písmen (1234 hesel má alternativu, např. rok/okr, zem/mez). Mapa
-přesmyček má dvě části: ručně kurátorovanou z původního slovníku (uznává
+**Jen v tréninku** se jako správná odpověď uznává i jiné platné české slovo
+složené ze stejných písmen (rok/okr, zem/mez). Denní výzva je soutěž — všichni
+mají v daný den stejných 20 slov, takže tam musí padnout přesně to hledané.
+Mapa přesmyček má dvě části: ručně kurátorovanou z původního slovníku (uznává
 i tvary, které v poolu nejsou — *otec* → *ocet, otce*) a automaticky doplněné
 **přesmyčky uvnitř poolu** — když jde ze stejných písmen složit jiné slovo,
 které hra sama zná, uzná se taky (*síla/lísa*, *vlas/sval*, *nárok/korán/orkán*).
