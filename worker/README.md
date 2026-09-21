@@ -71,6 +71,20 @@ Dvě věci, které se z kódu nevyčtou:
   po cache. Purge je per-kolo, takže jiný region může mít až 300 s starou
   odpověď; u hobby hry přijatelné.
 
+## Kdo smí co
+
+| | bez účtu | s účtem |
+|---|---|---|
+| hrát denní výzvu i trénink | ano | ano |
+| číst významy slov | ano | ano |
+| přidat, upravit, hlasovat, nahlásit | **ne** | ano |
+| veřejný profil `/u/<handle>` | ne | ano |
+
+Psát smí jen přihlášený schválně: u významu pak vždy stojí přezdívka z účtu.
+Kdyby šlo psát anonymně pod libovolným jménem, mohli by dva lidé publikovat
+jako „Michal" a po zavedení účtů by si nikdo nemohl být jistý, kdo je kdo.
+**Dokud nejsou nastavené secrety níže, nejde přidat význam vůbec.**
+
 ## Účty (magic link) — zapnutí
 
 Kód je hotový a nasazený, ale **spí**, dokud nejsou secrety. Do té doby vrací

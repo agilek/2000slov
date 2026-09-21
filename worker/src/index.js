@@ -31,6 +31,7 @@ const ROUTES = {
     'POST /api/defs': handleDefCreate,
     'POST /api/defs/vote': handleDefVote,
     'POST /api/defs/report': handleDefReport,
+    'POST /api/defs/edit': handleDefEdit,
     // Účty. Bez RESEND_KEY/MAIL_FROM zůstane /api/auth/start na 503 a klient
     // přihlášení vůbec nenabídne — viz `auth` v odpovědi /api/me.
     'POST /api/auth/start': (rq, env, url, ctx) => authStart(rq, env, url, ctx, json),
@@ -216,14 +217,14 @@ async function handleSubscribe(request, env) {
 
 const now = () => Date.now();
 
-function defRow(r, clientId) {
+function defRow(r, userId) {
     return {
         id: r.id,
         word: r.word,
         text: r.text,
-        author: r.author || 'Anonym',
+        author: r.author,          // vždy přezdívka z účtu — anonymní autoři neexistují
         votes: r.votes,
-        mine: !!clientId && r.client_id === clientId,
+        mine: !!userId && r.user_id === userId,
     };
 }
 
@@ -239,7 +240,7 @@ async function handleDefsBatch(request, env, url, ctx) {
     const raw = (url.searchParams.get('w') || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
     const words = [...new Set(raw)].slice(0, BATCH_MAX);
     if (!words.length) return json({ defs: {} }, 200);
-    const clientId = url.searchParams.get('clientId');
+    const me = await currentUser(request, env);
 
     const cache = caches.default;
     const rows = {};                                    // slovo -> řádek | null
@@ -272,7 +273,7 @@ async function handleDefsBatch(request, env, url, ctx) {
 
     // `mine` je na hráče, takže se dopočítá až po cache.
     const defs = {};
-    for (const w of words) defs[w] = rows[w] ? defRow(rows[w], clientId) : null;
+    for (const w of words) defs[w] = rows[w] ? defRow(rows[w], me && me.id) : null;
     return json({ defs }, 200);
 }
 
@@ -287,39 +288,41 @@ async function dropDefCache(word, ctx) {
 async function handleDefsForWord(request, env, url) {
     const word = (url.searchParams.get('w') || '').trim().toLowerCase();
     if (!word) return json({ error: 'bad params' }, 400);
-    const clientId = url.searchParams.get('clientId');
+    const me = await currentUser(request, env);
     const { results } = await env.DB.prepare(
         'SELECT * FROM definitions WHERE word = ?1 AND hidden = 0 ORDER BY votes DESC, created_at ASC LIMIT 50'
     ).bind(word).all();
-    return json({ word, defs: results.map(r => defRow(r, clientId)) }, 200);
+    return json({ word, defs: results.map(r => defRow(r, me && me.id)) }, 200);
 }
 
-async function handleMyDefs(request, env, url) {
-    const clientId = url.searchParams.get('clientId');
-    if (!validClient(clientId)) return json({ error: 'bad params' }, 400);
+async function handleMyDefs(request, env) {
+    const me = await currentUser(request, env);
+    if (!me) return json({ defs: [] }, 200);
     const { results } = await env.DB.prepare(
-        'SELECT * FROM definitions WHERE client_id = ?1 ORDER BY created_at DESC LIMIT 100'
-    ).bind(clientId).all();
-    return json({ defs: results.map(r => defRow(r, clientId)) }, 200);
+        'SELECT * FROM definitions WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 100'
+    ).bind(me.id).all();
+    return json({ defs: results.map(r => defRow(r, me.id)) }, 200);
 }
 
 async function handleDefCreate(request, env, url, ctx) {
+    // Psát smí jen přihlášený — jinak by u významu stálo jméno, za kterým
+    // nikdo nestojí a které si může vzít kdokoli.
+    const user = await currentUser(request, env);
+    if (!user) return json({ error: 'Významy může přidávat jen přihlášený hráč.' }, 401);
+    if (!user.handle) return json({ error: 'Nejdřív si zvol přezdívku.' }, 400);
+
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { clientId, word, text, author } = body || {};
-    if (!validClient(clientId) || typeof word !== 'string' || !word.trim()) {
-        return json({ error: 'bad params' }, 400);
-    }
+    const { clientId, word, text } = body || {};
+    if (typeof word !== 'string' || !word.trim()) return json({ error: 'bad params' }, 400);
     const err = defTextError(text);
     if (err) return json({ error: err }, 400);
-    const user = await currentUser(request, env);
-    const name = user && user.handle ? user.handle : clean(author || '').slice(0, AUTHOR_MAX);
-    if (name && VULGAR.test(name)) return json({ error: 'Přezdívka nesmí být sprostá.' }, 400);
+    const name = user.handle;
 
     const dayAgo = now() - 86400000;
     const { results: cnt } = await env.DB.prepare(
-        'SELECT COUNT(*) AS n FROM definitions WHERE client_id = ?1 AND created_at > ?2'
-    ).bind(clientId, dayAgo).all();
+        'SELECT COUNT(*) AS n FROM definitions WHERE user_id = ?1 AND created_at > ?2'
+    ).bind(user.id, dayAgo).all();
     if (cnt[0].n >= DEF_PER_DAY) {
         return json({ error: `Denní limit je ${DEF_PER_DAY} významů. Zkus to zítra.` }, 429);
     }
@@ -329,25 +332,63 @@ async function handleDefCreate(request, env, url, ctx) {
         await env.DB.prepare(
             `INSERT INTO definitions (id, word, text, client_id, user_id, author, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
-        ).bind(id, word.trim().toLowerCase(), clean(text), clientId,
-               user ? user.id : null, name || null, now()).run();
+        ).bind(id, word.trim().toLowerCase(), clean(text),
+               validClient(clientId) ? clientId : null, user.id, name, now()).run();
     } catch (e) {
-        // jediný unikátní index je (client_id, word)
+        // jediný unikátní index je (user_id, word)
         return json({ error: 'K tomuhle slovu už svůj význam máš.' }, 409);
     }
     await dropDefCache(word.trim().toLowerCase(), ctx);
     return json({ ok: true, id }, 200);
 }
 
-async function handleDefVote(request, env, url, ctx) {
+// Úprava vlastního významu. Když text měl hlasy, úprava je smaže — jinak by
+// šlo vyhlasovat neškodnou větu a pak ji přepsat na něco jiného.
+async function handleDefEdit(request, env, url, ctx) {
+    const me = await currentUser(request, env);
+    if (!me) return json({ error: 'Upravovat může jen přihlášený hráč.' }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { clientId, id } = body || {};
-    if (!validClient(clientId) || typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
+    const { id, text } = body || {};
+    if (typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
+    const err = defTextError(text);
+    if (err) return json({ error: err }, 400);
 
-    const { results: own } = await env.DB.prepare('SELECT client_id, word FROM definitions WHERE id = ?1').bind(id).all();
+    const { results } = await env.DB.prepare(
+        'SELECT user_id, word, text, votes FROM definitions WHERE id = ?1'
+    ).bind(id).all();
+    if (!results.length) return json({ error: 'not found' }, 404);
+    const row = results[0];
+    if (row.user_id !== me.id) return json({ error: 'Upravit jde jen vlastní význam.' }, 403);
+
+    const novy = clean(text);
+    if (novy === row.text) return json({ ok: true, votes: row.votes, resetVotes: false }, 200);
+
+    const resetVotes = row.votes > 0;
+    const statements = [
+        env.DB.prepare('UPDATE definitions SET text = ?1 WHERE id = ?2').bind(novy, id),
+    ];
+    if (resetVotes) {
+        statements.push(env.DB.prepare('DELETE FROM votes WHERE definition_id = ?1').bind(id));
+        statements.push(env.DB.prepare('UPDATE definitions SET votes = 0 WHERE id = ?1').bind(id));
+    }
+    await env.DB.batch(statements);
+    await dropDefCache(row.word, ctx);
+    return json({ ok: true, votes: resetVotes ? 0 : row.votes, resetVotes }, 200);
+}
+
+async function handleDefVote(request, env, url, ctx) {
+    const me = await currentUser(request, env);
+    if (!me) return json({ error: 'Hlasovat může jen přihlášený hráč.' }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const { id } = body || {};
+    if (typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
+    const clientId = me.id;
+
+    const { results: own } = await env.DB.prepare('SELECT user_id, word FROM definitions WHERE id = ?1').bind(id).all();
     if (!own.length) return json({ error: 'not found' }, 404);
-    if (own[0].client_id === clientId) return json({ error: 'Svůj vlastní význam hodnotit nejde.' }, 400);
+    if (own[0].user_id === me.id) return json({ error: 'Svůj vlastní význam hodnotit nejde.' }, 400);
 
     const { results: had } = await env.DB.prepare(
         'SELECT 1 AS x FROM votes WHERE definition_id = ?1 AND client_id = ?2'
@@ -369,10 +410,13 @@ async function handleDefVote(request, env, url, ctx) {
 }
 
 async function handleDefReport(request, env, url, ctx) {
+    const me = await currentUser(request, env);
+    if (!me) return json({ error: 'Nahlásit může jen přihlášený hráč.' }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { clientId, id } = body || {};
-    if (!validClient(clientId) || typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
+    const { id } = body || {};
+    if (typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
+    const clientId = me.id;
     await env.DB.batch([
         env.DB.prepare('INSERT OR IGNORE INTO reports (definition_id, client_id, created_at) VALUES (?1, ?2, ?3)').bind(id, clientId, now()),
         env.DB.prepare(

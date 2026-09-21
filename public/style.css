@@ -521,6 +521,8 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 #accountBox a.btn { text-decoration: none; }
 #accountBox { display: flex; flex-direction: column; gap: 12px; }
 #accountBox .feedback-form { gap: 10px; }
+.streak-nudge { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 18px auto 0; max-width: 400px; }
+.streak-nudge p { margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: var(--ink); }
 .profile-note { font-size: 13px; line-height: 1.5; color: var(--muted-text); margin: -6px 0 0; }
 .profile-nick { gap: 10px; }
 .profile-section { display: flex; flex-direction: column; gap: 10px; text-align: left; }

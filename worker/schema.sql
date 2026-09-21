@@ -27,16 +27,16 @@ CREATE TABLE IF NOT EXISTS definitions (
   id         TEXT PRIMARY KEY,
   word       TEXT NOT NULL,
   text       TEXT NOT NULL,          -- 10–200 znaků
-  client_id  TEXT NOT NULL,
-  user_id    TEXT,                   -- vyplní se po přihlášení; dokud není, platí client_id
-  author     TEXT,                   -- přezdívka, kterou si hráč zvolil
+  client_id  TEXT,                   -- zařízení, ze kterého to přišlo (kvůli zneužití)
+  user_id    TEXT NOT NULL,          -- psát smí jen přihlášený
+  author     TEXT,                   -- snímek přezdívky z účtu v době zápisu
   votes      INTEGER NOT NULL DEFAULT 0,
   reports    INTEGER NOT NULL DEFAULT 0,
   hidden     INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 -- Jeden význam na slovo a hráče: hlavní brzda proti zahlcení.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_defs_client_word ON definitions(client_id, word);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_defs_user_word   ON definitions(user_id, word);
 CREATE        INDEX IF NOT EXISTS idx_defs_word        ON definitions(word, hidden, votes DESC);
 CREATE        INDEX IF NOT EXISTS idx_defs_client_time ON definitions(client_id, created_at);
 

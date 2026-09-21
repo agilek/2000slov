@@ -66,6 +66,7 @@
         </form>
         <button class="btn btn-secondary" id="profileNickBtn" onclick="editNick()">Nastavit přezdívku</button>
         <p class="profile-note" id="profileNote"></p>
+        <p class="profile-note" id="profileDeviceNote" style="display:none;"></p>
 
         <div class="profile-section" id="accountSection" style="display:none;">
             <h3 class="profile-section-title">Účet</h3>
@@ -106,6 +107,7 @@
         <h2 id="survivedCount" class="reveal-item"></h2>
         <p id="percentile" class="reveal-item"></p>
         <p id="progressLine" class="reveal-item"></p>
+        <div id="streakNudge" class="streak-nudge reveal-item" style="display:none;"></div>
         <div id="shareActions" class="share-actions reveal-item">
             <button id="shareBtn" class="btn btn-share" onclick="shareScore()">Pochlubit se <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="3" stroke="#ffffff" fill="none" stroke-linecap="round" stroke-linejoin="round"> <path stroke="none" d="M0 0h24v24H0z" fill="none"/> <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M8.7 10.7l6.6 -3.4" /> <path d="M8.7 13.3l6.6 3.4" /> </svg></button>
         </div>
@@ -144,9 +146,8 @@
                 <button class="close-modal" onclick="closeDefs()">&times;</button>
             </div>
             <ul class="defs-list" id="defsList"></ul>
+            <div id="defsGate" style="display:none;"></div>
             <form class="feedback-form" id="defsForm" onsubmit="submitDef(event)">
-                <label for="defsAuthor">Přezdívka</label>
-                <input id="defsAuthor" type="text" maxlength="20" autocomplete="nickname" placeholder="Jak ti máme říkat?" />
                 <label for="defsText">Tvůj význam</label>
                 <textarea id="defsText" required maxlength="200" placeholder="Stručně vysvětli, co slovo znamená…"></textarea>
                 <p id="defsError" class="feedback-error" style="display:none;"></p>

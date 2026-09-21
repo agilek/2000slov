@@ -2,6 +2,36 @@
 
 ## 2026-09-21
 
+### Významy jen pro přihlášené, úprava pro autora, pobídka na sérii
+Psát, hlasovat, nahlašovat i upravovat významy smí nově jen přihlášený hráč.
+Číst je může kdokoli. Autor smí svůj význam upravit — když už má hlasy, úprava
+je smaže. Na výsledkové obrazovce se při sérii 3/7/14/30/60/100/200/365 dní
+jednou ozveme, že série žije jen v tomhle zařízení.
+
+**Root cause / approach:** Anonymní autorství byla tikající bomba. Přezdívka
+nebyla nijak ověřená ani rezervovaná, a přitom se tiskla k publikovaným
+významům — dva lidé mohli psát jako „Michal" a po zavedení účtů by nešlo určit,
+kdo je kdo (nebo by se skutečná Kačka po registraci ocitla vedle cizího obsahu).
+Zrušením anonymního zápisu ten problém mizí celý: jméno u významu je vždy
+přezdívka z účtu. Zároveň to spravilo hlasování — dosud šlo hlasy sypat
+libovolným počtem vymyšlených `clientId`, protože identita byla self-asserted.
+Identitou je teď účet, takže se unikátní index posunul z `(client_id, word)`
+na `(user_id, word)` — na jednom telefonu tak můžou psát dva lidé.
+
+Úprava vynuluje hlasy, pokud nějaké byly. Bez toho by šlo vyhlasovat neškodnou
+větu a pak ji přepsat na cokoli — a hlasy by se zdědily.
+
+Pobídka k účtu sedí na sérii, ne v nastavení: je to jediná věc, o kterou tu jde
+reálně přijít, a lidi si sérii chrání. Ukáže se jednou na milník (`nudgedAt`)
+a jen když jsou účty vůbec spuštěné, jinak by to byla slepá ulička.
+
+**Důsledek, se kterým je třeba počítat:** dokud nebude doména a Resend, nejde
+přidat význam vůbec. Je to přímý důsledek rozhodnutí, ne regrese.
+
+→ No new memory entries.
+
+## 2026-09-21
+
 ### Účty připravené „na klíč" — spí, dokud nepřijdou secrety
 Celé přihlášení magic linkem je hotové a nasazené, ale **neaktivní**: bez
 `RESEND_KEY`/`MAIL_FROM` vrací `/api/me` `auth:false`, `/api/auth/start` končí

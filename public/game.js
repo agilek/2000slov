@@ -56,6 +56,7 @@ function defaultPersist() {
         practiceWords: 0,   // uhodnutá slova v tréninku, opakovaná se počítají znovu
         nick: '',           // přezdívka u přidaných významů
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
+        nudgedAt: 0,        // série, u které jsme naposled připomněli účet
         day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct }
         clientId: genClientId(), // anonymní ID pro leaderboard backend (jen počítadlo, žádná osobní data)
         a2hsPromptDismissed: false, // "přidej na plochu" nabídka na iOS se ukáže jen do prvního zavření
@@ -326,8 +327,7 @@ async function apiPost(path, body) {
     }
 }
 
-const defsUrl = (words) =>
-    `/api/defs?w=${encodeURIComponent(words)}&clientId=${encodeURIComponent(persist.clientId)}`;
+const defsUrl = (words) => `/api/defs?w=${encodeURIComponent(words)}`;
 
 // Fronta tréninku se bere od konce, takže dalších pár slov známe dopředu
 // a mezihra pak nikdy nečeká na síť.
@@ -429,6 +429,9 @@ function voteBtn(def) {
     if (def.mine) {
         b.disabled = true;
         b.title = 'Svůj vlastní význam hodnotit nejde';
+    } else if (!auth.user) {
+        b.disabled = true;
+        b.title = 'Hlasovat může jen přihlášený hráč';
     } else {
         b.onclick = (e) => { e.stopPropagation(); voteDef(def, b); };
     }
@@ -453,10 +456,30 @@ function openDefs(e) {
     $('defsTitle').textContent = word || 'Významy';
     $('defsError').style.display = 'none';
     $('defsText').value = '';
-    $('defsAuthor').value = persist.nick || '';
     $('defsList').innerHTML = '';
     $('defsModal').classList.add('active');
+    renderDefsForm();
     loadDefsList(word);
+    refreshAuth().then(renderDefsForm);
+}
+
+// Psát smí jen přihlášený — jméno u významu musí za někým stát.
+function renderDefsForm() {
+    const form = $('defsForm');
+    const gate = $('defsGate');
+    const canWrite = !!(auth.user && auth.user.handle);
+    form.style.display = canWrite ? 'flex' : 'none';
+    gate.style.display = canWrite ? 'none' : 'block';
+    gate.innerHTML = '';
+    if (canWrite) return;
+    gate.appendChild(el('p', 'profile-note', auth.enabled
+        ? 'Významy může přidávat jen přihlášený hráč — ať je jasné, kdo za nimi stojí.'
+        : 'Přidávání významů spustíme, jakmile budou hotové účty.'));
+    if (!auth.enabled) return;
+    const b = el('button', 'btn btn-primary', auth.user ? 'Zvolit přezdívku' : 'Přihlásit se');
+    b.type = 'button';
+    b.onclick = () => { closeDefs(); exitPractice(); showProfile(); };
+    gate.appendChild(b);
 }
 
 function closeDefs() {
@@ -473,8 +496,7 @@ function pauseWordDone(paused) {
 
 async function loadDefsList(word) {
     const list = $('defsList');
-    const data = await apiGet(
-        `/api/defs/word?w=${encodeURIComponent(word)}&clientId=${encodeURIComponent(persist.clientId)}`);
+    const data = await apiGet(`/api/defs/word?w=${encodeURIComponent(word)}`);
     if (state.wdWord !== word) return;
     list.innerHTML = '';
     const defs = (data && data.defs) || [];
@@ -500,7 +522,14 @@ function defItem(d) {
     meta.className = 'wd-meta';
     meta.append(authorEl(d.author), voteBtn(d));
     li.append(p, meta);
-    if (!d.mine) {
+    if (d.mine) {
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'def-report';
+        edit.textContent = 'Upravit';
+        edit.onclick = () => editDef(d, li, p);
+        li.appendChild(edit);
+    } else if (auth.user) {
         const rep = document.createElement('button');
         rep.type = 'button';
         rep.className = 'def-report';
@@ -509,6 +538,46 @@ function defItem(d) {
         li.appendChild(rep);
     }
     return li;
+}
+
+// Autor smí svůj význam upravit. Když už má hlasy, úprava je smaže — jinak by
+// šlo vyhlasovat neškodnou větu a pak ji přepsat.
+function editDef(d, li, textEl) {
+    if (li.querySelector('form')) return;
+    const form = el('form', 'feedback-form');
+    const ta = document.createElement('textarea');
+    ta.maxLength = 200;
+    ta.required = true;
+    ta.value = d.text;
+    const err = el('p', 'feedback-error');
+    err.style.display = 'none';
+    const save = el('button', 'btn btn-primary', 'Uložit změnu');
+    save.type = 'submit';
+    const cancel = el('button', 'btn-tertiary', 'Zrušit');
+    cancel.type = 'button';
+    cancel.onclick = () => form.remove();
+    if (d.votes > 0) form.appendChild(el('p', 'profile-note', 'Úpravou se smažou dosavadní hlasy.'));
+    form.append(ta, err, save, cancel);
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        save.disabled = true;
+        const r = await apiPost('/api/defs/edit', { id: d.id, text: ta.value });
+        save.disabled = false;
+        if (!r.ok) {
+            err.textContent = (r.data && r.data.error) || 'Nepodařilo se uložit.';
+            err.style.display = 'block';
+            return;
+        }
+        d.text = ta.value.trim();
+        d.votes = r.data.votes;
+        textEl.textContent = d.text;
+        form.remove();
+        defCache.delete(state.wdWord);
+        loadDefsList(state.wdWord);
+        renderWordDone(state.wdWord);
+        showToast(r.data.resetVotes ? 'Upraveno, hlasy vynulovány.' : 'Upraveno.');
+    };
+    li.appendChild(form);
 }
 
 async function reportDef(d, li) {
@@ -521,20 +590,17 @@ async function reportDef(d, li) {
 async function submitDef(e) {
     e.preventDefault();
     const word = state.wdWord;
-    const author = $('defsAuthor').value.trim();
     const btn = $('defsSubmit');
     const err = $('defsError');
     err.style.display = 'none';
     btn.disabled = true;
-    const r = await apiPost('/api/defs', { word, text: $('defsText').value, author });
+    const r = await apiPost('/api/defs', { word, text: $('defsText').value });
     btn.disabled = false;
     if (!r.ok) {
         err.textContent = (r.data && r.data.error) || 'Význam se nepodařilo uložit.';
         err.style.display = 'block';
         return;
     }
-    persist.nick = author;
-    savePersist();
     $('defsText').value = '';
     defCache.delete(word);
     await loadDefsList(word);
@@ -806,6 +872,10 @@ function renderProfile() {
     }
 
     renderAccount();
+    $('profileDeviceNote').style.display = auth.user ? 'none' : 'block';
+    $('profileDeviceNote').textContent = auth.enabled
+        ? 'Série i postup žijí jen v tomhle zařízení. Přihlášením o ně nepřijdeš.'
+        : 'Série i postup žijí jen v tomhle zařízení — vymazáním dat prohlížeče zmizí.';
     // Přihlášený má jméno z účtu; anonymní si ho volí sám.
     $('profileNickBtn').style.display = auth.user ? 'none' : '';
     loadMyDefs();
@@ -814,7 +884,7 @@ function renderProfile() {
 async function loadMyDefs() {
     const box = $('profileDefs');
     box.textContent = 'Načítám…';
-    const data = await apiGet(`/api/defs/mine?clientId=${encodeURIComponent(persist.clientId)}`);
+    const data = await apiGet('/api/defs/mine');
     const defs = data && data.defs;
     if (!defs) {
         box.textContent = 'Významy se teď nepodařilo načíst.';
@@ -1558,9 +1628,30 @@ function showResult(instant) {
         ? `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.<br>Zítra tě čeká den ${nextNum}!`
         : `Den ${dayNum} ti utekl — zítra čeká den ${nextNum}, nová slova!`;
     updateNotifyPrompt();
+    renderStreakNudge();
 
     startCountdown();
     animateResultReveal(perfect, instant);
+}
+
+// Sérii lidi chrání — a je to jediná věc, o kterou tu můžou reálně přijít.
+// Proto se o účtu ozveme až ve chvíli, kdy má série cenu, ne v nastavení.
+const NUDGE_AT = [3, 7, 14, 30, 60, 100, 200, 365];
+
+function renderStreakNudge() {
+    const box = $('streakNudge');
+    box.style.display = 'none';
+    box.innerHTML = '';
+    const s = persist.streak;
+    if (!auth.enabled || auth.user || !NUDGE_AT.includes(s) || persist.nudgedAt === s) return;
+    persist.nudgedAt = s;
+    savePersist();
+    box.appendChild(el('p', null, `🔥 ${fmtNum(s)} dní v řadě — a celá série žije jen v tomhle zařízení.`));
+    const b = el('button', 'btn btn-primary', 'Uložit sérii k účtu');
+    b.type = 'button';
+    b.onclick = () => showProfile();
+    box.appendChild(b);
+    box.style.display = 'block';
 }
 
 function plural(n, one, few, many) {

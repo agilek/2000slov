@@ -67,6 +67,11 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 
    Sbírka slov + Trénink, řádek se zpětnou vazbou. Perfektní den = konfety.
 5. **Sbírka** (modal ve stylu archivu originálu) — 365 dní, odehrané se rozbalí
    na 20 slov a ukážou skóre, aktuální „dnes", zbytek zamčený.
+   Významy slov: **číst je může kdokoli, psát a hlasovat jen přihlášený**.
+   Anonymní autor neexistuje — u významu vždy stojí přezdívka z účtu, takže
+   si ji nikdo nemůže přivlastnit. Autor smí svůj význam upravit; když už má
+   hlasy, úprava je smaže (jinak by šlo vyhlasovat neškodnou větu a přepsat ji).
+
 6. **Trénink** — nekonečná volná hra ze **všech 15 000 slov** (širší pool než
    denní výzva, bez ohledu na datum). **Nemá výsledkovou obrazovku ani žádné
    tlačítko „pokračovat"** — nestihnuté slovo se odhalí, na místě časovače
