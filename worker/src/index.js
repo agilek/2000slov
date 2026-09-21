@@ -444,7 +444,7 @@ async function sendDailyReminders(env) {
                 subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
                 message: {
                     payload: {
-                        title: '2000 slov',
+                        title: '20 slov',
                         body: 'Dnešní slovo na tebe čeká! 🔤',
                         url: SITE_URL,
                     },

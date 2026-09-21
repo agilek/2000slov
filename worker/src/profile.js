@@ -110,7 +110,7 @@ export async function profilePage(request, env, url) {
     if (!data) {
         return new Response(page('Profil nenalezen', `<h1>Profil nenalezen</h1>
             <p class="note">Tenhle hráč tu není, nebo má profil skrytý.</p>
-            <p><a class="btn" href="${site}/">Zahrát si 2000 slov</a></p>`, '', site),
+            <p><a class="btn" href="${site}/">Zahrát si 20 slov</a></p>`, '', site),
             { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     const s = data.stats;
@@ -132,12 +132,12 @@ export async function profilePage(request, env, url) {
         <span>více</span></p>
       <p><a class="btn" href="${site}/">Zahrát si taky</a></p>`;
     const meta = `
-      <meta property="og:title" content="${jmeno} — 2000 slov">
+      <meta property="og:title" content="${jmeno} — 20 slov">
       <meta property="og:description" content="${esc(popis)}">
       <meta property="og:type" content="profile">
       <meta property="og:url" content="${site}/u/${encodeURIComponent(data.user.handle)}">
       <meta name="twitter:card" content="summary">`;
-    return new Response(page(`${jmeno} — 2000 slov`, telo, meta, site), {
+    return new Response(page(`${jmeno} — 20 slov`, telo, meta, site), {
         headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' },
     });
 }

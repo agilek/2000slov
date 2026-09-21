@@ -79,7 +79,7 @@ async function sendLoginMail(env, email, link, code) {
         body: JSON.stringify({
             from: env.MAIL_FROM,
             to: [email],
-            subject: 'Přihlášení do hry 2000 slov',
+            subject: 'Přihlášení do hry 20 slov',
             text: `Přihlaš se klepnutím na odkaz:\n${link}\n\n`
                 + `Nebo v aplikaci opiš kód: ${code}\n\n`
                 + `Odkaz i kód platí 15 minut. Když jsi o přihlášení nežádal, nic nedělej.`,
@@ -184,7 +184,7 @@ export function authLandingPage(request, env, url) {
     const safe = token.replace(/[^a-f0-9]/g, '');
     return new Response(`<!doctype html><html lang="cs"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Přihlášení — 2000 slov</title><style>
+<title>Přihlášení — 20 slov</title><style>
 :root{color-scheme:light dark}
 body{font-family:system-ui,-apple-system,sans-serif;display:flex;min-height:100dvh;margin:0;
 align-items:center;justify-content:center;padding:24px;text-align:center;background:#fff;color:#1c1c1e}

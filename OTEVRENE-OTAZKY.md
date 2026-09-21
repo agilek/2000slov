@@ -97,3 +97,4 @@ Můžu udělat, až řekneš.
 | Úprava významu | smaže hlasy, pokud nějaké byly | jinak jde vyhlasovat jeden text a nahradit ho jiným |
 | Ukládání e-mailu | jen `sha256(adresa + pepř)` | cena: hráčům nejde nic poslat mimo přihlášení |
 | Veřejný profil | HTML z workeru, ne SPA | kvůli náhledu při sdílení |
+| Název hry | **20 slov** (2026-09-21) | přejmenováno jen v textech pro hráče; identifikátory (`slov2000`, `slov2000_v2`, repo, workers.dev URL) zůstaly — změna by znamenala nový worker a ztrátu postupu všech hráčů |

@@ -80,7 +80,7 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
     let data = {};
     try { data = event.data ? event.data.json() : {}; } catch (e) {}
-    const title = data.title || '2000 slov';
+    const title = data.title || '20 slov';
     event.waitUntil(self.registration.showNotification(title, {
         body: data.body || 'Dnešní slovo na tebe čeká!',
         icon: 'icons/icon-192.png',

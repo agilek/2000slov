@@ -1,4 +1,4 @@
-/* 2000 slov — česká denní slovní hra po vzoru 18words.com
+/* 20 slov — česká denní slovní hra po vzoru 18words.com
  * Denní výzva: která slova se hrají, určuje DATUM, ne postup hráče — všichni
  * tak mají v daný den stejných 20 slov a výsledky jsou porovnatelné.
  * Slovník: jen podstatná jména (Wikislovník). Každý den má jedno slovo
@@ -1780,7 +1780,7 @@ function buildShareMessage() {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
     const dayNum = (persist.day ? persist.day.dayIdx : dayIndex()) + 1;
     const grid = buildEmojiGrid();
-    let msg = `⏳ 2000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
+    let msg = `⏳ 20 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
     if (grid) msg += `\n\n${grid}`;
     const trophy = getTrophyShareLine(survived);
     if (trophy) msg += `\n\n${trophy}`;

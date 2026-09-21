@@ -1,4 +1,4 @@
-# 2000 slov 🇨🇿
+# 20 slov 🇨🇿
 
 **365 dní. Jen podstatná jména. 30 sekund na slovo. Každý den hrají všichni to samé.**
 

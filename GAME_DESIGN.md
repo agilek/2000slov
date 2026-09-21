@@ -1,4 +1,4 @@
-# 2000 slov — Game Design
+# 20 slov — Game Design
 
 > **365 dní. 7300 podstatných jmen. 30 sekund na slovo. Každý den hrají všichni to samé.**
 
@@ -97,7 +97,7 @@ Trofejová hláška je (stejně jako v originále) **statická tabulka** — ž�
 Text sdílení (formát originálu, mřížka 4×5):
 
 ```
-⏳ 2000 slov — den #12
+⏳ 20 slov — den #12
 
 🔥 Získáno 18/20 slov
 

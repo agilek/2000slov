@@ -95,7 +95,7 @@ vůbec neukáže — hra jede anonymně dál. Zapnutí je tohle, nic v kódu se 
 # 1) doména v Cloudflare + Custom Domain na workeru slov2000
 # 2) v Resendu ověřit doménu (SPF + DKIM záznamy, které Resend vypíše)
 npx wrangler secret put RESEND_KEY     # API klíč z Resendu
-npx wrangler secret put MAIL_FROM      # např. "2000 slov <hra@tvojedomena.cz>"
+npx wrangler secret put MAIL_FROM      # např. "20 slov <hra@tvojedomena.cz>"
 npx wrangler secret put HASH_PEPPER    # dlouhý náhodný řetězec, už NIKDY neměnit
 npx wrangler deploy
 ```
