@@ -53,7 +53,7 @@ a úplnost přesmyček.
 | `public/index.html` | struktura aplikace (obrazovky, modaly) |
 | `public/style.css` | světlý design po vzoru originálu (Baloo 2 + Nunito) |
 | `public/game.js` | herní logika, časovač, stav v localStorage, sdílení |
-| `public/words.js` | 7300 podstatných jmen denní výzvy (`WORDS`, v pořadí dnů) + širší pool 15 000 pro trénink (`PRACTICE_WORDS`, řazeno podle frekvence) + mapa uznávaných přesmyček |
+| `public/words.js` | 7300 podstatných jmen denní výzvy (`PACKED`, jeden zamíchaný blob na den, rozbaluje `unpackDay`) + širší pool 15 000 pro trénink (`PRACTICE_WORDS`, řazeno podle frekvence) + mapa uznávaných přesmyček |
 | `tools/` | generátor slovníku (`build_words.py`) + prověřený pool — **neservíruje se** |
 | `GAME_DESIGN.md` | kompletní game design + plán virality |
 | `worker/` | backend (Cloudflare Worker + D1): percentily, Web Push — viz `worker/README.md` |
@@ -111,6 +111,10 @@ Zpracování:
    (seed 20260921) právě jedno slovo z každého pásma**. Dny tak mají
    srovnatelnou obtížnost a — protože pořadí je napevno v `words.js` a den se
    počítá od data — hraje v daný den každý hráč stejných 20 slov.
+   Do `words.js` se dny zapisují **zamíchané** (`PACKED`, rozbaluje je
+   `unpackDay`), aby si zvědavý hráč nepřečetl zítřek rovnou ze zdrojáku.
+   Klíč je ale v balíčku — je to obfuskace, ne utajení. Skutečné utajení by
+   znamenalo servírovat den z workeru, čímž by padla hra offline.
 10. Kontrola tematických shluků uvnitř dne (stejné téma nebo stejný kmen).
    Pásmování samo odstraní skoro všechno — slova jednoho tématu mají podobnou
    frekvenci, takže padnou do stejného pásma a do jednoho dne se nedostanou.

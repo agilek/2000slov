@@ -6,13 +6,13 @@
  * Slož slovo ze všech písmen do 30 s. Jeden pokus denně; zítra přijde další
  * den bez ohledu na dnešní výsledek (nestihnuté slovo jen přetrhne sérii).
  * Trénink čerpá z širšího poolu PRACTICE_WORDS (15 000 slov), denní výzva
- * (WORDS) má 7300 slov / 365 dní. */
+ * má 7300 slov / 365 dní a v words.js je zamíchaná — rozbaluje ji unpackDay. */
 'use strict';
 
 const START_TIME = 30;
 const PRACTICE_GAP = 5;   // s — mezihra po slově v tréninku (slovo + význam)
 const WORDS_PER_DAY = 20;
-const TOTAL_WORDS = WORDS.length;                 // 7300
+const TOTAL_WORDS = PACKED.length * WORDS_PER_DAY; // 7300
 const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 365
 // Den 1 denní výzvy. Číslo dne se počítá od tohoto data, takže každý hráč
 // dostane v daný kalendářní den stejných 20 slov. Po 365 dnech se rok opakuje.
@@ -104,7 +104,9 @@ function playedDays() { return Object.keys(persist.results).length; }
 
 function uncoveredCount() { return Math.min(playedDays() * WORDS_PER_DAY, TOTAL_WORDS); }
 
-function dayWords(idx) { return WORDS.slice(idx * WORDS_PER_DAY, (idx + 1) * WORDS_PER_DAY); }
+// Slova se rozbalují až na vyžádání — celý rok v jednom poli by stačilo
+// vypsat v konzoli a zamíchání v words.js by bylo k ničemu.
+function dayWords(idx) { return unpackDay(idx); }
 
 function siteUrl() {
     if (location.protocol.startsWith('http') && !location.hostname.includes('localhost')) {

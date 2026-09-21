@@ -13,8 +13,8 @@ const CACHE = 'slov2000-v2';
 const SHELL = [
     '/',
     '/style.css?v=3',
-    '/words.js?v=3',
-    '/game.js?v=3',
+    '/words.js?v=4',
+    '/game.js?v=4',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
     '/icons/icon-512.png',

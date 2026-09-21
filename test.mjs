@@ -56,18 +56,34 @@ test('clientId musí mít rozumnou délku', () => {
 
 /* ---------------- slovník ---------------- */
 
-const ctx = { o: null };
+// vm je vlastní realm — web globály (atob, TextDecoder) v něm nejsou, dekodér
+// slov je ale potřebuje. Prototypy polí odtud jsou cizí, proto se níž porovnává
+// jen obsah.
+const ctx = { o: null, atob, TextEncoder, TextDecoder };
 vm.createContext(ctx);
 vm.runInContext(
     readFileSync(new URL('./public/words.js', import.meta.url), 'utf8') +
-    '\n;o = { WORDS, PRACTICE_WORDS, ALTS };', ctx);
-const { WORDS, PRACTICE_WORDS, ALTS } = ctx.o;
+    '\n;o = { PACKED, unpackDay, PRACTICE_WORDS, ALTS };', ctx);
+const { PACKED, unpackDay, PRACTICE_WORDS, ALTS } = ctx.o;
+// Rozbalené denní pořadí. Zároveň nejpřísnější kontrola šifry: kontroly níž
+// (podmnožina poolu, jedno slovo z každého pásma) spadnou při jediném rozjetém
+// bitu mezi pack_day v Pythonu a unpackDay v JS.
+const WORDS = Array.from({ length: PACKED.length }, (_, i) => unpackDay(i)).flat();
 
 const PER_DAY = 20;
 const DAYS = 365;
 
 test('denní výzva má přesně rok slov', () =>
     assert.equal(WORDS.length, DAYS * PER_DAY));
+
+test('denní slova nejsou ve zdrojáku čitelná', () => {
+    const src = readFileSync(new URL('./public/words.js', import.meta.url), 'utf8');
+    const den = unpackDay(0);
+    assert.equal(src.includes('const WORDS'), false);
+    // slovo z dne 1 se v souboru smí objevit leda v tréninkovém poolu,
+    // ne na místě, kde by šlo přečíst, ke kterému dni patří.
+    assert.equal(src.includes(den.join('","')), false);
+});
 
 test('tréninkový pool má 15 000 slov', () =>
     assert.equal(PRACTICE_WORDS.length, 15000));

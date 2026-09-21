@@ -2,6 +2,23 @@
 
 ## 2026-09-21
 
+### Denní slova zamíchaná ve words.js — zítřek už ze zdrojáku nevyčteš
+`words.js` posílal všech 7300 slov v pořadí dnů, takže si kdokoli přečetl
+zítřek. Nově se do souboru zapisuje 365 blobů (`PACKED`), jeden na den,
+a `unpackDay(den)` je rozbalí až na vyžádání. Offline hra zůstala beze změny —
+slova jsou pořád v balíčku, jen nečitelná.
+
+**Root cause / approach:** Tajemství není slovník, ale **mapování den → slova**;
+`PRACTICE_WORDS` (15 000, nadmnožina) je veřejný tak jako tak. Šifra je
+synchronní (mulberry32 + XOR), ne WebCrypto — klíč stejně leží v balíčku, takže
+by se za sílu AES zaplatilo jen tím, že `dayWords()` bude `async` a nakazí
+volající. Vědomý strop: `for (i…) dayWords(i)` pořád vypíše rok; skutečné
+utajení = servírovat den z workeru, čímž padá offline. Šifra běží ve dvou
+jazycích (Python packuje, JS rozbaluje) a parita bitů se hlídá tím, že
+existující testy slovníku běží nad rozbalenými daty — rozjetý bit je shodí hned.
+
+→ *Memory saved: `packed_daily_words.md`*
+
 ### Významy jen pro přihlášené, úprava pro autora, pobídka na sérii
 Psát, hlasovat, nahlašovat i upravovat významy smí nově jen přihlášený hráč.
 Číst je může kdokoli. Autor smí svůj význam upravit — když už má hlasy, úprava

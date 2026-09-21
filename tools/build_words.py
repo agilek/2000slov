@@ -38,7 +38,7 @@ kurace se nepodařilo zrekonstruovat (viz DEVLOG 2026-09-21) — a navíc se dop
 o přesmyčky uvnitř poolu: když jde ze stejných písmen složit jiné slovo, které
 hra sama zná, musí ho uznat taky.
 """
-import argparse, collections, json, os, random, re, sys, time
+import argparse, base64, collections, json, os, random, re, sys, time
 import urllib.parse, urllib.request
 
 API = "https://cs.wiktionary.org/w/api.php"
@@ -48,6 +48,73 @@ UA = {"User-Agent": "2000slov-vocab/1.0 (+https://github.com/agilek/2000slov)"}
 DAYS, PER_DAY = 365, 20
 POOL_SIZE, DAILY_SIZE = 15000, DAYS * PER_DAY
 SEED = 20260921
+
+# Denní slova se do words.js zapisují zamíchaná (viz DECODER dole), aby si
+# zvědavý hráč nepřečetl zítřek rovnou ze zdrojáku. Je to obfuskace, ne
+# šifrování — klíč je v balíčku. Stejná aritmetika musí běžet v Pythonu i v JS,
+# proto se všechno drží v 32bitových bezznaménkových číslech.
+SALT = "2000slov"
+
+
+def _u32(x):
+    return x & 0xFFFFFFFF
+
+
+def _seed_of(idx):
+    """FNV-1a nad SALT+idx — z čísla dne udělá rozházený startovní stav."""
+    h = 0x811C9DC5
+    for b in (SALT + str(idx)).encode("utf-8"):
+        h = _u32((h ^ b) * 0x01000193)
+    return h
+
+
+def _keystream(seed, n):
+    """mulberry32 — proudová šifra po 4 bajtech."""
+    a, out = seed, bytearray()
+    while len(out) < n:
+        a = _u32(a + 0x6D2B79F5)
+        t = _u32((a ^ (a >> 15)) * (a | 1))
+        t = _u32(_u32(t + _u32((t ^ (t >> 7)) * (t | 61))) ^ t)
+        out += _u32(t ^ (t >> 14)).to_bytes(4, "little")
+    return out[:n]
+
+
+def pack_day(words, idx):
+    raw = "\n".join(words).encode("utf-8")
+    key = _keystream(_seed_of(idx), len(raw))
+    return base64.b64encode(bytes(a ^ b for a, b in zip(raw, key))).decode()
+
+
+# Protějšek pack_day v prohlížeči. Mimo f-string, ať se nemusí zdvojovat {}.
+DECODER = r"""// Denní slova jsou zamíchaná schválně: kdo si otevře zdroják, nemá si
+// přečíst zítřek. Klíč je ale tady v souboru — brání to zvědavému pohledu,
+// ne odhodlanému člověku. Skutečné utajení by znamenalo servírovat den
+// z workeru, čímž by padla hra offline.
+const SALT = "2000slov";
+
+function seedOf(idx) {
+    let h = 0x811C9DC5;
+    for (const b of new TextEncoder().encode(SALT + idx)) h = Math.imul(h ^ b, 0x01000193);
+    return h >>> 0;
+}
+
+function unpackDay(idx) {
+    const bytes = Uint8Array.from(atob(PACKED[idx]), c => c.charCodeAt(0));
+    let a = seedOf(idx), key = 0, have = 0;
+    for (let i = 0; i < bytes.length; i++) {
+        if (have === 0) {
+            a = a + 0x6D2B79F5 | 0;
+            let t = Math.imul(a ^ a >>> 15, a | 1);
+            t = t + Math.imul(t ^ t >>> 7, t | 61) ^ t;
+            key = (t ^ t >>> 14) >>> 0;
+            have = 4;
+        }
+        bytes[i] ^= key & 0xff;
+        key >>>= 8;
+        have--;
+    }
+    return new TextDecoder().decode(bytes).split("\n");
+}"""
 
 NOUNS = "Kategorie:Česká substantiva"
 # slovní druhy, jejichž hesla se do kategorie substantiv dostala jako homografy
@@ -281,6 +348,7 @@ def main():
                     linked += 1
     print(f"přesmyček uvnitř poolu doplněno: {linked}")
     alts = json.dumps(alts, ensure_ascii=False, separators=(",", ":"))
+    packed = [pack_day(d, i) for i, d in enumerate(days)]
     j = lambda xs: "[" + ",".join('"%s"' % w for w in xs) + "]"
     open(args.out, "w", encoding="utf-8").write(f'''// Denní výzva: {DAILY_SIZE} nejčastějších českých podstatných jmen (Wikislovník,
 // Kategorie:Česká substantiva) = {DAYS} dní po {PER_DAY} slovech. Pořadí slov v poolu
@@ -292,7 +360,11 @@ def main():
 // Proto mají všechny dny stejně namíchanou obtížnost a datum — ne postup
 // hráče — určuje, která slova se hrají: všichni hrají v daný den to samé.
 // Generuje tools/build_words.py — needituj ručně.
-const WORDS = {j(flat)};
+
+{DECODER}
+
+// Jeden zamíchaný blob na den, {PER_DAY} slov v každém. Rozbalí unpackDay(den).
+const PACKED = {j(packed)};
 
 // Trénink: širší pool {POOL_SIZE} slov (nadmnožina WORDS) pro volnou hru bez
 // omezení na datum — trénink nikdy neomezuje na jen odehraná slova.
@@ -300,7 +372,7 @@ const PRACTICE_WORDS = {j(pool)};
 
 const ALTS = {alts};
 ''')
-    print(f"zapsáno {args.out}: WORDS {len(flat)}, PRACTICE_WORDS {len(pool)}")
+    print(f"zapsáno {args.out}: PACKED {len(packed)} dnů / {len(flat)} slov, PRACTICE_WORDS {len(pool)}")
 
 
 if __name__ == "__main__":
