@@ -71,6 +71,54 @@ Dvě věci, které se z kódu nevyčtou:
   po cache. Purge je per-kolo, takže jiný region může mít až 300 s starou
   odpověď; u hobby hry přijatelné.
 
+## Účty (magic link) — zapnutí
+
+Kód je hotový a nasazený, ale **spí**, dokud nejsou secrety. Do té doby vrací
+`/api/me` `auth:false`, `/api/auth/start` končí na 503 a aplikace sekci účtu
+vůbec neukáže — hra jede anonymně dál. Zapnutí je tohle, nic v kódu se nemění:
+
+```bash
+# 1) doména v Cloudflare + Custom Domain na workeru slov2000
+# 2) v Resendu ověřit doménu (SPF + DKIM záznamy, které Resend vypíše)
+npx wrangler secret put RESEND_KEY     # API klíč z Resendu
+npx wrangler secret put MAIL_FROM      # např. "2000 slov <hra@tvojedomena.cz>"
+npx wrangler secret put HASH_PEPPER    # dlouhý náhodný řetězec, už NIKDY neměnit
+npx wrangler deploy
+```
+
+`HASH_PEPPER` je sůl pro hash e-mailu. **Když se změní, nikdo se nepřihlásí
+ke svému starému účtu** — hash adresy přestane sedět. Vygeneruj jednou
+(`openssl rand -hex 32`) a ulož mimo repo.
+
+Proč se odkaz jen *schvaluje* a session si vyzvedne poll: odkaz z mailu otevře
+Safari/Chrome, ne nainstalovanou PWA, a ta má na iOS 17.4+ vlastní úložiště
+cookies. Cookie nastavená klikem v mailu se do aplikace nedostane nikdy.
+Schválení je navíc `POST` za tlačítkem, protože poštovní skenery odkazy
+předběžně stahují a `GET` by tiše přihlásil cizího člověka.
+
+E-mail se **neukládá** — v DB je jen `sha256(adresa + HASH_PEPPER)`. Adresa žije
+v paměti po dobu jednoho odeslání. Důsledek: hráčům nejde nic poslat mimo
+přihlašovací e-mail (žádná oznámení, žádná hromadná zpráva).
+
+### Lokální vyzkoušení bez skutečného odesílání
+
+`RESEND_URL` přesměruje odchozí poštu na vlastní mock (jen pro vývoj, v produkci
+se nenastavuje). Do `.dev.vars` v kořeni repa:
+
+```
+RESEND_KEY=test
+MAIL_FROM=hra@example.com
+RESEND_URL=http://localhost:9099/emails
+HASH_PEPPER=local-dev-pepper
+```
+
+Mock, který odchycený e-mail uloží do souboru, stačí na pár řádků v Node.
+Odkaz i kód se pak vyčtou z jeho těla.
+
+> **Pozor:** `.dev.vars` patří vedle `wrangler.toml`, tedy do **kořene repa**,
+> ne do `worker/`. Po přesunu konfigurace do kořene se soubor ve `worker/`
+> přestal načítat (a tiše zmizel i VAPID klíč pro lokální vývoj).
+
 ## Lokální testování bez nasazení
 
 ```bash

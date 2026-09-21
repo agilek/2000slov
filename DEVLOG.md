@@ -2,6 +2,46 @@
 
 ## 2026-09-21
 
+### Účty připravené „na klíč" — spí, dokud nepřijdou secrety
+Celé přihlášení magic linkem je hotové a nasazené, ale **neaktivní**: bez
+`RESEND_KEY`/`MAIL_FROM` vrací `/api/me` `auth:false`, `/api/auth/start` končí
+na 503 a aplikace sekci účtu vůbec nevykreslí. Zapnutí = doména + ověření
+v Resendu + tři secrety, v kódu se nemění nic.
+
+**Root cause / approach:** Odkaz session **nevytváří**, jen ji schválí — vyzvedne
+si ji poll té instance, která o přihlášení požádala. Důvod: odkaz z Mailu otevře
+Safari/Chrome, ne nainstalovanou PWA, a ta má na iOS 17.4+ vlastní úložiště
+cookies oddělené od Safari, takže cookie z mailu se do aplikace nedostane nikdy.
+Schválení je navíc `POST` za tlačítkem: poštovní skenery odkazy předběžně
+stahují a `GET` by tiše přihlásil cizího člověka (ověřeno — pouhý GET na odkaz
+nechá žádost ve stavu `pending`). Jako druhá cesta je v mailu šestimístný kód
+pro případ, že se hráč vrátí do aplikace dřív, než doklikal.
+E-mail se neukládá, v DB je jen `sha256(adresa + HASH_PEPPER)`.
+
+Tři věci, které se ukázaly až při zkoušení:
+- **`.dev.vars` se od přesunu konfigurace do kořene repa vůbec nenačítal.**
+  Wrangler ho hledá vedle `wrangler.toml`, ne u zdrojáků, takže lokálnímu vývoji
+  tiše zmizel i VAPID klíč. Soubor je teď v kořeni — a **nejdřív** přibyl do
+  `.gitignore`, protože tam pro něj dosud žádné pravidlo nebylo.
+- **Export konstant ze vstupního modulu workeru shodí runtime.** Cloudflare
+  kontroluje každý pojmenovaný export jako handler (`not of type 'function or
+  ExportedHandler'`), takže validace bydlí v `validate.js` a přihlášení v
+  `auth.js`.
+- **Vypnuté přihlášení musí být vypnuté doopravdy.** Zbylá `sid` cookie dál
+  identifikovala hráče, i když byl zbytek účtu skrytý — zůstal „přihlášený" bez
+  jakéhokoli ovládání. `currentUser()` teď při vypnutém auth vrací `null`.
+
+Ověřeno proti běžícímu workeru s mockem pošty: start → odkaz i kód v mailu →
+GET nic neschválí → POST schválí → poll vydá session v `HttpOnly` cookie →
+druhý poll už je `expired` → přezdívka → význam se podepíše účtem (podvržený
+`author` z těla requestu se ignoruje) → anonymní významy ze zařízení se při
+přihlášení navážou na účet → odhlášení → smazání účtu významy zachová a jen
+z nich sundá jméno.
+
+→ No new memory entries.
+
+## 2026-09-21
+
 ### Přesmyčky jen pro trénink + doplacení vlastních dluhů
 Přesmyčky se nově uznávají **jen v tréninku** — denní výzva je soutěž, všichni
 v ní mají stejných 20 slov, takže musí padnout přesně to hledané

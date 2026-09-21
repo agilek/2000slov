@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS definitions (
   word       TEXT NOT NULL,
   text       TEXT NOT NULL,          -- 10–200 znaků
   client_id  TEXT NOT NULL,
+  user_id    TEXT,                   -- vyplní se po přihlášení; dokud není, platí client_id
   author     TEXT,                   -- přezdívka, kterou si hráč zvolil
   votes      INTEGER NOT NULL DEFAULT 0,
   reports    INTEGER NOT NULL DEFAULT 0,
@@ -52,3 +53,45 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at    INTEGER NOT NULL,
   PRIMARY KEY (definition_id, client_id)
 );
+
+-- Účty. E-mail se NEUKLÁDÁ v otevřené podobě — jen hash s pepřem; adresa žije
+-- v paměti po dobu jednoho odeslání a nikam se nezapíše.
+CREATE TABLE IF NOT EXISTS users (
+  id         TEXT PRIMARY KEY,
+  email_hash TEXT NOT NULL UNIQUE,
+  handle     TEXT,                   -- zobrazovaná podoba, NULL než si ji hráč zvolí
+  handle_lc  TEXT UNIQUE,            -- SQLite bere víc NULL v UNIQUE jako různé
+  client_id  TEXT,                   -- anonymní ID, ze kterého se účet vytvořil
+  created_at INTEGER NOT NULL,
+  banned     INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,       -- sha256(cookie); únik DB != únik session
+  user_id    TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+-- Jedna žádost o přihlášení. id je zároveň tajemství pro poll, nikam jinam se
+-- neposílá. Odkaz session nevytváří, jen ji schválí — vyzvedne si ji ta
+-- instance aplikace, která o přihlášení požádala (instalovaná PWA má na iOS
+-- vlastní úložiště cookies oddělené od Safari).
+CREATE TABLE IF NOT EXISTS login_requests (
+  id           TEXT PRIMARY KEY,
+  email_hash   TEXT NOT NULL,
+  approve_hash TEXT NOT NULL,
+  code_hash    TEXT NOT NULL,
+  ip_hash      TEXT NOT NULL,
+  client_id    TEXT,
+  created_at   INTEGER NOT NULL,
+  expires_at   INTEGER NOT NULL,
+  approved_at  INTEGER,
+  consumed_at  INTEGER,
+  attempts     INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_login_email   ON login_requests(email_hash, created_at);
+CREATE INDEX IF NOT EXISTS idx_login_ip      ON login_requests(ip_hash, created_at);
+CREATE INDEX IF NOT EXISTS idx_login_approve ON login_requests(approve_hash);
+

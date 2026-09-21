@@ -6,6 +6,10 @@
 
 import { buildPushHTTPRequest } from '@pushforge/builder';
 import { clean, defTextError, validClient, VULGAR, AUTHOR_MAX } from './validate.js';
+import {
+    authEnabled, authStart, authPoll, authVerify, authApprove, authLandingPage,
+    authLogout, meGet, meSetHandle, meDelete, currentUser, purgeAuth,
+} from './auth.js';
 
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
@@ -26,6 +30,17 @@ const ROUTES = {
     'POST /api/defs': handleDefCreate,
     'POST /api/defs/vote': handleDefVote,
     'POST /api/defs/report': handleDefReport,
+    // Účty. Bez RESEND_KEY/MAIL_FROM zůstane /api/auth/start na 503 a klient
+    // přihlášení vůbec nenabídne — viz `auth` v odpovědi /api/me.
+    'POST /api/auth/start': (rq, env, url, ctx) => authStart(rq, env, url, ctx, json),
+    'GET /api/auth/poll': (rq, env, url, ctx) => authPoll(rq, env, url, ctx, json),
+    'POST /api/auth/verify': (rq, env, url, ctx) => authVerify(rq, env, url, ctx, json),
+    'POST /api/auth/approve': (rq, env, url, ctx) => authApprove(rq, env, url, ctx, json),
+    'POST /api/auth/logout': (rq, env, url, ctx) => authLogout(rq, env, url, ctx, json),
+    'GET /prihlaseni': (rq, env, url) => authLandingPage(rq, env, url),
+    'GET /api/me': (rq, env, url, ctx) => meGet(rq, env, url, ctx, json),
+    'POST /api/me/handle': (rq, env, url, ctx) => meSetHandle(rq, env, url, ctx, json),
+    'POST /api/me/delete': (rq, env, url, ctx) => meDelete(rq, env, url, ctx, json),
 };
 
 // Limity na významy. Drží se v D1 dotazech, žádné nové úložiště.
@@ -53,6 +68,7 @@ export default {
     // Cron trigger (viz wrangler.toml) — jednou denně pošle připomínku všem odběratelům.
     async scheduled(event, env, ctx) {
         ctx.waitUntil(sendDailyReminders(env));
+        ctx.waitUntil(purgeAuth(env));   // prošlé žádosti a session, ať IP hashe neleží
     },
 };
 
@@ -62,10 +78,10 @@ function sameOrigin(request, url) {
     return !origin || origin === url.origin;
 }
 
-function json(obj, status) {
+function json(obj, status, extra) {
     return new Response(JSON.stringify(obj), {
         status,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        headers: Object.assign({ 'Content-Type': 'application/json; charset=utf-8' }, extra || {}),
     });
 }
 
@@ -259,7 +275,8 @@ async function handleDefCreate(request, env, url, ctx) {
     }
     const err = defTextError(text);
     if (err) return json({ error: err }, 400);
-    const name = clean(author || '').slice(0, AUTHOR_MAX);
+    const user = await currentUser(request, env);
+    const name = user && user.handle ? user.handle : clean(author || '').slice(0, AUTHOR_MAX);
     if (name && VULGAR.test(name)) return json({ error: 'Přezdívka nesmí být sprostá.' }, 400);
 
     const dayAgo = now() - 86400000;
@@ -273,8 +290,10 @@ async function handleDefCreate(request, env, url, ctx) {
     const id = crypto.randomUUID();
     try {
         await env.DB.prepare(
-            'INSERT INTO definitions (id, word, text, client_id, author, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)'
-        ).bind(id, word.trim().toLowerCase(), clean(text), clientId, name || null, now()).run();
+            `INSERT INTO definitions (id, word, text, client_id, user_id, author, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+        ).bind(id, word.trim().toLowerCase(), clean(text), clientId,
+               user ? user.id : null, name || null, now()).run();
     } catch (e) {
         // jediný unikátní index je (client_id, word)
         return json({ error: 'K tomuhle slovu už svůj význam máš.' }, 409);

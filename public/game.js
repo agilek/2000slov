@@ -55,6 +55,7 @@ function defaultPersist() {
         kbHintShown: false,
         practiceWords: 0,   // uhodnutá slova v tréninku, opakovaná se počítají znovu
         nick: '',           // přezdívka u přidaných významů
+        pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
         day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct }
         clientId: genClientId(), // anonymní ID pro leaderboard backend (jen počítadlo, žádná osobní data)
         a2hsPromptDismissed: false, // "přidej na plochu" nabídka na iOS se ukáže jen do prvního zavření
@@ -543,6 +544,191 @@ async function submitDef(e) {
     showToast('Díky! Význam je uložený.');
 }
 
+/* ---------------- účet (magic link) ---------------- */
+
+// Dokud nejsou nastavené secrety pro odesílání pošty, vrací /api/me auth:false
+// a sekce účtu se vůbec neukáže — hra jede dál anonymně.
+const auth = { enabled: false, user: null, polling: null };
+
+async function refreshAuth() {
+    const d = await apiGet('/api/me');
+    auth.enabled = !!(d && d.auth);
+    auth.user = d ? d.user : null;
+}
+
+function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+}
+
+function renderAccount() {
+    const section = $('accountSection');
+    const box = $('accountBox');
+    box.innerHTML = '';
+    if (!auth.enabled) { section.style.display = 'none'; return; }
+    section.style.display = 'flex';
+
+    if (auth.user && auth.user.needsHandle) return renderHandlePicker(box);
+    if (auth.user) return renderSignedIn(box);
+    if (persist.pendingLogin) return renderAwaitingCode(box);
+    renderSignedOut(box);
+}
+
+function renderSignedOut(box) {
+    const form = el('form', 'feedback-form');
+    const input = el('input');
+    input.type = 'email';
+    input.placeholder = 'tvuj@email.cz';
+    input.autocomplete = 'email';
+    input.required = true;
+    const btn = el('button', 'btn btn-primary', 'Poslat přihlašovací odkaz');
+    btn.type = 'submit';
+    const err = el('p', 'feedback-error');
+    err.style.display = 'none';
+    form.append(input, err, btn);
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        const r = await apiPost('/api/auth/start', { email: input.value });
+        btn.disabled = false;
+        if (!r.ok) {
+            err.textContent = (r.data && r.data.error) || 'Nepodařilo se odeslat.';
+            err.style.display = 'block';
+            return;
+        }
+        persist.pendingLogin = { id: r.data.loginId, expiresAt: r.data.expiresAt };
+        savePersist();
+        renderAccount();
+        startLoginPolling();
+    };
+    box.append(form, el('p', 'profile-note',
+        'Pošleme ti odkaz a kód. Účet propojí tvoje významy napříč zařízeními.'));
+}
+
+function renderAwaitingCode(box) {
+    box.append(el('p', 'profile-note',
+        'Poslali jsme ti e-mail. Klepni na odkaz a vrať se sem — nebo rovnou opiš kód.'));
+    const form = el('form', 'feedback-form');
+    const input = el('input');
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.autocomplete = 'one-time-code';
+    input.maxLength = 6;
+    input.placeholder = '6místný kód';
+    const btn = el('button', 'btn btn-primary', 'Potvrdit kód');
+    btn.type = 'submit';
+    const err = el('p', 'feedback-error');
+    err.style.display = 'none';
+    form.append(input, err, btn);
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        const r = await apiPost('/api/auth/verify',
+            { loginId: persist.pendingLogin.id, code: input.value.trim() });
+        btn.disabled = false;
+        const st = r.data && r.data.status;
+        if (st === 'ok') return onLoggedIn(r.data.user);
+        err.textContent = st === 'badcode'
+            ? `Kód nesedí. Zbývá ${r.data.left} pokusů.`
+            : 'Platnost vypršela, nech si poslat nový odkaz.';
+        err.style.display = 'block';
+        if (st !== 'badcode') { persist.pendingLogin = null; savePersist(); renderAccount(); }
+    };
+    const cancel = el('button', 'btn-tertiary', 'Začít znovu');
+    cancel.onclick = () => { stopLoginPolling(); persist.pendingLogin = null; savePersist(); renderAccount(); };
+    box.append(form, cancel);
+}
+
+function renderHandlePicker(box) {
+    box.append(el('p', 'profile-note', 'Vyber si přezdívku — uvidí ji ostatní u tvých významů.'));
+    const form = el('form', 'feedback-form');
+    const input = el('input');
+    input.type = 'text';
+    input.maxLength = 20;
+    input.placeholder = 'Přezdívka';
+    input.value = persist.nick || '';
+    const btn = el('button', 'btn btn-primary', 'Uložit přezdívku');
+    btn.type = 'submit';
+    const err = el('p', 'feedback-error');
+    err.style.display = 'none';
+    form.append(input, err, btn);
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        const r = await apiPost('/api/me/handle', { handle: input.value.trim() });
+        btn.disabled = false;
+        if (!r.ok) {
+            err.textContent = (r.data && r.data.error) || 'Nepodařilo se uložit.';
+            err.style.display = 'block';
+            return;
+        }
+        auth.user = r.data.user;
+        persist.nick = r.data.user.handle;
+        savePersist();
+        renderProfile();
+    };
+    box.append(form);
+}
+
+function renderSignedIn(box) {
+    box.append(el('p', 'profile-note', `Přihlášen jako ${auth.user.handle}. Významy se ukládají k účtu.`));
+    const out = el('button', 'btn btn-secondary', 'Odhlásit se');
+    out.onclick = async () => {
+        await apiPost('/api/auth/logout', {});
+        auth.user = null;
+        renderProfile();
+        showToast('Odhlášeno.');
+    };
+    const del = el('button', 'btn-tertiary', 'Smazat účet');
+    del.onclick = async () => {
+        if (!confirm('Opravdu smazat účet? Tvoje významy zůstanou ostatním, jen se z nich sundá tvoje jméno.')) return;
+        await apiPost('/api/me/delete', {});
+        auth.user = null;
+        persist.nick = '';
+        savePersist();
+        renderProfile();
+        showToast('Účet smazán.');
+    };
+    box.append(out, del);
+}
+
+function onLoggedIn(user) {
+    stopLoginPolling();
+    auth.user = user;
+    persist.pendingLogin = null;
+    savePersist();
+    renderProfile();
+    showToast('Přihlášeno!');
+}
+
+// Odkaz z mailu se otevře v jiném prohlížeči (a na iOS má instalovaná PWA
+// vlastní cookies), takže session si vyzvedne až tenhle poll.
+function startLoginPolling() {
+    stopLoginPolling();
+    if (!persist.pendingLogin) return;
+    const id = persist.pendingLogin.id;
+    let left = 150;                                   // ~5 minut po 2 s
+    auth.polling = setInterval(async () => {
+        if (--left < 0 || !persist.pendingLogin) return stopLoginPolling();
+        const d = await apiGet(`/api/auth/poll?id=${encodeURIComponent(id)}`);
+        if (!d) return;
+        if (d.status === 'ok') return onLoggedIn(d.user);
+        if (d.status === 'expired') {
+            stopLoginPolling();
+            persist.pendingLogin = null;
+            savePersist();
+            renderAccount();
+        }
+    }, 2000);
+}
+
+function stopLoginPolling() {
+    clearInterval(auth.polling);
+    auth.polling = null;
+}
+
 /* ---------------- profil ---------------- */
 
 function showProfile() {
@@ -550,6 +736,10 @@ function showProfile() {
     $('profileNickBtn').style.display = '';
     renderProfile();
     showScreen('profile');
+    refreshAuth().then(() => {
+        renderProfile();
+        if (persist.pendingLogin && !auth.user) startLoginPolling();
+    });
 }
 
 function renderProfile() {
@@ -559,7 +749,7 @@ function renderProfile() {
 
     // Účty zatím neběží, takže je profil lokální — statistiky jsou skutečné,
     // jen se počítají z localStorage tohohle zařízení.
-    const nick = (persist.nick || '').trim();
+    const nick = ((auth.user && auth.user.handle) || persist.nick || '').trim();
     $('profileAvatar').textContent = (nick || 'Host').charAt(0).toUpperCase();
     $('profileName').textContent = nick || 'Host';
     $('profileSub').textContent = persist.bestStreak > 0
@@ -592,6 +782,9 @@ function renderProfile() {
         grid.appendChild(tile);
     }
 
+    renderAccount();
+    // Přihlášený má jméno z účtu; anonymní si ho volí sám.
+    $('profileNickBtn').style.display = auth.user ? 'none' : '';
     loadMyDefs();
 }
 
