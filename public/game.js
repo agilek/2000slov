@@ -1956,6 +1956,36 @@ document.addEventListener('pointerdown', e => {
     if (modal && e.target === modal) closeModal();
 });
 
+// Stažení sheetu dolů ho zavře, jak je zvykem na iOS. Tahá se jen za hlavičku
+// (úchyt) nebo za obsah, který už je nascrollovaný nahoře — jinak by tah
+// kradl scrollování seznamu.
+(function sheetDrag() {
+    let box = null, y0 = 0, dy = 0;
+    document.addEventListener('pointerdown', e => {
+        const content = e.target.closest('.modal.active .modal-content');
+        if (!content || e.target.closest('input, textarea, button, a')) return;
+        const fromHeader = !!e.target.closest('.modal-header');
+        if (!fromHeader && content.scrollTop > 0) return;
+        box = content; y0 = e.clientY; dy = 0;
+        box.style.transition = 'none';
+    });
+    document.addEventListener('pointermove', e => {
+        if (!box) return;
+        dy = Math.max(0, e.clientY - y0);
+        box.style.transform = dy ? `translateY(${dy}px)` : '';
+    });
+    const end = () => {
+        if (!box) return;
+        const el = box; box = null;
+        el.style.transition = 'transform .25s cubic-bezier(.32,.72,0,1)';
+        el.style.transform = '';
+        // Zavírá se buď po dostatečném tahu, nebo po rychlém švihnutí.
+        if (dy > Math.min(120, el.offsetHeight * 0.25)) closeModal();
+    };
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
+})();
+
 // Mezihra: klepnutí kamkoli mimo tlačítka pozastaví a zase rozjede odpočet.
 $('wordDoneOverlay').addEventListener('pointerdown', e => {
     if (e.target.closest('button, a')) return;

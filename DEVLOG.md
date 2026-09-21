@@ -2,6 +2,24 @@
 
 ## 2026-09-21
 
+### Revize očima iOS designéra: bezpečné zóny, sheety, palcová zóna
+Prošel jsem aplikaci jako nativní iOS appku a opravil, co ji prozrazovalo jako
+web. Modály jsou teď sheety zdola s úchytem, přilepenou hlavičkou a zavíráním
+stažením dolů; písmena ve hře sedí v palcové zóně, HUD (mřížka + čas) zůstal
+nahoře; `:hover` platí jen tam, kde je myš.
+
+**Root cause / approach:** `viewport-fit=cover` chybělo v meta viewportu, takže
+**všech ~10 `env(safe-area-inset-*)` v CSS vracelo 0** — celá práce s bezpečnými
+zónami byla mrtvá a nebylo to nijak vidět, protože 0 je validní hodnota.
+Druhá tichá chyba: `.screen p:not(.welcome-instruction)` (0,2,1) přebíjelo
+`.profile-note` (0,1,0), takže poznámky v profilu jely 20 px na střed místo
+13 px vlevo. A komentář v `sw.js` tvrdil, že fonty jsou `opaque` — Google Fonts
+chodí s CORS hlavičkami (`type === 'cors'`), takže cachovat jdou; bez toho
+appka offline naskočila v systémovém fontu.
+
+→ *Memory saved: `ios_native_feel_gotchas.md`*
+
+
 ### Denní slova zamíchaná ve words.js — zítřek už ze zdrojáku nevyčteš
 `words.js` posílal všech 7300 slov v pořadí dnů, takže si kdokoli přečetl
 zítřek. Nově se do souboru zapisuje 365 blobů (`PACKED`), jeden na den,

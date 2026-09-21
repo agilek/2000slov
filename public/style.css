@@ -110,6 +110,8 @@
 html, body {
     height: 100dvh;
     overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
     background: var(--bg);
     color: var(--ink);
     touch-action: manipulation;
@@ -158,21 +160,21 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 .btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .btn:active { transform: scale(.98); }
 .btn-primary { background: var(--blue); box-shadow: 0 8px 20px color-mix(in srgb, var(--blue) 28%, transparent); }
-.btn-primary:hover { background: var(--blue-dark); }
+@media (hover: hover) { .btn-primary:hover { background: var(--blue-dark); } }
 .btn-share { background: var(--green); box-shadow: 0 8px 20px color-mix(in srgb, var(--green) 28%, transparent); }
-.btn-share:hover { background: var(--green-dark); }
+@media (hover: hover) { .btn-share:hover { background: var(--green-dark); } }
 .btn-play {
     background: var(--green);
     box-shadow: 0 10px 28px color-mix(in srgb, var(--green) 32%, transparent);
     font-size: 22px;
     padding: 18px 52px;
 }
-.btn-play:hover { background: var(--green-dark); }
+@media (hover: hover) { .btn-play:hover { background: var(--green-dark); } }
 .btn-secondary {
     background: var(--card); color: var(--muted-text);
     border: 2px solid var(--muted);
 }
-.btn-secondary:hover { color: var(--blue); border-color: var(--blue); background: var(--card); }
+@media (hover: hover) { .btn-secondary:hover { color: var(--blue); border-color: var(--blue); background: var(--card); } }
 
 .screen .welcome-instruction {
     font-family: 'Baloo 2', sans-serif;
@@ -208,7 +210,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     white-space: nowrap;
     transition: color .12s, transform .06s;
 }
-.welcome-date:hover { color: var(--blue); }
+@media (hover: hover) { .welcome-date:hover { color: var(--blue); } }
 .welcome-date:active { transform: scale(.98); }
 .welcome-date:focus { outline: none; }
 .welcome-date:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
@@ -335,7 +337,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     touch-action: manipulation;
     cursor: pointer;
 }
-.btn-tertiary:hover { opacity: 1; color: var(--blue); border-color: var(--blue); }
+@media (hover: hover) { .btn-tertiary:hover { opacity: 1; color: var(--blue); border-color: var(--blue); } }
 .a2hs-banner {
     position: relative;
     width: 100%;
@@ -361,7 +363,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     cursor: pointer;
     touch-action: manipulation;
 }
-.a2hs-close:hover { color: var(--blue); }
+@media (hover: hover) { .a2hs-close:hover { color: var(--blue); } }
 .feedback-line {
     margin-top: 40px;
     margin-bottom: 0 !important;
@@ -377,7 +379,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     cursor: pointer;
     font-weight: 800;
 }
-.feedback-link:hover { color: var(--blue); }
+@media (hover: hover) { .feedback-link:hover { color: var(--blue); } }
 .feedback-link:focus { outline: none; }
 .feedback-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
 .share-actions {
@@ -399,7 +401,16 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 }
 
 /* Game */
-.game-screen { gap: 24px; padding: 16px; position: relative; }
+.game-screen {
+    gap: 24px;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+    position: relative;
+    justify-content: flex-start;
+}
+/* Písmena patří do palcové zóny. Dvě auto marginy rozdělí volné místo
+   napůl: horní blok zůstane opticky v horní třetině, klávesnice dole. */
+.game-screen .game-grid { margin-top: auto; }
+.word-display { margin-top: auto; }
 .close-game-btn {
     display: none;
     position: absolute;
@@ -416,7 +427,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     transition: background .12s, color .12s, border-color .12s;
     z-index: 5;
 }
-.close-game-btn:hover { color: var(--ink); border-color: var(--ink); background: var(--hover-tint); }
+@media (hover: hover) { .close-game-btn:hover { color: var(--ink); border-color: var(--ink); background: var(--hover-tint); } }
 /* ---- Horní lišta úvodní obrazovky + profil ----
    Mobilní vzorce: cíle v rozích palcem dosažitelné, min. 48 px, kulaté,
    ikona + krátký popisek. Profil je plnohodnotná obrazovka se šipkou zpět,
@@ -522,7 +533,7 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 #accountBox .feedback-form { gap: 10px; }
 .streak-nudge { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 18px auto 0; max-width: 400px; }
 .streak-nudge p { margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: var(--ink); }
-.profile-note { font-size: 13px; line-height: 1.5; color: var(--muted-text); margin: -6px 0 0; }
+#profile .profile-note { text-align: left; font-size: 13px; line-height: 1.5; color: var(--muted-text); margin: -6px 0 0; }
 .profile-nick { gap: 10px; }
 .profile-section { display: flex; flex-direction: column; gap: 10px; text-align: left; }
 .profile-section-title {
@@ -685,37 +696,62 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     z-index: 1000;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    padding: 20px;
+    padding: 0;
 }
 .modal.active { display: flex; }
+/* Sheet zdola, jak to dělá iOS: úchyt nahoře, přilepená hlavička, obsah
+   scrolluje pod ní. Na širokém displeji se vrací klasický dialog na střed. */
 .modal-content {
     background: var(--card);
-    border-radius: 24px;
-    padding: 22px 22px 26px;
-    max-width: 420px;
+    border-radius: 22px 22px 0 0;
+    padding: 0 22px calc(26px + env(safe-area-inset-bottom));
+    max-width: 460px;
     width: 100%;
-    max-height: 78vh;
+    max-height: 88dvh;
     overflow-y: auto;
-    overscroll-behavior: none;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    box-shadow: 0 18px 50px var(--shadow-card);
-    animation: rise .22s ease;
+    scrollbar-width: none;
+    box-shadow: 0 -8px 50px var(--shadow-card);
+    animation: sheetUp .38s cubic-bezier(.32,.72,0,1);
 }
-@keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
 .modal-header {
     display: flex;
     justify-content: center;
     align-items: center;
-    position: relative;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--card);
     margin-bottom: 18px;
-    padding-bottom: 8px;
+    padding: 22px 0 10px;
+    border-bottom: 1px solid var(--line);
 }
+.modal-header::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    width: 38px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--muted);
+    opacity: .5;
+}
+@media (min-width: 600px) and (hover: hover) {
+    .modal { align-items: center; padding: 20px; }
+    .modal-content { border-radius: 24px; max-height: 78vh; padding-bottom: 26px; animation: rise .22s ease; }
+    .modal-header::before { display: none; }
+    .modal-header { padding-top: 14px; }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+.modal-content::-webkit-scrollbar { display: none; }
 .modal-header h2 { font-family: 'Baloo 2', sans-serif; font-size: 24px; font-weight: 800; margin: 0; }
 .collection-count { font-family: 'Baloo 2', sans-serif; font-size: 15px; font-weight: 700; color: var(--muted); }
 .close-modal {
-    position: absolute; right: 0; top: -2px;
+    position: absolute; right: 0; top: 18px;
     background: none;
     border: none;
     font-size: 26px;
@@ -726,7 +762,7 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     outline: none;
     transition: background .12s, color .12s;
 }
-.close-modal:hover { color: var(--ink); background: var(--hover-tint); }
+@media (hover: hover) { .close-modal:hover { color: var(--ink); background: var(--hover-tint); } }
 .archive-list { list-style: none; }
 .archive-item {
     display: flex;
@@ -740,9 +776,9 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     cursor: pointer;
     transition: border-color .12s, background .12s;
 }
-.archive-item:hover { border-color: var(--blue); }
+@media (hover: hover) { .archive-item:hover { border-color: var(--blue); } }
 .archive-item.locked { cursor: not-allowed; opacity: .55; }
-.archive-item.locked:hover { border-color: var(--line); }
+@media (hover: hover) { .archive-item.locked:hover { border-color: var(--line); } }
 .archive-date { font-family: 'Baloo 2', sans-serif; font-size: 17px; font-weight: 400; color: var(--ink); }
 .archive-score {
     font-family: 'Baloo 2', sans-serif; font-size: 13px; font-weight: 800;

@@ -9,12 +9,12 @@
 //    ručního zvýšení ?v=N se k vracejícímu se hráči nikdy nedostala.
 //  - /api/*, /u/* a /prihlaseni se necachují vůbec.
 
-const CACHE = 'slov2000-v2';
+const CACHE = 'slov2000-v3';
 const SHELL = [
     '/',
-    '/style.css?v=3',
+    '/style.css?v=4',
     '/words.js?v=4',
-    '/game.js?v=4',
+    '/game.js?v=5',
     '/manifest.webmanifest',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
@@ -64,9 +64,11 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
         caches.match(req).then(hit => {
-            // Uloží se jen povedené odpovědi; opaque (fonty) spolehlivě nejdou.
+            // Uloží se jen povedené odpovědi. Google Fonts chodí s CORS
+            // hlavičkami (type 'cors'), takže se uložit dají — bez toho by
+            // hra offline naskočila v systémovém fontu místo vlastního.
             const cerstve = fetch(req).then(res => {
-                if (res.ok && res.type === 'basic') {
+                if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
                     const copy = res.clone();
                     caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
                 }
