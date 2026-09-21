@@ -518,6 +518,7 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 }
 .profile-name { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 22px; color: var(--ink); }
 .profile-sub { font-size: 14px; color: var(--muted-text); }
+#accountBox a.btn { text-decoration: none; }
 #accountBox { display: flex; flex-direction: column; gap: 12px; }
 #accountBox .feedback-form { gap: 10px; }
 .profile-note { font-size: 13px; line-height: 1.5; color: var(--muted-text); margin: -6px 0 0; }

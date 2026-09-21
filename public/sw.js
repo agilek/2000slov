@@ -1,3 +1,78 @@
+// Service worker: push notifikace + offline.
+//
+// Strategie záměrně dvojí:
+//  - navigace (HTML) jde nejdřív na síť, ať se nová verze projeví hned;
+//    offline spadne na uloženou stránku,
+//  - ostatní statika je cache-first, protože odkazy na ni nesou ?v=N.
+//    Stará uložená stránka tak sahá po staré (taky uložené) verzi skriptu
+//    a nikdy nevznikne rozjetá dvojice HTML + JS.
+//  - /api/*, /u/* a /prihlaseni se necachují vůbec.
+
+const CACHE = 'slov2000-v1';
+const SHELL = [
+    '/',
+    '/style.css?v=3',
+    '/words.js?v=3',
+    '/game.js?v=3',
+    '/manifest.webmanifest',
+    '/icons/icon-192.png',
+    '/icons/icon-512.png',
+    '/icons/apple-touch-icon.png',
+    '/icons/favicon-32.png',
+];
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE)
+            // addAll je vše-nebo-nic; jeden chybějící soubor by shodil celou
+            // instalaci, proto se ukládá po jednom a výpadky se ignorují.
+            .then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {}))))
+            .then(() => self.skipWaiting())
+    );
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys()
+            .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+            .then(() => self.clients.claim())
+    );
+});
+
+const nikdyNecachovat = (url) =>
+    url.pathname.startsWith('/api/') || url.pathname.startsWith('/u/') || url.pathname === '/prihlaseni';
+
+self.addEventListener('fetch', (event) => {
+    const req = event.request;
+    if (req.method !== 'GET') return;
+    const url = new URL(req.url);
+    if (url.origin === location.origin && nikdyNecachovat(url)) return;
+
+    if (req.mode === 'navigate') {
+        event.respondWith(
+            fetch(req)
+                .then(res => {
+                    const copy = res.clone();
+                    caches.open(CACHE).then(c => c.put('/', copy)).catch(() => {});
+                    return res;
+                })
+                .catch(() => caches.match('/').then(r => r || Response.error()))
+        );
+        return;
+    }
+
+    event.respondWith(
+        caches.match(req).then(hit => hit || fetch(req).then(res => {
+            // Uloží se jen povedené odpovědi; opaque (fonty) se ukládat nedá spolehlivě.
+            if (res.ok && res.type === 'basic') {
+                const copy = res.clone();
+                caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+            }
+            return res;
+        }))
+    );
+});
+
 self.addEventListener('push', (event) => {
     let data = {};
     try { data = event.data ? event.data.json() : {}; } catch (e) {}

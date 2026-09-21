@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS users (
   handle_lc  TEXT UNIQUE,            -- SQLite bere víc NULL v UNIQUE jako různé
   client_id  TEXT,                   -- anonymní ID, ze kterého se účet vytvořil
   created_at INTEGER NOT NULL,
-  banned     INTEGER NOT NULL DEFAULT 0
+  banned     INTEGER NOT NULL DEFAULT 0,
+  hide_profile INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -95,3 +96,14 @@ CREATE INDEX IF NOT EXISTS idx_login_email   ON login_requests(email_hash, creat
 CREATE INDEX IF NOT EXISTS idx_login_ip      ON login_requests(ip_hash, created_at);
 CREATE INDEX IF NOT EXISTS idx_login_approve ON login_requests(approve_hash);
 
+-- Veřejný profil: klíčováno SKUTEČNÝM datem, ne indexem dne. Index se po roce
+-- opakuje, takže by druhý rok kolidoval sám se sebou.
+CREATE TABLE IF NOT EXISTS profile_days (
+  user_id    TEXT NOT NULL,
+  played_on  TEXT NOT NULL,          -- 'YYYY-MM-DD', lokální datum hráče
+  day_idx    INTEGER NOT NULL,       -- 0–364
+  score      INTEGER NOT NULL,       -- 0–20
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, played_on)
+);
+CREATE INDEX IF NOT EXISTS idx_profile_user ON profile_days(user_id, played_on DESC);

@@ -10,6 +10,7 @@ import {
     authEnabled, authStart, authPoll, authVerify, authApprove, authLandingPage,
     authLogout, meGet, meSetHandle, meDelete, currentUser, purgeAuth,
 } from './auth.js';
+import { apiProfile, profilePage, validPlayedOn } from './profile.js';
 
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
@@ -41,6 +42,8 @@ const ROUTES = {
     'GET /api/me': (rq, env, url, ctx) => meGet(rq, env, url, ctx, json),
     'POST /api/me/handle': (rq, env, url, ctx) => meSetHandle(rq, env, url, ctx, json),
     'POST /api/me/delete': (rq, env, url, ctx) => meDelete(rq, env, url, ctx, json),
+    'GET /api/profile': (rq, env, url, ctx) => apiProfile(rq, env, url, ctx, json),
+    'POST /api/profile/backfill': handleBackfill,
 };
 
 // Limity na významy. Drží se v D1 dotazech, žádné nové úložiště.
@@ -51,6 +54,10 @@ const REPORTS_TO_HIDE = 3;
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
+        // Profil má v cestě přezdívku, takže se do tabulky cest nevejde.
+        if (request.method === 'GET' && url.pathname.startsWith('/u/')) {
+            return profilePage(request, env, url);
+        }
         const handler = ROUTES[`${request.method} ${url.pathname}`];
         if (!handler) return json({ error: 'not found' }, 404);
         // CSRF: cizí stránka neumí poslat náš Content-Type bez preflightu (a ten
@@ -92,6 +99,25 @@ function validParams(day, score, clientId) {
     return true;
 }
 
+// Historie z doby před přihlášením — klient si ji tvrdí sám, stejně jako
+// /api/result. Proto profil ano, žebříček ne.
+async function handleBackfill(request, env) {
+    const user = await currentUser(request, env);
+    if (!user) return json({ error: 'not logged in' }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const days = Array.isArray(body && body.days) ? body.days.slice(0, 400) : [];
+    const rows = days.filter(d =>
+        validPlayedOn(d && d.d) && Number.isInteger(d.score) && d.score >= 0 && d.score <= 20
+        && Number.isInteger(d.dayIdx) && d.dayIdx >= 0 && d.dayIdx < 365);
+    if (!rows.length) return json({ ok: true, added: 0 }, 200);
+    await env.DB.batch(rows.map(d => env.DB.prepare(
+        `INSERT INTO profile_days (user_id, played_on, day_idx, score, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(user_id, played_on) DO NOTHING`
+    ).bind(user.id, d.d, d.dayIdx, d.score, Date.now())));
+    return json({ ok: true, added: rows.length }, 200);
+}
+
 async function handleSubmit(request, env) {
     let body;
     try {
@@ -112,6 +138,17 @@ async function handleSubmit(request, env) {
         `INSERT INTO results (day, score, client_id, updated_at) VALUES (?1, ?2, ?3, ?4)
          ON CONFLICT(day, client_id) DO UPDATE SET score = excluded.score, updated_at = excluded.updated_at`
     ).bind(day, score, clientId, Date.now()).run();
+
+    // Přihlášenému se den zapíše i do profilu — klíčováno skutečným datem,
+    // protože index dne se po roce opakuje. Nepřihlášení hrají beze změny.
+    const user = await currentUser(request, env);
+    if (user && validPlayedOn(body.playedOn)) {
+        await env.DB.prepare(
+            `INSERT INTO profile_days (user_id, played_on, day_idx, score, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(user_id, played_on) DO UPDATE SET score = excluded.score`
+        ).bind(user.id, body.playedOn, day - 1, score, Date.now()).run();
+    }
 
     return json(await computePercentile(env, day, score), 200);
 }

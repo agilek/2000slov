@@ -674,6 +674,18 @@ function renderHandlePicker(box) {
 
 function renderSignedIn(box) {
     box.append(el('p', 'profile-note', `Přihlášen jako ${auth.user.handle}. Významy se ukládají k účtu.`));
+    const link = `${siteUrl().replace(/\/$/, '')}/u/${encodeURIComponent(auth.user.handle)}`;
+    const show = el('a', 'btn btn-secondary', 'Můj veřejný profil');
+    show.href = link;
+    show.target = '_blank';
+    show.rel = 'noopener';
+    const share = el('button', 'btn-tertiary', 'Sdílet odkaz na profil');
+    share.onclick = async () => {
+        if (navigator.share) { try { await navigator.share({ url: link }); return; } catch (e) { return; } }
+        try { await navigator.clipboard.writeText(link); showToast('Odkaz zkopírován.'); }
+        catch (e) { showToast(link); }
+    };
+    box.append(show, share);
     const out = el('button', 'btn btn-secondary', 'Odhlásit se');
     out.onclick = async () => {
         await apiPost('/api/auth/logout', {});
@@ -699,8 +711,19 @@ function onLoggedIn(user) {
     auth.user = user;
     persist.pendingLogin = null;
     savePersist();
+    backfillProfile();
     renderProfile();
     showToast('Přihlášeno!');
+}
+
+// Historie odehraná před přihlášením. Index dne jde v prvním roce jednoznačně
+// převést na datum, takže profil nezačíná prázdný.
+function backfillProfile() {
+    const days = Object.entries(persist.results).map(([idx, score]) => {
+        const d = new Date(EPOCH + Number(idx) * 86400000);
+        return { d: d.toISOString().slice(0, 10), score, dayIdx: Number(idx) };
+    });
+    if (days.length) apiPost('/api/profile/backfill', { days });
 }
 
 // Odkaz z mailu se otevře v jiném prohlížeči (a na iOS má instalovaná PWA
@@ -1452,7 +1475,7 @@ async function fetchRealPercentile(day, score) {
         const res = await fetch(API_BASE + '/api/result', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ day, score, clientId: persist.clientId }),
+            body: JSON.stringify({ day, score, clientId: persist.clientId, playedOn: todayStr() }),
             signal: ctrl.signal,
         });
         clearTimeout(timer);
