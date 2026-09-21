@@ -25,46 +25,44 @@ volitelné vylepšení, nic se tím nerozbije.
 
 Potřebuješ Cloudflare účet (zdarma) a Node.js.
 
+Všechno se pouští **z kořene repa** — `wrangler.toml` je tam, ne v téhle složce,
+protože jeden Worker servíruje statiku (`public/`) i API.
+
 ```bash
-cd worker
 npx wrangler login          # otevře prohlížeč, přihlas se/založ účet
 
 npx wrangler d1 create slov2000
 # výstup obsahuje "database_id" — zkopíruj ho do wrangler.toml
-# (nahraď REPLACE_ME v sekci [[d1_databases]])
 
-npx wrangler d1 execute slov2000 --remote --file=schema.sql
+npx wrangler d1 execute slov2000 --remote --file=worker/schema.sql
 
 npx wrangler deploy
-# na konci vypíše URL tvého workeru, něco jako:
-# https://slov2000-api.TVUJ-SUBDOMAIN.workers.dev
+# vypíše URL, na které běží hra i API dohromady
 ```
 
-Pak v `game.js` (kořen repa, ne tahle složka) nastav:
+`API_BASE` v `public/game.js` je **prázdný řetězec** a nesahá se na něj:
+API je na stejné doméně jako hra, takže stačí relativní cesty.
 
-```js
-const API_BASE = 'https://slov2000-api.TVUJ-SUBDOMAIN.workers.dev';
-```
+## Žádné CORS
 
-Commitni a pushni — GitHub Pages nasadí zbytek automaticky.
+Hra i API mají jeden origin, takže se CORS neřeší vůbec — v kódu nejsou
+`Access-Control-*` hlavičky ani větev `OPTIONS`. Zápisy jsou proti CSRF
+chráněné dvakrát: hlavička `Origin` musí sedět na vlastní doménu
+(`sameOrigin()` v `src/index.js`) a cizí stránka neumí poslat
+`Content-Type: application/json` bez preflightu, který bez CORS hlaviček neprojde.
 
-## Pokud hra běží na jiné doméně
-
-`ALLOWED_ORIGINS` v `src/index.js` má natvrdo `https://agilek.github.io`
-(a `localhost:8000` pro lokální vývoj). Pokud přesuneš hru jinam, přidej
-novou doménu do téhle množiny a znovu `npx wrangler deploy`.
+Kdyby někdy bylo potřeba volat API z jiné domény, je to vědomá změna:
+CORS se musí přidat zpátky.
 
 ## Lokální testování bez nasazení
 
 ```bash
-cd worker
-npx wrangler d1 execute slov2000 --local --file=schema.sql
-npx wrangler dev --local --port 8787
+npx wrangler d1 execute slov2000 --local --file=worker/schema.sql
+npx wrangler dev --port 8787
 ```
 
-Worker poběží na `http://localhost:8787` s lokální (dočasnou) databází.
-V `game.js` dočasně nastav `API_BASE = 'http://localhost:8787'` a hru
-spusť přes `python3 -m http.server 8000` (port 8000 je v CORS povolený).
+Na `http://localhost:8787` poběží hra i API proti lokální (dočasné) databázi.
+Žádný druhý server ani úprava `API_BASE` není potřeba.
 
 ## Denní připomínka (Web Push)
 
@@ -81,10 +79,9 @@ funguje i ve Workers (klasický `web-push` balík potřebuje Node `crypto`/
 Nasazení navíc oproti krokům výše:
 
 ```bash
-cd worker
-npm install                          # stáhne @pushforge/builder
+(cd worker && npm install)           # stáhne @pushforge/builder
 
-npx wrangler d1 execute slov2000 --remote --file=schema.sql
+npx wrangler d1 execute slov2000 --remote --file=worker/schema.sql
 # (znovu — přidává tabulku subscriptions; je idempotentní, results nesáhne)
 
 npx @pushforge/builder vapid
@@ -96,7 +93,7 @@ npx wrangler secret put VAPID_PRIVATE_JWK
 npx wrangler deploy
 ```
 
-Veřejný klíč ("Public Key") vlož do `game.js` (kořen repa) jako
+Veřejný klíč ("Public Key") vlož do `public/game.js` jako
 `VAPID_PUBLIC_KEY`. Bez nastaveného `VAPID_PRIVATE_JWK` secretu cron
 notifikace prostě selžou (worker to nijak nerozbije, `/api/result` a
 `/api/percentile` jedou dál) — je to čistě volitelné vylepšení stejně

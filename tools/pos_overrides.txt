@@ -1,0 +1,35 @@
+# Ruční rozhodnutí tam, kde morfologie nestačí. Formát: jedno slovo na řádek,
+# sekce ALLOW / DENY. Prázdné řádky a # komentáře se ignorují.
+#
+# Proč to nejde automaticky: čeština tvoří podstatná jména z přídavných
+# produktivně, takže MorphoDiTa dá `vedoucí` (člověk) i `taneční` (přídavné
+# jméno) úplně stejné značky — obojí AA/AG + NN. Rozhoduje jen to, jestli je
+# jmenný význam ustálený, a to z tagů nevyčteš.
+#
+# Kde je čára: ALLOW jen (a) zpodstatnělá přídavná jména, která pojmenovávají
+# člověka podle role, stavu nebo povolání (vedoucí, účetní, vrátný, obviněný),
+# a (b) nesklonná přejatá substantiva (video, rock, jazz, fitness).
+# Všechno, co se běžně používá jako přídavné jméno, padá — i když se to dá
+# v kontextu zpodstatnit (starý, známý, mrtvý, nemocný, domácí, podezřelý).
+
+ALLOW
+# podstatná jména, na která sedla nesubstantivní značka (předložka, částice,
+# citoslovce, číslovka) — jmenný význam je ale ten hlavní
+místo pár fakt pravda pozor plus minus mínus prach dík stop zdar div
+klik klep vzdor krucifix ámen jojo pšouk
+
+# zpodstatnělá přídavná jména: člověk podle role, stavu nebo povolání
+vedoucí účetní rozhodčí pokladní vrátný hostinský hospodský vrchní výběrčí
+přednášející přísedící poddaný mladistvý nevidomý dojíždějící kolemjdoucí
+příchozí volající cestující pracující věřící nadřízený podřízený obviněný
+odsouzený zemřelý pozůstalý přeživší zraněný poškozený pohřešovaný dospělý
+příbuzný marod tajný
+
+# nesklonná přejatá substantiva, kterým morfologie dává i adjektivní čtení
+video rock tip originál beta pop jazz bio punk gama fitness market wellness
+nerez koka tempura fantasy
+
+DENY
+# projdou pravidly, ale podstatná jména to nejsou
+naši vaši naše vaše moje tvoje jejich svoje
+níže výš široko košer fest pramálo kose důle

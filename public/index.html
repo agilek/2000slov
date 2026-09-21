@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
-<title>2000 slov — denní slovní výzva</title>
-<meta name="description" content="Slož slovo ze všech písmen, než vyprší čas! 20 slov denně, jen podstatná jména od nejběžnějších po nejvzácnější. Jedna chyba a den opakuješ.">
-<meta property="og:title" content="2000 slov — denní slovní výzva">
-<meta property="og:description" content="20 slov denně, jen podstatná jména — od nejběžnějších po nejvzácnější. Jedna chyba = celý den znovu.">
+<title>2000 slov — denní výzva</title>
+<meta name="description" content="Slož slovo ze všech písmen, než vyprší čas! Denní výzva: 20 českých podstatných jmen, každý den pro všechny stejných. 365 dní.">
+<meta property="og:title" content="2000 slov — denní výzva">
+<meta property="og:description" content="Denní výzva: 20 českých podstatných jmen, každý den pro všechny stejných. Kolik jich stihneš?">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)">
@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -28,7 +28,7 @@
             <div class="welcome-grid" id="welcomeGrid" aria-hidden="true"></div>
             <h1>2000 slov</h1>
             <p class="welcome-instruction">Slož slovo ze všech písmen, než vyprší čas!</p>
-            <p class="welcome-instruction welcome-instruction--second" id="welcomeRules">Zvládni všech 20 slov a postoupíš dál.<br>Jedno nestihneš? Celý den si zítra zopakuješ.</p>
+            <p class="welcome-instruction welcome-instruction--second" id="welcomeRules">Dnešních 20 slov hraje dnes každý stejných. Zvládneš všechna?</p>
         </div>
         <div class="welcome-actions">
             <span class="welcome-date" id="welcomeDate" role="button" tabindex="0" onclick="showCollection()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showCollection();}"></span>
@@ -56,7 +56,6 @@
     <!-- Result -->
     <div class="screen" id="result">
         <div id="winBanner" class="win-banner reveal-item"></div>
-        <h2 id="failedWord" class="reveal-item"></h2>
         <h2 id="survivedCount" class="reveal-item"></h2>
         <p id="percentile" class="reveal-item"></p>
         <p id="progressLine" class="reveal-item"></p>
@@ -66,8 +65,6 @@
         <p id="countdown" class="reveal-item"></p>
         <div id="resultActions" class="result-actions reveal-item">
             <button id="practiceBtn" class="btn btn-secondary" onclick="startPracticeGame()">Trénink</button>
-            <button id="practiceAgainBtn" class="btn btn-secondary" style="display:none;" onclick="startPracticeGame()">Trénovat znovu</button>
-            <button id="backBtn" class="btn btn-secondary" style="display:none;" onclick="showWelcome()">Zpět</button>
         </div>
         <button id="collectionBtn" class="btn-tertiary reveal-item" onclick="showCollection()">Sbírka slov</button>
         <div id="a2hsBanner" class="a2hs-banner reveal-item" style="display:none;">
@@ -122,7 +119,7 @@
         </div>
     </div>
 
-<script src="words.js"></script>
-<script src="game.js"></script>
+<script src="words.js?v=3"></script>
+<script src="game.js?v=3"></script>
 </body>
 </html>

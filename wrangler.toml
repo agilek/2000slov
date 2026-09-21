@@ -1,0 +1,22 @@
+# Jeden Worker servíruje hru i API. Statika je v public/, worker si bere
+# /api/* (a později /prihlaseni a /u/*), zbytek propadne na soubory.
+# Díky tomu je hra i API na stejné doméně → žádné CORS a session může být
+# HttpOnly cookie, kterou JS nepřečte.
+name = "slov2000"
+main = "worker/src/index.js"
+compatibility_date = "2026-01-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "slov2000"
+database_id = "485f2582-4efd-4d9e-abee-cbd4e32aa61b"
+
+[triggers]
+# 7:00 UTC ≈ 8-9 ráno v ČR — jednou denně pošle Web Push připomínku odběratelům.
+crons = ["0 7 * * *"]

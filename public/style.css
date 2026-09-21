@@ -238,11 +238,6 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     line-height: 1.1;
 }
 .screen p:not(.welcome-instruction) { font-size: 20px; font-weight: 600; color: var(--muted); line-height: 1.5; margin-bottom: 34px; }
-#failedWord {
-    color: var(--red);
-    text-transform: uppercase; letter-spacing: .5px;
-}
-#failedWord:empty { display: none; }
 #survivedCount { color: var(--ink); font-size: clamp(22px, 6.5vw, 28px); white-space: nowrap; }
 #percentile { color: var(--muted-text); font-weight: 700; margin-bottom: 10px !important; }
 #percentile:empty { display: none; }

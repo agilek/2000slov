@@ -9,38 +9,33 @@ import { buildPushHTTPRequest } from '@pushforge/builder';
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
 const ADMIN_CONTACT = 'https://github.com/agilek/2000slov'; // VAPID "sub" kontakt, viz RFC 8292
+// Kam vede klepnutí na push notifikaci. V cronu není request, ze kterého by
+// šlo origin odvodit, takže je natvrdo — po navázání vlastní domény přepsat.
+const SITE_URL = 'https://slov2000.slov2000.workers.dev/';
 
-// Povolené originy pro CORS — nasazená hra + lokální vývoj.
-const ALLOWED_ORIGINS = new Set([
-    'https://agilek.github.io',
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-]);
+// Cesty. Statiku servírují [assets] ve wrangler.toml, sem doteče jen to, co
+// sedí na run_worker_first — proto tu nejsou žádné soubory.
+const ROUTES = {
+    'POST /api/result': handleSubmit,
+    'GET /api/percentile': handlePercentile,
+    'POST /api/subscribe': handleSubscribe,
+};
 
 export default {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
         const url = new URL(request.url);
-        const cors = corsHeaders(request);
-
-        if (request.method === 'OPTIONS') {
-            return new Response(null, { headers: cors });
+        const handler = ROUTES[`${request.method} ${url.pathname}`];
+        if (!handler) return json({ error: 'not found' }, 404);
+        // CSRF: cizí stránka neumí poslat náš Content-Type bez preflightu (a ten
+        // bez CORS hlaviček neprojde), Origin navíc musí sedět na vlastní doménu.
+        if (request.method !== 'GET' && !sameOrigin(request, url)) {
+            return json({ error: 'bad origin' }, 403);
         }
-
         try {
-            if (url.pathname === '/api/result' && request.method === 'POST') {
-                return await handleSubmit(request, env, cors);
-            }
-            if (url.pathname === '/api/percentile' && request.method === 'GET') {
-                return await handlePercentile(url, env, cors);
-            }
-            if (url.pathname === '/api/subscribe' && request.method === 'POST') {
-                return await handleSubscribe(request, env, cors);
-            }
+            return await handler(request, env, url, ctx);
         } catch (err) {
-            return json({ error: 'internal error' }, 500, cors);
+            return json({ error: 'internal error' }, 500);
         }
-
-        return json({ error: 'not found' }, 404, cors);
     },
 
     // Cron trigger (viz wrangler.toml) — jednou denně pošle připomínku všem odběratelům.
@@ -49,20 +44,17 @@ export default {
     },
 };
 
-function corsHeaders(request) {
+// Hra i API jedou na jedné doméně, takže CORS není potřeba vůbec.
+function sameOrigin(request, url) {
     const origin = request.headers.get('Origin');
-    const allow = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://agilek.github.io';
-    return {
-        'Access-Control-Allow-Origin': allow,
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Vary': 'Origin',
-        'Content-Type': 'application/json; charset=utf-8',
-    };
+    return !origin || origin === url.origin;
 }
 
-function json(obj, status, cors) {
-    return new Response(JSON.stringify(obj), { status, headers: cors });
+function json(obj, status) {
+    return new Response(JSON.stringify(obj), {
+        status,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
 }
 
 function validParams(day, score, clientId) {
@@ -72,19 +64,19 @@ function validParams(day, score, clientId) {
     return true;
 }
 
-async function handleSubmit(request, env, cors) {
+async function handleSubmit(request, env) {
     let body;
     try {
         body = await request.json();
     } catch {
-        return json({ error: 'bad json' }, 400, cors);
+        return json({ error: 'bad json' }, 400);
     }
 
     const day = Number(body.day);
     const score = Number(body.score);
     const clientId = String(body.clientId || '');
     if (!validParams(day, score, clientId)) {
-        return json({ error: 'bad params' }, 400, cors);
+        return json({ error: 'bad params' }, 400);
     }
 
     // upsert: pokud hráč (stejné clientId) pro tento den už výsledek poslal, přepíše se
@@ -93,16 +85,16 @@ async function handleSubmit(request, env, cors) {
          ON CONFLICT(day, client_id) DO UPDATE SET score = excluded.score, updated_at = excluded.updated_at`
     ).bind(day, score, clientId, Date.now()).run();
 
-    return json(await computePercentile(env, day, score), 200, cors);
+    return json(await computePercentile(env, day, score), 200);
 }
 
-async function handlePercentile(url, env, cors) {
+async function handlePercentile(request, env, url) {
     const day = Number(url.searchParams.get('day'));
     const score = Number(url.searchParams.get('score'));
     if (!Number.isInteger(day) || !Number.isInteger(score) || score < 0 || score > 20) {
-        return json({ error: 'bad params' }, 400, cors);
+        return json({ error: 'bad params' }, 400);
     }
-    return json(await computePercentile(env, day, score), 200, cors);
+    return json(await computePercentile(env, day, score), 200);
 }
 
 async function computePercentile(env, day, score) {
@@ -131,19 +123,19 @@ function validSubscription(clientId, endpoint, keys) {
     return true;
 }
 
-async function handleSubscribe(request, env, cors) {
+async function handleSubscribe(request, env) {
     let body;
     try {
         body = await request.json();
     } catch {
-        return json({ error: 'bad json' }, 400, cors);
+        return json({ error: 'bad json' }, 400);
     }
 
     const clientId = String(body.clientId || '');
     const endpoint = String(body.endpoint || '');
     const keys = body.keys || {};
     if (!validSubscription(clientId, endpoint, keys)) {
-        return json({ error: 'bad params' }, 400, cors);
+        return json({ error: 'bad params' }, 400);
     }
 
     // upsert: nová registrace stejného zařízení (nový endpoint po re-subscribe) přepíše starou
@@ -152,7 +144,7 @@ async function handleSubscribe(request, env, cors) {
          ON CONFLICT(client_id) DO UPDATE SET endpoint = excluded.endpoint, p256dh = excluded.p256dh, auth = excluded.auth, created_at = excluded.created_at`
     ).bind(clientId, endpoint, keys.p256dh, keys.auth, Date.now()).run();
 
-    return json({ ok: true }, 200, cors);
+    return json({ ok: true }, 200);
 }
 
 async function sendDailyReminders(env) {
@@ -171,7 +163,7 @@ async function sendDailyReminders(env) {
                     payload: {
                         title: '2000 slov',
                         body: 'Dnešní slovo na tebe čeká! 🔤',
-                        url: 'https://agilek.github.io/2000slov/',
+                        url: SITE_URL,
                     },
                     adminContact: ADMIN_CONTACT,
                 },

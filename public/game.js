@@ -1,28 +1,35 @@
 /* 2000 slov — česká denní slovní hra po vzoru 18words.com
- * Slovník: jen podstatná jména (Wikislovník), seřazená čistě podle frekvence
- * výskytu — obtížnost roste přirozeně tím, jak slova řídnou v běžné řeči.
- * Slož slovo ze všech písmen do 30 s. Všech 20 zelených = postup,
- * jinak den zítra opakuješ. Jeden pokus denně.
- * Trénink čerpá z širšího poolu PRACTICE_WORDS (13 000 slov), denní hra
- * (WORDS) má přesně 2000 slov / 100 dní. */
+ * Denní výzva: která slova se hrají, určuje DATUM, ne postup hráče — všichni
+ * tak mají v daný den stejných 20 slov a výsledky jsou porovnatelné.
+ * Slovník: jen podstatná jména (Wikislovník). Každý den má jedno slovo
+ * z každého z 20 frekvenčních pásem, takže dny mají srovnatelnou obtížnost.
+ * Slož slovo ze všech písmen do 30 s. Jeden pokus denně; zítra přijde další
+ * den bez ohledu na dnešní výsledek (nestihnuté slovo jen přetrhne sérii).
+ * Trénink čerpá z širšího poolu PRACTICE_WORDS (15 000 slov), denní výzva
+ * (WORDS) má 7300 slov / 365 dní. */
 'use strict';
 
 const START_TIME = 30;
+const PRACTICE_GAP = 3;   // s — pauza na přečtení nestihnutého slova v tréninku
 const WORDS_PER_DAY = 20;
-const TOTAL_WORDS = WORDS.length;                 // 2000
-const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 100
+const TOTAL_WORDS = WORDS.length;                 // 7300
+const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 365
+// Den 1 denní výzvy. Číslo dne se počítá od tohoto data, takže každý hráč
+// dostane v daný kalendářní den stejných 20 slov. Po 365 dnech se rok opakuje.
+const EPOCH = Date.UTC(2026, 8, 21);
 
 const LETTER_RE = /[a-záčďéěíňóřšťúůýž]/;
 // hratelná písmena hesla (bez mezer, teček, pomlček — ty jsou ve slotech pevně)
 const lettersOf = w => [...w].filter(c => LETTER_RE.test(c)).join('');
 const fmtNum = n => n.toLocaleString('cs-CZ');
 const STORAGE_KEY = 'slov2000_v2';
-const FALLBACK_URL = 'https://agilek.github.io/2000slov/';
+// Použije se jen při otevření z file:// nebo localhostu; po navázání
+// vlastní domény sem patří ona.
+const FALLBACK_URL = 'https://slov2000.slov2000.workers.dev/';
 
-// Backend pro skutečné percentily ("Top X % hráčů dneška"). Prázdné = hra
-// používá jen statický odhad níže. Po nasazení workeru (worker/README.md)
-// sem vlož jeho URL, např. https://slov2000-api.TVUJ-SUBDOMAIN.workers.dev
-const API_BASE = 'https://slov2000-api.slov2000.workers.dev';
+// Backend běží na stejné doméně jako hra (jeden Worker servíruje statiku
+// i /api/*, viz wrangler.toml), takže stačí relativní cesty — žádné CORS.
+const API_BASE = '';
 const API_TIMEOUT_MS = 1500;
 
 // VAPID veřejný klíč pro Web Push denní připomínku (worker/README.md → sekce
@@ -39,14 +46,14 @@ const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches ||
 
 function defaultPersist() {
     return {
-        level: 0,            // počet zvládnutých dnů = index aktuálního dne
+        results: {},         // { [index dne]: počet získaných slov } — odehrané dny
         streak: 0,
         bestStreak: 0,
         lastWinDate: null,
         attempts: 0,
         wins: 0,
         kbHintShown: false,
-        day: null,           // { date, level, wordIdx, marks, time, done, perfect, realTopPct }
+        day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct }
         clientId: genClientId(), // anonymní ID pro leaderboard backend (jen počítadlo, žádná osobní data)
         a2hsPromptDismissed: false, // "přidej na plochu" nabídka na iOS se ukáže jen do prvního zavření
     };
@@ -62,7 +69,12 @@ let persist = loadPersist();
 function loadPersist() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) return Object.assign(defaultPersist(), JSON.parse(raw));
+        if (raw) {
+            const p = Object.assign(defaultPersist(), JSON.parse(raw));
+            // uložený den ze staré, postupové verze nemá index dne — zahodit
+            if (p.day && typeof p.day.dayIdx !== 'number') p.day = null;
+            return p;
+        }
     } catch (e) {}
     return defaultPersist();
 }
@@ -76,9 +88,19 @@ function todayStr() {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function uncoveredCount() { return Math.min(persist.level * WORDS_PER_DAY, TOTAL_WORDS); }
+// Index dne = počet dní od EPOCH, po roce se cyklí dokola. Počítá se z data
+// v místní půlnoci, takže se den láme tam, kde hráč skutečně žije.
+function dayIndex(dateStr) {
+    const [y, m, d] = (dateStr || todayStr()).split('-').map(Number);
+    const days = Math.floor((Date.UTC(y, m - 1, d) - EPOCH) / 86400000);
+    return ((days % TOTAL_LEVELS) + TOTAL_LEVELS) % TOTAL_LEVELS;
+}
 
-function dayWords(level) { return WORDS.slice(level * WORDS_PER_DAY, (level + 1) * WORDS_PER_DAY); }
+function playedDays() { return Object.keys(persist.results).length; }
+
+function uncoveredCount() { return Math.min(playedDays() * WORDS_PER_DAY, TOTAL_WORDS); }
+
+function dayWords(idx) { return WORDS.slice(idx * WORDS_PER_DAY, (idx + 1) * WORDS_PER_DAY); }
 
 function siteUrl() {
     if (location.protocol.startsWith('http') && !location.hostname.includes('localhost')) {
@@ -94,6 +116,9 @@ let state = {
     time: START_TIME, letters: [], selected: [], timer: null,
     processing: false, incorrectTimeout: null, shuffledThisWord: false,
     practiceCount: 0,
+    // každé nové kolo dostane číslo; naplánované callbacky ze starého kola
+    // (odhalení slova, odpočet) se podle něj poznají a zahodí
+    gen: 0,
 };
 let countdownInterval = null;
 
@@ -258,16 +283,13 @@ function showWelcome() {
     stopConfetti();
     placeGameGrid('game');
     renderWelcomeGrid();
-    const dayNum = Math.min(persist.level + 1, TOTAL_LEVELS);
+    const dayNum = dayIndex() + 1;
     $('welcomeDate').textContent = `Den ${dayNum}/${TOTAL_LEVELS} · ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
     const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
     $('playBtnLabel').textContent = todayDone ? 'Výsledek' : 'Hrát';
-    const retry = !todayDone && persist.attempts > 0;
-    $('welcomeRules').innerHTML = persist.level >= TOTAL_LEVELS
-        ? `Máš odkryto všech ${fmtNum(TOTAL_WORDS)} slov. 🏆`
-        : (retry
-            ? 'Zvládni všech 20 slov a postoupíš dál.<br>Jedno nestihneš? Celý den si zítra zopakuješ.'
-            : `Zvládni všech 20 slov a odkryj dalších 20<br>z ${fmtNum(TOTAL_WORDS)} nejčastějších českých slov.`);
+    $('welcomeRules').innerHTML = persist.attempts > 0
+        ? 'Všech 20 slov udrží sérii.<br>Dnešních 20 slov hraje dnes každý stejných.'
+        : `Dnešních 20 slov z ${fmtNum(TOTAL_WORDS)} nejčastějších českých<br>hraje dnes každý stejných. Zvládneš všechna?`;
     showScreen('welcome');
 }
 
@@ -278,7 +300,6 @@ function playToday() {
         showResult(true);
         return;
     }
-    if (persist.level >= TOTAL_LEVELS) { startPracticeGame(); return; }
     startGame();
 }
 
@@ -298,12 +319,14 @@ function shuffleArr(arr) {
 
 function startGame() {
     const today = todayStr();
+    state.gen++;
     state.mode = 'daily';
     $('closeGameBtn').style.display = 'none';
-    state.words = dayWords(persist.level);
+    const idx = dayIndex(today);
+    state.words = dayWords(idx);
 
     const d = persist.day;
-    if (d && !d.done && d.date === today && d.level === persist.level && d.wordIdx < WORDS_PER_DAY) {
+    if (d && !d.done && d.date === today && d.dayIdx === idx && d.wordIdx < WORDS_PER_DAY) {
         // rozehraný dnešek — pokračujeme, kde jsme skončili
         state.wordIdx = d.wordIdx;
         state.marks = d.marks.slice();
@@ -314,7 +337,7 @@ function startGame() {
         state.marks = [];
         state.time = START_TIME;
         state.resumed = false;
-        persist.day = { date: today, level: persist.level, wordIdx: 0, marks: [], time: START_TIME, done: false, perfect: false };
+        persist.day = { date: today, dayIdx: idx, wordIdx: 0, marks: [], time: START_TIME, done: false, perfect: false };
         savePersist();
     }
     state.solved = state.marks.filter(Boolean).length;
@@ -330,6 +353,7 @@ function startGame() {
 
 function startPracticeGame() {
     const pool = PRACTICE_WORDS;
+    state.gen++;
     state.mode = 'practice';
     $('closeGameBtn').style.display = 'flex';
     state.pool = pool;
@@ -339,6 +363,8 @@ function startPracticeGame() {
     state.marks = [];
     state.solved = 0;
     state.practiceCount = 0;
+    clearInterval(state.nextTimer);
+    state.nextTimer = null;
     state.time = START_TIME;
     stopConfetti();
     placeGameGrid('game');
@@ -587,7 +613,9 @@ function checkWord() {
         });
     }, 450);
 
+    const genOk = state.gen;
     setTimeout(() => {
+        if (state.gen !== genOk) return;
         $('wordDisplay').classList.remove('found');
         $('wordDisplay').style.cssText = '';
         loadWord();
@@ -597,6 +625,7 @@ function checkWord() {
 function handleTimeout() {
     if (state.processing) return;
     state.processing = true;
+    const gen = state.gen;
     haptic('miss');
     playMissSound();
     clearIncorrectState();
@@ -624,21 +653,24 @@ function handleTimeout() {
         }, i * stagger);
     });
 
-    if (state.mode === 'practice') {
-        // Trénink je na přežití — první nestihnuté slovo končí.
-        setTimeout(() => showResult(false, target), slots.length * stagger + 1200);
-        return;
-    }
-
     state.wordIdx++;
     state.marks.push(false);
     updateGameGrid(state.marks.length - 1);
     saveDayProgress();
 
     const revealDone = slots.length * stagger + 340;
-    const hold = 850;
+    // Trénink neskončí — jen se počká, ať si hráč nestihnuté slovo přečte,
+    // a další naběhne samo. Skončí se křížkem vpravo nahoře.
+    // Odpočet běží až od chvíle, kdy je slovo celé odhalené, a doběhne přesně
+    // tam, kde naskočí další slovo (proto -320 na závěrečné prolnutí).
+    const hold = state.mode === 'practice' ? PRACTICE_GAP * 1000 - 320 : 850;
+    if (state.mode === 'practice') {
+        state.practiceCount = 0;
+        setTimeout(() => countdownToNextWord(PRACTICE_GAP, gen), revealDone);
+    }
 
     setTimeout(() => {
+        if (state.gen !== gen) return;
         const els = [wd, ...$$('#letterRow .letter')];
         els.forEach(el => {
             el.style.transition = 'opacity .3s ease-out, transform .3s ease-out';
@@ -648,9 +680,29 @@ function handleTimeout() {
     }, revealDone + hold);
 
     setTimeout(() => {
+        if (state.gen !== gen) return;
         wd.style.cssText = '';
         loadWord();
     }, revealDone + hold + 320);
+}
+
+// Odpočet na místě časovače: hráč nemusí nic mačkat, další slovo naběhne samo.
+function countdownToNextWord(seconds, gen) {
+    if (state.gen !== gen) return; // mezitím se trénink zavřel nebo začalo jiné kolo
+    clearInterval(state.timer);
+    clearInterval(state.nextTimer);
+    let left = seconds;
+    const render = () => {
+        $('progress').innerHTML = `<div class="gp-headline">Další slovo za</div>`
+            + `<div class="gp-timer">${left}<span class="gp-timer-unit">s</span></div>`;
+    };
+    render();
+    state.nextTimer = setInterval(() => {
+        if (state.gen !== gen) { clearInterval(state.nextTimer); state.nextTimer = null; return; }
+        if (--left > 0) return render();
+        clearInterval(state.nextTimer);
+        state.nextTimer = null;
+    }, 1000);
 }
 
 /* ---------------- FLIP zamíchání (Shift) ---------------- */
@@ -813,7 +865,10 @@ function resumeGame() {
 
 function exitPractice() {
     if (state.mode !== 'practice') return;
+    state.gen++;
     clearInterval(state.timer);
+    clearInterval(state.nextTimer);
+    state.nextTimer = null;
     state.processing = false;
     showWelcome();
 }
@@ -832,9 +887,9 @@ function finishDay() {
     persist.day.marks = state.marks.slice();
     persist.day.realTopPct = persist.day.realTopPct ?? null;
     persist.attempts++;
+    persist.results[persist.day.dayIdx] = state.marks.filter(Boolean).length;
     if (perfect) {
         persist.wins++;
-        persist.level++;
         const y = new Date(); y.setDate(y.getDate() - 1);
         const yesterday = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
         persist.streak = (persist.lastWinDate === yesterday) ? persist.streak + 1 : 1;
@@ -851,7 +906,6 @@ function finishDay() {
 /* ---------------- skutečný percentil (volitelný backend) ---------------- */
 
 async function fetchRealPercentile(day, score) {
-    if (!API_BASE) return null;
     try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
@@ -873,7 +927,7 @@ async function fetchRealPercentile(day, score) {
 async function refreshRealPercentile() {
     const day = persist.day;
     if (!day) return;
-    const dayNum = day.level + 1;
+    const dayNum = day.dayIdx + 1;
     const survived = day.marks.filter(Boolean).length;
     const real = await fetchRealPercentile(dayNum, survived);
     if (!real || persist.day !== day) return; // mezitím mohl začít další den
@@ -918,48 +972,29 @@ function percentileDisplayText(survived, realTopPct) {
     return (typeof realTopPct === 'number') ? formatRealPercentileText(realTopPct) : getPercentileText(survived);
 }
 
-function showResult(instant, failedWord) {
+// Jen denní výzva — trénink běží pořád dál a výsledkovou obrazovku nemá.
+function showResult(instant) {
     clearInterval(state.timer);
-    const isPractice = state.mode === 'practice';
     const survived = state.solved;
-    const perfect = !isPractice && survived === WORDS_PER_DAY;
+    const perfect = survived === WORDS_PER_DAY;
 
-    const grid = $('gameGrid');
-    if (!isPractice) {
-        placeGameGrid('result');
-        grid.style.display = 'grid';
-        if (instant) { renderGameGrid(); }
-    } else {
-        grid.style.display = 'none';
-    }
+    placeGameGrid('result');
+    $('gameGrid').style.display = 'grid';
+    if (instant) { renderGameGrid(); }
 
     showScreen('result');
 
     $('winBanner').innerHTML = '';
-    $('failedWord').textContent = isPractice ? (failedWord || '') : '';
-    if (isPractice) {
-        $('survivedCount').textContent = `${state.practiceCount} ${plural(state.practiceCount, 'slovo', 'slova', 'slov')} v řadě!`;
-        $('percentile').textContent = '';
-        $('progressLine').textContent = '';
-    } else {
-        $('survivedCount').textContent = perfect
-            ? 'Máš všech 20 slov!'
-            : `Máš ${survived} z 20 slov!`;
-        $('percentile').textContent = percentileDisplayText(survived, persist.day.realTopPct);
-        const dayNum = persist.day.level + 1;
-        $('progressLine').innerHTML = perfect
-            ? (persist.level >= TOTAL_LEVELS
-                ? `🏆 Odkryto všech ${fmtNum(TOTAL_WORDS)} slov. Neuvěřitelné!`
-                : `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.<br>Zítra tě čeká den ${dayNum + 1}!`)
-            : `Den ${dayNum} si zítra zopakuješ — příště to dáš!`;
-    }
-    $('shareActions').style.display = isPractice ? 'none' : 'flex';
-    $('collectionBtn').style.display = isPractice ? 'none' : 'flex';
-    $('practiceBtn').style.display = !isPractice ? 'inline-flex' : 'none';
-    $('practiceAgainBtn').style.display = isPractice ? 'inline-flex' : 'none';
-    $('backBtn').style.display = isPractice ? 'inline-flex' : 'none';
-    $('countdown').style.marginTop = isPractice ? '8px' : '';
-    updateNotifyPrompt(isPractice);
+    $('survivedCount').textContent = perfect
+        ? 'Máš všech 20 slov!'
+        : `Máš ${survived} z 20 slov!`;
+    $('percentile').textContent = percentileDisplayText(survived, persist.day.realTopPct);
+    const dayNum = persist.day.dayIdx + 1;
+    const nextNum = (persist.day.dayIdx + 1) % TOTAL_LEVELS + 1;
+    $('progressLine').innerHTML = perfect
+        ? `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.<br>Zítra tě čeká den ${nextNum}!`
+        : `Den ${dayNum} ti utekl — zítra čeká den ${nextNum}, nová slova!`;
+    updateNotifyPrompt();
 
     startCountdown();
     animateResultReveal(perfect, instant);
@@ -1087,7 +1122,7 @@ function getTrophyShareLine(survived) {
 
 function buildShareMessage() {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
-    const dayNum = (persist.day ? persist.day.level : persist.level) + 1;
+    const dayNum = (persist.day ? persist.day.dayIdx : dayIndex()) + 1;
     const grid = buildEmojiGrid();
     let msg = `⏳ 2000 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
     if (grid) msg += `\n\n${grid}`;
@@ -1132,12 +1167,12 @@ function registerServiceWorker() {
 // Na iOS Push funguje jen z nainstalované PWA (Add to Home Screen), ne z karty
 // Safari — proto se tam nejdřív nabídne instalace, tlačítko notifikací přijde
 // na řadu až po ní. Jinde (Android/desktop) jde rovnou žádost o oprávnění.
-function updateNotifyPrompt(isPractice) {
+function updateNotifyPrompt() {
     const banner = $('a2hsBanner');
     const notifyBtn = $('notifyBtn');
     banner.style.display = 'none';
     notifyBtn.style.display = 'none';
-    if (isPractice || !VAPID_PUBLIC_KEY) return;
+    if (!VAPID_PUBLIC_KEY) return;
 
     if (IS_IOS && !IS_STANDALONE) {
         if (!persist.a2hsPromptDismissed) banner.style.display = 'block';
@@ -1188,18 +1223,20 @@ function showCollection() {
     $('collectionCount').textContent = `${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)}`;
     const list = $('collectionList');
     list.innerHTML = '';
+    const today = dayIndex();
     for (let lvl = 0; lvl < TOTAL_LEVELS; lvl++) {
         const li = document.createElement('li');
         li.className = 'archive-item';
-        const done = lvl < persist.level;
-        const current = lvl === persist.level;
+        const score = persist.results[lvl];
+        const played = score !== undefined;
+        const current = lvl === today;
         const label = document.createElement('span');
         label.className = 'archive-date';
         label.textContent = `Den ${lvl + 1}`;
         const badge = document.createElement('span');
         badge.className = 'archive-score';
-        if (done) {
-            badge.textContent = '✓ 20 slov';
+        if (played) {
+            badge.textContent = `${score === WORDS_PER_DAY ? '✓' : '·'} ${score} ${plural(score, 'slovo', 'slova', 'slov')}`;
             const words = document.createElement('div');
             words.className = 'archive-words';
             dayWords(lvl).forEach(w => {
@@ -1214,13 +1251,16 @@ function showCollection() {
             badge.textContent = current ? 'dnes' : '🔒';
             li.classList.toggle('locked', !current);
             li.append(label, badge);
-            if (!current) li.onclick = () => showToast('Nejdřív zvládni předchozí dny!');
+            // Dny se drží kalendáře: minulé už nedohraješ, budoucí ještě nepřišly.
+            if (!current) li.onclick = () => showToast(lvl < today
+                ? 'Tenhle den ti utekl — vrátí se za rok.'
+                : 'Ještě nepřišel na řadu!');
         }
         list.appendChild(li);
     }
     $('collectionModal').classList.add('active');
     // aktuální den nascrollovat do záběru
-    const cur = list.children[Math.min(persist.level, TOTAL_LEVELS - 1)];
+    const cur = list.children[today];
     if (cur) cur.scrollIntoView({ block: 'center' });
 }
 
