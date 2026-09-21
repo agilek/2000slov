@@ -2,6 +2,28 @@
 
 ## 2026-09-21
 
+### Přesmyčky: hra uzná každé slovo, které sama zná
+Když šlo ze stejných písmen složit jiné slovo z poolu, hra ho přesto označila
+za chybu — `síla` nepřijala `lísa`, `vlas` nepřijal `sval`, `orkán` nepřijal
+`nárok` ani `korán`. Generátor teď k ručně kurátorované mapě `ALTS` dopočítá
+**přesmyčky uvnitř poolu**: 325 skupin, 677 slov, doplněno 132 chybějících
+vazeb (34 z nich v denní výzvě). `ALTS` má 1348 klíčů místo 1234.
+
+**Root cause / approach:** Chyběly, protože původní mapa vznikla nad starým
+13 000slovním poolem a nikdy se nepřepočítala po tom, co se pool přefiltroval
+na podstatná jména a doplnil na 15 000. Nešlo ji ale přegenerovat celou — nese
+kuraci proti nějakému českému slovníku, kterou se nepodařilo zrekonstruovat
+(uznává i tvary mimo pool, `otec` → `ocet`, `otce`; `efka` ano, `fake` ne).
+Řešení je proto přírůstkové: ruční část se přebírá beze změny a jen se k ní
+přidají vzájemné vazby uvnitř každé skupiny slov se stejnými písmeny.
+
+Ověřeno, že `WORDS` ani `PRACTICE_WORDS` se nezměnily — rozdělení slov do dnů
+tedy zůstalo stejné a hráčům se den nepřeskládal. Změnilo se jen `ALTS`.
+
+→ No new memory entries.
+
+## 2026-09-21
+
 ### Komunitní významy slov + mezihra po každém slově v tréninku
 Trénink má po **každém** slově (uhodnutém i nestihnutém) stejnou mezihru: velké
 slovo, nejlépe hodnocený význam od hráčů, odpočet na další slovo a tlačítko

@@ -144,7 +144,8 @@ Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toas
   musí být běžné v mluveném i psaném jazyce — tlumí to homografy, na kterých
   jeden zdroj přestřelí (`měl`, `plzeň`) i titulkový slang (`osle`, `lízo`).
   Anagramové kolize řeší mapa ALTS (uznaná alternativa = správně); pokrývá
-  původních 13 000 slov, 2000 nově doplněných zatím ne.
+  původní ruční kuraci a k ní automaticky dopočítané přesmyčky uvnitř poolu,
+  takže žádné slovo, které hra zná, neprojde jako chyba.
 - **Dva pooly ve `words.js`**: `WORDS` = 7300 slov denní výzvy **už v pořadí
   dnů** (365 × 20, `dayWords(dayIndex())` jen krájí po dvaceti), `PRACTICE_WORDS`
   = celý pool 15 000 slov seřazený podle frekvence, používá ho jen trénink

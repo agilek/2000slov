@@ -20,8 +20,10 @@ soubor jen navazuje. Kdyby se ztratil, kurace je pryč (už se to jednou stalo).
 **Mapa `ALTS` se negeneruje.** Skript ji beze změny přepíše ze stávajícího
 `words.js`. Původní kurace uznávaných přesmyček se nedala zrekonstruovat —
 kontroloval ji nějaký český slovník, ne frekvenční práh: `efka` je uznané
-(zipf 1,55), `fake` ne (zipf 3,38). 2000 slov doplněných v září 2026
-proto alternativy nemá.
+(zipf 1,55), `fake` ne (zipf 3,38). Proto se ručně kurátorovaná část **přebírá
+beze změny** a skript k ní jen **dopočítá přesmyčky uvnitř poolu**: pro každou
+skupinu slov ze stejných písmen doplní vzájemné vazby. Slovo, které hra zná,
+tak nikdy neprojde jako chyba (*síla/lísa*, *nárok/korán/orkán*).
 
 **`pos_overrides.txt` je hranice, ne seznam výjimek.** Morfologie (MorphoDiTa)
 vyřeší drtivou většinu — `starý`, `denní`, `psí` ven, `stát`, `moc`, `peklo`

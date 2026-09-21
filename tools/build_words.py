@@ -33,8 +33,10 @@ Postup (podrobně v README.md, sekce „Slovní zásoba"):
     z každého pásma → všechny dny mají srovnatelnou obtížnost.
  6. Kontrola tematických shluků uvnitř dne + oprava prohozením v pásmu.
 
-ALTS (mapa uznávaných přesmyček) se NEgeneruje — přebírá se ze stávajícího
-words.js. Původní kurace se nepodařilo zrekonstruovat (viz DEVLOG 2026-09-21).
+ALTS (mapa uznávaných přesmyček) se přebírá ze stávajícího words.js — původní
+kurace se nepodařilo zrekonstruovat (viz DEVLOG 2026-09-21) — a navíc se doplní
+o přesmyčky uvnitř poolu: když jde ze stejných písmen složit jiné slovo, které
+hra sama zná, musí ho uznat taky.
 """
 import argparse, collections, json, os, random, re, sys, time
 import urllib.parse, urllib.request
@@ -259,8 +261,26 @@ def main():
     assert len(flat) == DAILY_SIZE == len(set(flat)), "slova se rozešla"
     assert all(len({band_of[w] for w in d}) == PER_DAY for d in days), "pásma se rozešla"
 
-    alts = re.search(r"^const ALTS = (\{.*\});$", open(args.out, encoding="utf-8").read(),
-                     re.M | re.S).group(1)
+    alts = json.loads(re.search(r"^const ALTS = (\{.*\});$",
+                                open(args.out, encoding="utf-8").read(), re.M | re.S).group(1))
+    # Přesmyčky uvnitř poolu. Kurace z původního slovníku zůstává, tohle ji jen
+    # doplňuje — jinak hra označí za chybu slovo, které sama zná a je ze stejných
+    # písmen (síla/lísa, nárok/korán/orkán).
+    anagrams = {}
+    for w in pool:
+        anagrams.setdefault("".join(sorted(w)), []).append(w)
+    linked = 0
+    for group in anagrams.values():
+        if len(group) < 2:
+            continue
+        for w in group:
+            have = alts.setdefault(w, [])
+            for other in group:
+                if other != w and other not in have:
+                    have.append(other)
+                    linked += 1
+    print(f"přesmyček uvnitř poolu doplněno: {linked}")
+    alts = json.dumps(alts, ensure_ascii=False, separators=(",", ":"))
     j = lambda xs: "[" + ",".join('"%s"' % w for w in xs) + "]"
     open(args.out, "w", encoding="utf-8").write(f'''// Denní výzva: {DAILY_SIZE} nejčastějších českých podstatných jmen (Wikislovník,
 // Kategorie:Česká substantiva) = {DAYS} dní po {PER_DAY} slovech. Pořadí slov v poolu

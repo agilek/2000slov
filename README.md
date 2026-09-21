@@ -114,4 +114,7 @@ Zpracování:
 
 Jako správná odpověď se navíc uznává i jiné platné české slovo složené ze
 stejných písmen (1234 hesel má alternativu, např. rok/okr, zem/mez). Mapa
-přesmyček pokrývá původních 13 000 slov; 2000 nově doplněných ji zatím nemá.
+přesmyček má dvě části: ručně kurátorovanou z původního slovníku (uznává
+i tvary, které v poolu nejsou — *otec* → *ocet, otce*) a automaticky doplněné
+**přesmyčky uvnitř poolu** — když jde ze stejných písmen složit jiné slovo,
+které hra sama zná, uzná se taky (*síla/lísa*, *vlas/sval*, *nárok/korán/orkán*).
