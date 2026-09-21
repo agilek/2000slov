@@ -2,6 +2,46 @@
 
 ## 2026-09-21
 
+### Profil a trénink jako dva rohy úvodní obrazovky
+Úvodní obrazovka dostala dvě kulatá tlačítka v horních rozích — vlevo Profil,
+vpravo Trénink — a k nim novou obrazovku `#profile` se šipkou zpět, avatarem,
+přihlášením, statistikami v mřížce 2×2 a sekcí „Moje významy". Statistiky jsou
+skutečné, počítají se z `persist.results` (dní v řadě, odehraných dní, získaných
+slov, úspěšnost). Přihlášení a významy zatím jen vysvětlují, že se chystají —
+backend pro ně vznikne až v P2/P3 podle plánu.
+
+**Root cause / approach:** Profil je záměrně `.screen`, ne modal: na telefonu se
+„další stránka" se šipkou zpět chová jinak než překryv a uživatel to čeká.
+Kvůli tomu musel dostat výjimku ze scrollování — `.screen` je zamčená na
+`100dvh` s `touch-action:none` a scrollovat směl dosud jen `#result` přes
+`:has()` pravidlo. Klávesnicová stráž řešit nemusela: `document.onkeydown`
+propouští jen když je aktivní `#game`, takže nová obrazovka je bezpečná zadarmo.
+Při kontrole na šířce telefonu se ukázalo, že `welcomeRules` mělo natvrdo `<br>`,
+které text trhalo doprostřed slova — zrušeno, ať teče přirozeně.
+
+Poznámka k ověřování: `Emulation.setEmulatedMedia` pro `prefers-color-scheme`
+vykreslilo světlý režim rozbitě (světlý text na světlém pozadí), ale byl to
+artefakt emulace — `--ink` je ve světlém režimu `#1c1c1e`. Spolehlivé je sáhnout
+na `:root[data-theme="light"]`, který v CSS existuje.
+
+### Úklid po přesunu: starý worker smazán, GitHub Pages vypnuté
+`slov2000-api` zrušen, Pages odpojené. D1 zůstala nedotčená (1 odběratel,
+8 výsledků) — smazání workeru databázi nebere.
+
+**Root cause / approach:** Málem to shodilo push notifikace. **Secrety jsou
+per-worker**, takže nový `slov2000` po nasazení neměl `VAPID_PRIVATE_JWK`
+(`wrangler secret list` → `[]`) a cron by tiše nic neposlal, zatímco starý worker
+ho pořád měl. Klíč se musel nejdřív přenést z `worker/.dev.vars` a ověřit, že
+z jeho `x`/`y` sedí veřejný klíč zadrátovaný v `game.js` — jinak by existující
+odběry přestaly platit. Teprve pak šlo mazat.
+GitHub Pages: `DELETE /repos/:o/:r/pages` odstraní konfiguraci hned (GET vrací
+404), ale obsah na `agilek.github.io` ještě chvíli dojíždí z CDN — teardown je
+na straně GitHubu asynchronní a nejde uspíšit.
+
+→ No new memory entries.
+
+## 2026-09-21
+
 ### P0: hra i API jedou z jednoho Cloudflare Workeru (konec GitHub Pages a CORS)
 Statika se přesunula do `public/`, `wrangler.toml` do kořene repa a jeden Worker
 teď servíruje obojí — `[assets]` vydá soubory, `run_worker_first = ["/api/*"]`

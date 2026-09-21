@@ -24,6 +24,17 @@
 
     <!-- Welcome -->
     <div class="screen" id="welcome" style="gap: 28px;">
+        <!-- Horní lišta: dva cíle v rozích, jak je zvykem v mobilních aplikacích. -->
+        <div class="top-bar">
+            <button class="icon-btn" onclick="showProfile()" aria-label="Profil">
+                <span class="icon-btn-circle"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg></span>
+                <span class="icon-btn-label">Profil</span>
+            </button>
+            <button class="icon-btn" onclick="startPracticeGame()" aria-label="Trénink">
+                <span class="icon-btn-circle"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 12h1" /><path d="M6 8h-2a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h2" /><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z" /><path d="M9 12h6" /><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z" /><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2" /><path d="M22 12h-1" /></svg></span>
+                <span class="icon-btn-label">Trénink</span>
+            </button>
+        </div>
         <div>
             <div class="welcome-grid" id="welcomeGrid" aria-hidden="true"></div>
             <h1>2000 slov</h1>
@@ -33,6 +44,32 @@
         <div class="welcome-actions">
             <span class="welcome-date" id="welcomeDate" role="button" tabindex="0" onclick="showCollection()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showCollection();}"></span>
             <button class="btn btn-play" id="playBtn" onclick="playToday()"><span id="playBtnLabel">Hrát</span></button>
+        </div>
+    </div>
+
+    <!-- Profil -->
+    <div class="screen" id="profile">
+        <div class="screen-bar">
+            <button class="icon-btn-circle icon-btn-circle--bare" onclick="showWelcome()" aria-label="Zpět"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" /></svg></button>
+            <span class="screen-title">Profil</span>
+        </div>
+
+        <div class="profile-head">
+            <div class="profile-avatar" id="profileAvatar" aria-hidden="true"></div>
+            <div class="profile-name" id="profileName"></div>
+            <div class="profile-sub" id="profileSub"></div>
+        </div>
+
+        <button class="btn btn-primary" id="profileLoginBtn" onclick="promptLogin()">Přihlásit se</button>
+
+        <div class="profile-section">
+            <h3 class="profile-section-title">Statistiky</h3>
+            <div class="stat-grid" id="profileStats"></div>
+        </div>
+
+        <div class="profile-section">
+            <h3 class="profile-section-title">Moje významy</h3>
+            <div class="empty-card" id="profileDefs"></div>
         </div>
     </div>
 

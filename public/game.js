@@ -288,9 +288,58 @@ function showWelcome() {
     const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
     $('playBtnLabel').textContent = todayDone ? 'Výsledek' : 'Hrát';
     $('welcomeRules').innerHTML = persist.attempts > 0
-        ? 'Všech 20 slov udrží sérii.<br>Dnešních 20 slov hraje dnes každý stejných.'
-        : `Dnešních 20 slov z ${fmtNum(TOTAL_WORDS)} nejčastějších českých<br>hraje dnes každý stejných. Zvládneš všechna?`;
+        ? 'Všech 20 slov udrží sérii. Dnešních 20 slov hraje dnes každý stejných.'
+        : `Dnešních 20 slov z ${fmtNum(TOTAL_WORDS)} nejčastějších českých hraje dnes každý stejných. Zvládneš všechna?`;
     showScreen('welcome');
+}
+
+/* ---------------- profil ---------------- */
+
+function showProfile() {
+    renderProfile();
+    showScreen('profile');
+}
+
+function renderProfile() {
+    const days = Object.keys(persist.results).length;
+    const words = Object.values(persist.results).reduce((a, b) => a + b, 0);
+    const pct = days ? Math.round(words / (days * WORDS_PER_DAY) * 100) : 0;
+
+    // Účty zatím neběží, takže je profil lokální — statistiky jsou skutečné,
+    // jen se počítají z localStorage tohohle zařízení.
+    $('profileAvatar').textContent = 'H';
+    $('profileName').textContent = 'Host';
+    $('profileSub').textContent = persist.bestStreak > 0
+        ? `Nejdelší série: ${fmtNum(persist.bestStreak)}`
+        : 'Zatím bez série';
+
+    const tiles = [
+        [fmtNum(persist.streak), 'dní v řadě'],
+        [fmtNum(days), 'odehraných dní'],
+        [fmtNum(words), 'získaných slov'],
+        [pct + ' %', 'úspěšnost'],
+    ];
+    const grid = $('profileStats');
+    grid.innerHTML = '';
+    for (const [value, label] of tiles) {
+        const tile = document.createElement('div');
+        tile.className = 'stat-tile';
+        const v = document.createElement('div');
+        v.className = 'stat-value';
+        v.textContent = value;
+        const l = document.createElement('div');
+        l.className = 'stat-label';
+        l.textContent = label;
+        tile.append(v, l);
+        grid.appendChild(tile);
+    }
+
+    $('profileDefs').textContent =
+        'Významy slov teprve chystáme. Až je spustíme, najdeš tady ty, které jsi přidal.';
+}
+
+function promptLogin() {
+    showToast('Účty připravujeme — zatím se postup ukládá jen v tomhle zařízení.');
 }
 
 function playToday() {

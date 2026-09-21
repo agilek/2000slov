@@ -111,7 +111,7 @@ Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toas
 ## 4. Roadmapa
 
 1. ~~**Skutečný percentil**~~ — **hotovo a nasazeno.** Cloudflare Worker + D1
-   (`worker/`) na `https://slov2000-api.slov2000.workers.dev` počítá
+   (`worker/`) na `https://slov2000.slov2000.workers.dev` počítá
    skutečné „Top X % hráčů dneška" ze skutečných výsledků. Dokud den nemá
    aspoň 15 odeslaných výsledků, hra tiše zůstává u statického odhadu.
    Kdyby worker někdy spadl, hra to potichu ustojí — `fetchRealPercentile()`
