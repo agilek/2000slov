@@ -2,6 +2,42 @@
 
 ## 2026-09-21
 
+### Komunitní významy slov + mezihra po každém slově v tréninku
+Trénink má po **každém** slově (uhodnutém i nestihnutém) stejnou mezihru: velké
+slovo, nejlépe hodnocený význam od hráčů, odpočet na další slovo a tlačítko
+k přidání vlastního. Klepnutím kamkoli se odpočet zastaví a zase rozjede, bez
+tlačítka. Modal se všemi významy umí hlasovat, nahlásit a přidat vlastní; po
+třech nahlášeních význam zmizí. Ve statistikách přibyla uhodnutá slova
+z tréninku — opakované slovo se počítá znovu.
+
+**Root cause / approach:** Zápisy měly podle plánu viset na účtech, jenže
+přihlášení e-mailem je zablokované na doméně, která zatím není koupená
+(Resend bez ověřené domény nedoručí). Autorství proto zatím drží anonymní
+`client_id` — stejné, jaké používá `results` — a přezdívka je jen self-asserted
+řetězec. Plán s tím počítá: `users.client_id` je právě na pozdější navázání účtu.
+Brzdy proti zahlcení jdou i bez přihlášení: unikátní index `(client_id, word)`
+= jeden význam na slovo a hráče, 20 významů/den, délka 10–200, regex na sprostá
+slova přenesený z `tools/build_words.py`, zákaz odkazů a zákaz hlasovat si sám.
+
+Dvě věci, které to formovaly:
+- **Mezihra je překryv, ne `.screen`.** `.screen` je `100dvh` s `touch-action:none`
+  a `showScreen()` by deaktivoval `#game`, do kterého `placeGameGrid()` fyzicky
+  vkládá herní mřížku. Odpočet jede v `state.nextTimer`, který `startPracticeGame()`
+  i `exitPractice()` už uklízejí, takže nevznikl další kill switch.
+  Tím zanikl `countdownToNextWord()` a přepisování `#progress` — smazáno.
+- **Cizí text jen přes `textContent`.** `game.js` na pár místech sype `innerHTML`
+  a od téhle chvíle se v DOMu ocitá text od cizích lidí u každého slova. Ověřeno:
+  význam s `<script>` i přezdívka s `<img onerror=...>` se vykreslí jako text,
+  žádný uzel nevznikne.
+
+Pozn.: schválený plán psal, že otevření seznamu významů má session **zabít** —
+to si odporovalo s dřívějším rozhodnutím „pozastavit a pokračovat". Platí volba
+uživatele: modal odpočet jen pozastaví, po zavření (i Escapem) jede dál.
+
+→ No new memory entries.
+
+## 2026-09-21
+
 ### Profil a trénink jako dva rohy úvodní obrazovky
 Úvodní obrazovka dostala dvě kulatá tlačítka v horních rozích — vlevo Profil,
 vpravo Trénink — a k nim novou obrazovku `#profile` se šipkou zpět, avatarem,

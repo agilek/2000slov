@@ -19,7 +19,23 @@ const ROUTES = {
     'POST /api/result': handleSubmit,
     'GET /api/percentile': handlePercentile,
     'POST /api/subscribe': handleSubscribe,
+    'GET /api/defs': handleDefsBatch,
+    'GET /api/defs/word': handleDefsForWord,
+    'GET /api/defs/mine': handleMyDefs,
+    'POST /api/defs': handleDefCreate,
+    'POST /api/defs/vote': handleDefVote,
+    'POST /api/defs/report': handleDefReport,
 };
+
+// Limity na významy. Drží se v D1 dotazech, žádné nové úložiště.
+const DEF_MIN = 10;
+const DEF_MAX = 200;
+const DEF_PER_DAY = 20;
+const AUTHOR_MAX = 20;
+const BATCH_MAX = 20;
+const REPORTS_TO_HIDE = 3;
+// Stejný seznam jako tools/build_words.py — ať neprojde sprostota ani do významů.
+const VULGAR = /(kurv|prdel|hovn|hajzl|píč|čur|čůr|mrd|šuká|šulin|zkurv|sračk|chcank|kokot|debil|zmrd|buzer|sviň|prcá|kunda|kundič)/i;
 
 export default {
     async fetch(request, env, ctx) {
@@ -144,6 +160,152 @@ async function handleSubscribe(request, env) {
          ON CONFLICT(client_id) DO UPDATE SET endpoint = excluded.endpoint, p256dh = excluded.p256dh, auth = excluded.auth, created_at = excluded.created_at`
     ).bind(clientId, endpoint, keys.p256dh, keys.auth, Date.now()).run();
 
+    return json({ ok: true }, 200);
+}
+
+/* ---------------- komunitní významy slov ---------------- */
+
+const now = () => Date.now();
+const clean = (t) => String(t).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+
+function validClient(id) {
+    return typeof id === 'string' && id.length >= 8 && id.length <= 64;
+}
+
+// Vrací chybovou hlášku, nebo null když je text v pořádku.
+function defTextError(text) {
+    if (typeof text !== 'string') return 'chybí text';
+    const t = clean(text);
+    if (t.length < DEF_MIN) return `Napiš aspoň ${DEF_MIN} znaků.`;
+    if (t.length > DEF_MAX) return `Nejvýš ${DEF_MAX} znaků.`;
+    if (VULGAR.test(t)) return 'Bez sprostých slov, prosím.';
+    if (/https?:\/\//i.test(t)) return 'Odkazy sem nepatří.';
+    return null;
+}
+
+function defRow(r, clientId) {
+    return {
+        id: r.id,
+        word: r.word,
+        text: r.text,
+        author: r.author || 'Anonym',
+        votes: r.votes,
+        mine: !!clientId && r.client_id === clientId,
+    };
+}
+
+// Nejlépe hodnocený význam pro až BATCH_MAX slov naráz — hra si je natahuje
+// dopředu, aby přechodová obrazovka nikdy nečekala na síť.
+async function handleDefsBatch(request, env, url) {
+    const raw = (url.searchParams.get('w') || '').split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
+    const words = [...new Set(raw)].slice(0, BATCH_MAX);
+    if (!words.length) return json({ defs: {} }, 200);
+    const clientId = url.searchParams.get('clientId');
+    const marks = words.map(() => '?').join(',');
+    const { results } = await env.DB.prepare(
+        `SELECT * FROM (
+           SELECT *, ROW_NUMBER() OVER (PARTITION BY word ORDER BY votes DESC, created_at ASC) AS rn
+           FROM definitions WHERE hidden = 0 AND word IN (${marks})
+         ) WHERE rn = 1`
+    ).bind(...words).all();
+    const defs = {};
+    for (const w of words) defs[w] = null;              // i prázdno je odpověď
+    for (const r of results) defs[r.word] = defRow(r, clientId);
+    return json({ defs }, 200);
+}
+
+async function handleDefsForWord(request, env, url) {
+    const word = (url.searchParams.get('w') || '').trim().toLowerCase();
+    if (!word) return json({ error: 'bad params' }, 400);
+    const clientId = url.searchParams.get('clientId');
+    const { results } = await env.DB.prepare(
+        'SELECT * FROM definitions WHERE word = ?1 AND hidden = 0 ORDER BY votes DESC, created_at ASC LIMIT 50'
+    ).bind(word).all();
+    return json({ word, defs: results.map(r => defRow(r, clientId)) }, 200);
+}
+
+async function handleMyDefs(request, env, url) {
+    const clientId = url.searchParams.get('clientId');
+    if (!validClient(clientId)) return json({ error: 'bad params' }, 400);
+    const { results } = await env.DB.prepare(
+        'SELECT * FROM definitions WHERE client_id = ?1 ORDER BY created_at DESC LIMIT 100'
+    ).bind(clientId).all();
+    return json({ defs: results.map(r => defRow(r, clientId)) }, 200);
+}
+
+async function handleDefCreate(request, env) {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const { clientId, word, text, author } = body || {};
+    if (!validClient(clientId) || typeof word !== 'string' || !word.trim()) {
+        return json({ error: 'bad params' }, 400);
+    }
+    const err = defTextError(text);
+    if (err) return json({ error: err }, 400);
+    const name = clean(author || '').slice(0, AUTHOR_MAX);
+    if (name && VULGAR.test(name)) return json({ error: 'Přezdívka nesmí být sprostá.' }, 400);
+
+    const dayAgo = now() - 86400000;
+    const { results: cnt } = await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM definitions WHERE client_id = ?1 AND created_at > ?2'
+    ).bind(clientId, dayAgo).all();
+    if (cnt[0].n >= DEF_PER_DAY) {
+        return json({ error: `Denní limit je ${DEF_PER_DAY} významů. Zkus to zítra.` }, 429);
+    }
+
+    const id = crypto.randomUUID();
+    try {
+        await env.DB.prepare(
+            'INSERT INTO definitions (id, word, text, client_id, author, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)'
+        ).bind(id, word.trim().toLowerCase(), clean(text), clientId, name || null, now()).run();
+    } catch (e) {
+        // jediný unikátní index je (client_id, word)
+        return json({ error: 'K tomuhle slovu už svůj význam máš.' }, 409);
+    }
+    return json({ ok: true, id }, 200);
+}
+
+async function handleDefVote(request, env) {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const { clientId, id } = body || {};
+    if (!validClient(clientId) || typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
+
+    const { results: own } = await env.DB.prepare('SELECT client_id FROM definitions WHERE id = ?1').bind(id).all();
+    if (!own.length) return json({ error: 'not found' }, 404);
+    if (own[0].client_id === clientId) return json({ error: 'Svůj vlastní význam hodnotit nejde.' }, 400);
+
+    const { results: had } = await env.DB.prepare(
+        'SELECT 1 AS x FROM votes WHERE definition_id = ?1 AND client_id = ?2'
+    ).bind(id, clientId).all();
+    if (had.length) {
+        await env.DB.batch([
+            env.DB.prepare('DELETE FROM votes WHERE definition_id = ?1 AND client_id = ?2').bind(id, clientId),
+            env.DB.prepare('UPDATE definitions SET votes = (SELECT COUNT(*) FROM votes WHERE definition_id = ?1) WHERE id = ?1').bind(id),
+        ]);
+    } else {
+        await env.DB.batch([
+            env.DB.prepare('INSERT OR IGNORE INTO votes (definition_id, client_id, created_at) VALUES (?1, ?2, ?3)').bind(id, clientId, now()),
+            env.DB.prepare('UPDATE definitions SET votes = (SELECT COUNT(*) FROM votes WHERE definition_id = ?1) WHERE id = ?1').bind(id),
+        ]);
+    }
+    const { results } = await env.DB.prepare('SELECT votes FROM definitions WHERE id = ?1').bind(id).all();
+    return json({ ok: true, votes: results[0].votes, voted: !had.length }, 200);
+}
+
+async function handleDefReport(request, env) {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const { clientId, id } = body || {};
+    if (!validClient(clientId) || typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
+    await env.DB.batch([
+        env.DB.prepare('INSERT OR IGNORE INTO reports (definition_id, client_id, created_at) VALUES (?1, ?2, ?3)').bind(id, clientId, now()),
+        env.DB.prepare(
+            `UPDATE definitions SET reports = (SELECT COUNT(*) FROM reports WHERE definition_id = ?1),
+             hidden = CASE WHEN (SELECT COUNT(*) FROM reports WHERE definition_id = ?1) >= ${REPORTS_TO_HIDE} THEN 1 ELSE hidden END
+             WHERE id = ?1`
+        ).bind(id),
+    ]);
     return json({ ok: true }, 200);
 }
 

@@ -118,6 +118,33 @@
     <!-- Toast -->
     <div id="toast" class="kb-toast"></div>
 
+    <!-- Mezihra po každém slově v tréninku -->
+    <div class="pause-overlay word-done" id="wordDoneOverlay">
+        <div class="wd-word" id="wdWord"></div>
+        <div class="wd-card" id="wdCard"></div>
+        <button class="btn-tertiary wd-more" id="wdMoreBtn" onclick="openDefs(event)"></button>
+        <div class="wd-count" id="wdCount"></div>
+    </div>
+
+    <!-- Významy slova -->
+    <div class="modal" id="defsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="defsTitle">Významy</h2>
+                <button class="close-modal" onclick="closeDefs()">&times;</button>
+            </div>
+            <ul class="defs-list" id="defsList"></ul>
+            <form class="feedback-form" id="defsForm" onsubmit="submitDef(event)">
+                <label for="defsAuthor">Přezdívka</label>
+                <input id="defsAuthor" type="text" maxlength="20" autocomplete="nickname" placeholder="Jak ti máme říkat?" />
+                <label for="defsText">Tvůj význam</label>
+                <textarea id="defsText" required maxlength="200" placeholder="Stručně vysvětli, co slovo znamená…"></textarea>
+                <p id="defsError" class="feedback-error" style="display:none;"></p>
+                <button type="submit" class="btn btn-primary" id="defsSubmit">Přidat význam</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Collection Modal -->
     <div class="modal" id="collectionModal">
         <div class="modal-content">

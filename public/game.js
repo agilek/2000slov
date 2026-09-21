@@ -10,7 +10,7 @@
 'use strict';
 
 const START_TIME = 30;
-const PRACTICE_GAP = 3;   // s — pauza na přečtení nestihnutého slova v tréninku
+const PRACTICE_GAP = 5;   // s — mezihra po slově v tréninku (slovo + význam)
 const WORDS_PER_DAY = 20;
 const TOTAL_WORDS = WORDS.length;                 // 7300
 const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 365
@@ -53,6 +53,8 @@ function defaultPersist() {
         attempts: 0,
         wins: 0,
         kbHintShown: false,
+        practiceWords: 0,   // uhodnutá slova v tréninku, opakovaná se počítají znovu
+        nick: '',           // přezdívka u přidaných významů
         day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct }
         clientId: genClientId(), // anonymní ID pro leaderboard backend (jen počítadlo, žádná osobní data)
         a2hsPromptDismissed: false, // "přidej na plochu" nabídka na iOS se ukáže jen do prvního zavření
@@ -293,6 +295,254 @@ function showWelcome() {
     showScreen('welcome');
 }
 
+/* ---------------- významy slov ---------------- */
+
+const defCache = new Map();      // slovo -> definice | null (null = víme, že žádná není)
+const defInflight = new Map();
+
+async function apiGet(path) {
+    try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
+        const res = await fetch(path, { signal: ctrl.signal });
+        clearTimeout(t);
+        return res.ok ? await res.json() : null;
+    } catch (e) {
+        return null; // offline nebo timeout — hra jede dál, jen bez významu
+    }
+}
+
+async function apiPost(path, body) {
+    try {
+        const res = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({ clientId: persist.clientId }, body)),
+        });
+        return { ok: res.ok, data: await res.json().catch(() => null) };
+    } catch (e) {
+        return { ok: false, data: null };
+    }
+}
+
+const defsUrl = (words) =>
+    `/api/defs?w=${encodeURIComponent(words)}&clientId=${encodeURIComponent(persist.clientId)}`;
+
+// Fronta tréninku se bere od konce, takže dalších pár slov známe dopředu
+// a mezihra pak nikdy nečeká na síť.
+function prefetchDefs() {
+    if (state.mode !== 'practice') return;
+    const todo = (state.practiceQueue || []).slice(-10)
+        .filter(w => !defCache.has(w) && !defInflight.has(w));
+    if (!todo.length) return;
+    todo.forEach(w => defInflight.set(w, true));
+    apiGet(defsUrl(todo.join(','))).then(data => {
+        if (data && data.defs) {
+            for (const w of Object.keys(data.defs)) defCache.set(w, data.defs[w]);
+        }
+    }).finally(() => todo.forEach(w => defInflight.delete(w)));
+}
+
+/* ---------------- mezihra po slově (jen trénink) ---------------- */
+
+function showWordDone(word, gen) {
+    if (state.gen !== gen) return;
+    clearInterval(state.timer);
+    clearInterval(state.nextTimer);
+    state.wdWord = word;
+    state.wdPaused = false;
+    state.wdLeft = PRACTICE_GAP;
+    renderWordDone(word);
+    $('wordDoneOverlay').classList.add('active');
+    $('wordDoneOverlay').classList.remove('wd-paused');
+    if (!defCache.has(word)) {
+        apiGet(defsUrl(word)).then(d => {
+            if (!d || !d.defs) return;
+            defCache.set(word, d.defs[word] || null);
+            if (state.gen === gen && state.wdWord === word) renderWordDone(word);
+        });
+    }
+    renderWdCount();
+    state.nextTimer = setInterval(() => {
+        if (state.gen !== gen) { clearInterval(state.nextTimer); state.nextTimer = null; return; }
+        if (state.wdPaused) return;
+        if (--state.wdLeft > 0) return renderWdCount();
+        clearInterval(state.nextTimer);
+        state.nextTimer = null;
+        hideWordDone();
+        loadWord();
+    }, 1000);
+    prefetchDefs();
+}
+
+function hideWordDone() {
+    $('wordDoneOverlay').classList.remove('active', 'wd-paused');
+}
+
+function renderWdCount() {
+    $('wdCount').textContent = state.wdPaused ? 'Klepnutím pokračuješ' : `Další slovo za ${state.wdLeft} s`;
+}
+
+function renderWordDone(word) {
+    $('wdWord').textContent = word;
+    const def = defCache.get(word);
+    const card = $('wdCard');
+    card.innerHTML = '';
+    const text = document.createElement('p');
+    text.className = 'wd-text';
+    if (def) {
+        card.classList.remove('wd-card--empty');
+        text.textContent = def.text;                     // cizí text vždy přes textContent
+        const meta = document.createElement('div');
+        meta.className = 'wd-meta';
+        meta.append(authorEl(def.author), voteBtn(def));
+        card.append(text, meta);
+        $('wdMoreBtn').textContent = 'Významy a přidat vlastní';
+    } else {
+        card.classList.add('wd-card--empty');
+        text.textContent = 'Pro toto slovo zatím nemáme význam – buď první, kdo ho vytvoří.';
+        card.append(text);
+        $('wdMoreBtn').textContent = 'Přidat význam';
+    }
+}
+
+function authorEl(name) {
+    const wrap = document.createElement('span');
+    wrap.className = 'wd-author';
+    const av = document.createElement('span');
+    av.className = 'wd-avatar';
+    const label = (name || 'Anonym').trim();
+    av.textContent = label.charAt(0).toUpperCase() || '?';
+    const n = document.createElement('span');
+    n.className = 'wd-name';
+    n.textContent = label;
+    wrap.append(av, n);
+    return wrap;
+}
+
+function voteBtn(def) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'wd-vote' + (def.voted ? ' voted' : '');
+    b.textContent = `👍 ${def.votes}`;
+    if (def.mine) {
+        b.disabled = true;
+        b.title = 'Svůj vlastní význam hodnotit nejde';
+    } else {
+        b.onclick = (e) => { e.stopPropagation(); voteDef(def, b); };
+    }
+    return b;
+}
+
+async function voteDef(def, btn) {
+    const r = await apiPost('/api/defs/vote', { id: def.id });
+    if (!r.ok) return showToast((r.data && r.data.error) || 'Hlas se nepodařilo uložit.');
+    def.votes = r.data.votes;
+    def.voted = r.data.voted;
+    btn.textContent = `👍 ${def.votes}`;
+    btn.classList.toggle('voted', !!def.voted);
+}
+
+/* ---------------- modal se všemi významy ---------------- */
+
+function openDefs(e) {
+    if (e) e.stopPropagation();
+    pauseWordDone(true);                                  // session se pozastaví, nezabíjí
+    const word = state.wdWord;
+    $('defsTitle').textContent = word || 'Významy';
+    $('defsError').style.display = 'none';
+    $('defsText').value = '';
+    $('defsAuthor').value = persist.nick || '';
+    $('defsList').innerHTML = '';
+    $('defsModal').classList.add('active');
+    loadDefsList(word);
+}
+
+function closeDefs() {
+    $('defsModal').classList.remove('active');
+    pauseWordDone(false);                                 // a zase se rozjede
+}
+
+function pauseWordDone(paused) {
+    if (!$('wordDoneOverlay').classList.contains('active')) return;
+    state.wdPaused = paused;
+    $('wordDoneOverlay').classList.toggle('wd-paused', paused);
+    renderWdCount();
+}
+
+async function loadDefsList(word) {
+    const list = $('defsList');
+    const data = await apiGet(
+        `/api/defs/word?w=${encodeURIComponent(word)}&clientId=${encodeURIComponent(persist.clientId)}`);
+    if (state.wdWord !== word) return;
+    list.innerHTML = '';
+    const defs = (data && data.defs) || [];
+    if (!defs.length) {
+        const p = document.createElement('li');
+        p.className = 'def-empty';
+        p.textContent = data
+            ? 'Zatím tu není žádný význam. Buď první!'
+            : 'Významy se teď nepodařilo načíst.';
+        list.appendChild(p);
+        return;
+    }
+    defs.forEach(d => list.appendChild(defItem(d)));
+}
+
+function defItem(d) {
+    const li = document.createElement('li');
+    li.className = 'def-item' + (d.mine ? ' mine' : '');
+    const p = document.createElement('p');
+    p.className = 'wd-text';
+    p.textContent = d.text;
+    const meta = document.createElement('div');
+    meta.className = 'wd-meta';
+    meta.append(authorEl(d.author), voteBtn(d));
+    li.append(p, meta);
+    if (!d.mine) {
+        const rep = document.createElement('button');
+        rep.type = 'button';
+        rep.className = 'def-report';
+        rep.textContent = 'Nahlásit';
+        rep.onclick = () => reportDef(d, li);
+        li.appendChild(rep);
+    }
+    return li;
+}
+
+async function reportDef(d, li) {
+    const r = await apiPost('/api/defs/report', { id: d.id });
+    if (!r.ok) return showToast('Nahlášení se nepodařilo.');
+    li.remove();
+    showToast('Díky, nahlášeno.');
+}
+
+async function submitDef(e) {
+    e.preventDefault();
+    const word = state.wdWord;
+    const author = $('defsAuthor').value.trim();
+    const btn = $('defsSubmit');
+    const err = $('defsError');
+    err.style.display = 'none';
+    btn.disabled = true;
+    const r = await apiPost('/api/defs', { word, text: $('defsText').value, author });
+    btn.disabled = false;
+    if (!r.ok) {
+        err.textContent = (r.data && r.data.error) || 'Význam se nepodařilo uložit.';
+        err.style.display = 'block';
+        return;
+    }
+    persist.nick = author;
+    savePersist();
+    $('defsText').value = '';
+    defCache.delete(word);
+    await loadDefsList(word);
+    const fresh = await apiGet(defsUrl(word));
+    if (fresh && fresh.defs) defCache.set(word, fresh.defs[word] || null);
+    renderWordDone(word);
+    showToast('Díky! Význam je uložený.');
+}
+
 /* ---------------- profil ---------------- */
 
 function showProfile() {
@@ -316,14 +566,15 @@ function renderProfile() {
     const tiles = [
         [fmtNum(persist.streak), 'dní v řadě'],
         [fmtNum(days), 'odehraných dní'],
-        [fmtNum(words), 'získaných slov'],
+        [fmtNum(words), 'slov v denní výzvě'],
         [pct + ' %', 'úspěšnost'],
+        [fmtNum(persist.practiceWords), 'uhodnutých slov v tréninku', 'stat-tile--wide'],
     ];
     const grid = $('profileStats');
     grid.innerHTML = '';
-    for (const [value, label] of tiles) {
+    for (const [value, label, extra] of tiles) {
         const tile = document.createElement('div');
-        tile.className = 'stat-tile';
+        tile.className = extra ? 'stat-tile ' + extra : 'stat-tile';
         const v = document.createElement('div');
         v.className = 'stat-value';
         v.textContent = value;
@@ -334,8 +585,44 @@ function renderProfile() {
         grid.appendChild(tile);
     }
 
-    $('profileDefs').textContent =
-        'Významy slov teprve chystáme. Až je spustíme, najdeš tady ty, které jsi přidal.';
+    loadMyDefs();
+}
+
+async function loadMyDefs() {
+    const box = $('profileDefs');
+    box.textContent = 'Načítám…';
+    const data = await apiGet(`/api/defs/mine?clientId=${encodeURIComponent(persist.clientId)}`);
+    const defs = data && data.defs;
+    if (!defs) {
+        box.textContent = 'Významy se teď nepodařilo načíst.';
+        return;
+    }
+    if (!defs.length) {
+        box.textContent = 'Zatím žádný. V tréninku se ti po každém slově nabídne, ať nějaký přidáš.';
+        return;
+    }
+    box.classList.remove('empty-card');
+    box.textContent = '';
+    const list = document.createElement('ul');
+    list.className = 'defs-list';
+    for (const d of defs) {
+        const li = document.createElement('li');
+        li.className = 'def-item mine';
+        const w = document.createElement('div');
+        w.className = 'def-word';
+        w.textContent = d.word;
+        const p = document.createElement('p');
+        p.className = 'wd-text';
+        p.textContent = d.text;
+        const meta = document.createElement('div');
+        meta.className = 'wd-meta';
+        const v = document.createElement('span');
+        v.textContent = `👍 ${d.votes}`;
+        meta.appendChild(v);
+        li.append(w, p, meta);
+        list.appendChild(li);
+    }
+    box.appendChild(list);
 }
 
 function promptLogin() {
@@ -414,11 +701,13 @@ function startPracticeGame() {
     state.practiceCount = 0;
     clearInterval(state.nextTimer);
     state.nextTimer = null;
+    hideWordDone();
     state.time = START_TIME;
     stopConfetti();
     placeGameGrid('game');
     showScreen('game');
     loadWord();
+    prefetchDefs();
 }
 
 function shuffleCopy(arr) {
@@ -636,7 +925,11 @@ function checkWord() {
     state.wordIdx++;
     state.solved++;
     state.marks.push(true);
-    if (state.mode === 'practice') state.practiceCount++;
+    if (state.mode === 'practice') {
+        state.practiceCount++;
+        persist.practiceWords++;   // trénink se jinak nikam neukládá
+        savePersist();
+    }
     updateGameGrid(state.marks.length - 1);
     saveDayProgress();
 
@@ -667,6 +960,7 @@ function checkWord() {
         if (state.gen !== genOk) return;
         $('wordDisplay').classList.remove('found');
         $('wordDisplay').style.cssText = '';
+        if (state.mode === 'practice') return showWordDone(target, genOk);
         loadWord();
     }, 750);
 }
@@ -710,13 +1004,10 @@ function handleTimeout() {
     const revealDone = slots.length * stagger + 340;
     // Trénink neskončí — jen se počká, ať si hráč nestihnuté slovo přečte,
     // a další naběhne samo. Skončí se křížkem vpravo nahoře.
-    // Odpočet běží až od chvíle, kdy je slovo celé odhalené, a doběhne přesně
-    // tam, kde naskočí další slovo (proto -320 na závěrečné prolnutí).
-    const hold = state.mode === 'practice' ? PRACTICE_GAP * 1000 - 320 : 850;
-    if (state.mode === 'practice') {
-        state.practiceCount = 0;
-        setTimeout(() => countdownToNextWord(PRACTICE_GAP, gen), revealDone);
-    }
+    // V tréninku se po odhalení slova rovnou otevře mezihra, která si odpočet
+    // řídí sama; v denní výzvě zůstává původní krátká pauza.
+    const hold = state.mode === 'practice' ? 500 : 850;
+    if (state.mode === 'practice') state.practiceCount = 0;
 
     setTimeout(() => {
         if (state.gen !== gen) return;
@@ -731,27 +1022,9 @@ function handleTimeout() {
     setTimeout(() => {
         if (state.gen !== gen) return;
         wd.style.cssText = '';
+        if (state.mode === 'practice') return showWordDone(target, gen);
         loadWord();
     }, revealDone + hold + 320);
-}
-
-// Odpočet na místě časovače: hráč nemusí nic mačkat, další slovo naběhne samo.
-function countdownToNextWord(seconds, gen) {
-    if (state.gen !== gen) return; // mezitím se trénink zavřel nebo začalo jiné kolo
-    clearInterval(state.timer);
-    clearInterval(state.nextTimer);
-    let left = seconds;
-    const render = () => {
-        $('progress').innerHTML = `<div class="gp-headline">Další slovo za</div>`
-            + `<div class="gp-timer">${left}<span class="gp-timer-unit">s</span></div>`;
-    };
-    render();
-    state.nextTimer = setInterval(() => {
-        if (state.gen !== gen) { clearInterval(state.nextTimer); state.nextTimer = null; return; }
-        if (--left > 0) return render();
-        clearInterval(state.nextTimer);
-        state.nextTimer = null;
-    }, 1000);
 }
 
 /* ---------------- FLIP zamíchání (Shift) ---------------- */
@@ -918,6 +1191,8 @@ function exitPractice() {
     clearInterval(state.timer);
     clearInterval(state.nextTimer);
     state.nextTimer = null;
+    hideWordDone();
+    closeModal();
     state.processing = false;
     showWelcome();
 }
@@ -1324,6 +1599,7 @@ function openFeedbackModal() {
 
 function closeModal() {
     $$('.modal').forEach(m => m.classList.remove('active'));
+    pauseWordDone(false);   // trénink pokračuje, i když se zavřelo Escapem nebo klikem vedle
 }
 
 function submitFeedback(e) {
@@ -1348,6 +1624,17 @@ document.addEventListener('pointerdown', e => {
     if (modal && e.target === modal) closeModal();
 });
 
+// Mezihra: klepnutí kamkoli mimo tlačítka pozastaví a zase rozjede odpočet.
+$('wordDoneOverlay').addEventListener('pointerdown', e => {
+    if (e.target.closest('button, a')) return;
+    pauseWordDone(!state.wdPaused);
+});
+
+// Na pozadí se odpočet zastaví, ať hráči slovo neuteče.
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseWordDone(true);
+});
+
 /* ---------------- klávesnice ---------------- */
 
 const STRIP = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1359,6 +1646,8 @@ document.onkeydown = e => {
         state.processing ||
         $('collectionModal').classList.contains('active') ||
         $('feedbackModal').classList.contains('active') ||
+        $('defsModal').classList.contains('active') ||
+        $('wordDoneOverlay').classList.contains('active') ||
         $('pauseOverlay').classList.contains('active')
     ) return;
 

@@ -539,6 +539,7 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     gap: 2px;
     text-align: left;
 }
+.stat-tile--wide { grid-column: 1 / -1; }
 .stat-value { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 1.1; color: var(--ink); }
 .stat-label { font-size: 13px; color: var(--muted-text); }
 .empty-card {
@@ -808,6 +809,85 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 .pause-overlay.active { display: flex; }
 .pause-overlay h2 { font-family: 'Baloo 2', sans-serif; font-size: 32px; font-weight: 800; }
 .pause-overlay .pause-buttons { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---- Mezihra po slově v tréninku ----
+   Překryv, ne .screen: .screen je 100dvh s touch-action:none a showScreen()
+   by deaktivoval #game, do kterého je fyzicky vložená herní mřížka. */
+.word-done { gap: 16px; padding: 24px 22px calc(24px + env(safe-area-inset-bottom)); text-align: center; }
+.wd-word {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 9vw, 42px);
+    color: var(--ink);
+    letter-spacing: .5px;
+}
+.wd-card {
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 16px 13px;
+    max-width: 420px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.wd-card--empty { border-style: dashed; }
+.wd-card .wd-text { text-align: left; }
+.wd-card--empty .wd-text { text-align: center; }
+.wd-text {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink);
+    -webkit-user-select: text;
+    user-select: text;
+}
+.wd-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted-text); }
+.wd-author { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.wd-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 12px;
+    color: #fff; background: var(--blue); flex-shrink: 0;
+}
+.wd-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wd-vote {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--chip-bg); border: none; border-radius: 999px;
+    padding: 6px 12px; cursor: pointer;
+    font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 13px;
+    color: var(--muted-text); touch-action: manipulation; flex-shrink: 0;
+}
+.wd-vote.voted { background: var(--badge-bg); color: var(--green-dark); }
+.wd-vote:active { transform: scale(.94); }
+.wd-more { max-width: 420px; }
+.wd-count {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--muted-text);
+    min-height: 22px;
+}
+.word-done.wd-paused .wd-count { color: var(--blue); }
+
+/* Seznam významů v modalu */
+.defs-list { list-style: none; padding: 0; margin: 0 0 18px; display: flex; flex-direction: column; gap: 10px; }
+.defs-list:empty { display: none; }
+.def-item {
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    padding: 13px 14px 10px;
+    display: flex; flex-direction: column; gap: 9px;
+    text-align: left;
+}
+.def-item.mine { border-color: var(--blue); }
+.def-word { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 15px; color: var(--ink); }
+.def-empty { color: var(--muted-text); font-size: 14px; line-height: 1.5; text-align: center; padding: 6px 0 14px; }
+.def-report {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-size: 12px; color: var(--muted-text); text-decoration: underline; opacity: .75;
+}
 
 /* Animations */
 @keyframes pulse { 50% { transform: scale(1.05); } }
