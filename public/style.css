@@ -171,7 +171,6 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
 .btn-secondary {
     background: var(--card); color: var(--muted-text);
     border: 2px solid var(--muted);
-    box-shadow: 0 6px 16px var(--shadow-soft);
 }
 .btn-secondary:hover { color: var(--blue); border-color: var(--blue); background: var(--card); }
 
@@ -459,7 +458,7 @@ html:has(#result.active), body:has(#result.active) { overflow-y: auto; height: a
     background: var(--card);
     border: 2px solid var(--line);
     color: var(--ink);
-    box-shadow: 0 4px 14px var(--shadow-soft);
+    box-shadow: 0 1px 3px var(--shadow-soft);
     transition: transform .06s ease, border-color .15s ease;
 }
 .icon-btn:active .icon-btn-circle { transform: scale(.92); }

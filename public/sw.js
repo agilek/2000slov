@@ -3,12 +3,13 @@
 // Strategie záměrně dvojí:
 //  - navigace (HTML) jde nejdřív na síť, ať se nová verze projeví hned;
 //    offline spadne na uloženou stránku,
-//  - ostatní statika je cache-first, protože odkazy na ni nesou ?v=N.
-//    Stará uložená stránka tak sahá po staré (taky uložené) verzi skriptu
-//    a nikdy nevznikne rozjetá dvojice HTML + JS.
+//  - ostatní statika je stale-while-revalidate: odpoví se hned z cache
+//    (takže offline a rychlý start), ale na pozadí se stáhne čerstvá verze
+//    pro příští načtení. Čistě cache-first se neosvědčilo — změna v CSS bez
+//    ručního zvýšení ?v=N se k vracejícímu se hráči nikdy nedostala.
 //  - /api/*, /u/* a /prihlaseni se necachují vůbec.
 
-const CACHE = 'slov2000-v1';
+const CACHE = 'slov2000-v2';
 const SHELL = [
     '/',
     '/style.css?v=3',
@@ -62,14 +63,17 @@ self.addEventListener('fetch', (event) => {
     }
 
     event.respondWith(
-        caches.match(req).then(hit => hit || fetch(req).then(res => {
-            // Uloží se jen povedené odpovědi; opaque (fonty) se ukládat nedá spolehlivě.
-            if (res.ok && res.type === 'basic') {
-                const copy = res.clone();
-                caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
-            }
-            return res;
-        }))
+        caches.match(req).then(hit => {
+            // Uloží se jen povedené odpovědi; opaque (fonty) spolehlivě nejdou.
+            const cerstve = fetch(req).then(res => {
+                if (res.ok && res.type === 'basic') {
+                    const copy = res.clone();
+                    caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+                }
+                return res;
+            }).catch(() => hit);
+            return hit || cerstve;
+        })
     );
 });
 
