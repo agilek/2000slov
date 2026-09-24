@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Vypršený čas: budík se otřese a rozletí na střepy
+Po vypršení času (trénink i denní výzva) se časovač ~0,3 s třese jako
+zvonící budík. Pak se rozpadne na 24 trojúhelníkových střepů, rozletí se pár
+červeno-oranžových kostek a tlaková vlna. Střepy padají s gravitací a mizí
+pod panelem mezihry. `prefers-reduced-motion` efekt vypíná.
+
+**Root cause / approach:** Střepy jsou klony skutečného `.gp-timer`
+(stejné písmo, ikona i červená), každý oříznutý `clip-path: polygon`
+na trojúhelník z rozházené mřížky 4×3 a animovaný přes Web Animations API.
+Žádné nové CSS, vrstva `position: fixed; z-index: 999` leží těsně pod
+`.word-done` (1000). Originál dostane `visibility: hidden`, další slovo ho
+`updateUI()` vykreslí znovu.
+
+→ *Memory saved: `kostky_live_icons.md` (aktualizace)*
+
 ### Kalendář profilu přes celou šířku, měsíce otočené a celým názvem
 Kostky vyplní šířku sloupce (7 × `1fr`, na 390px telefonu 40 px místo 34).
 Měsíc je svislý popisek na podkladu přes všechny řádky svých týdnů,

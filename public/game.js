@@ -1564,12 +1564,82 @@ function checkWord() {
     }, 750);
 }
 
+// Čas vypršel: budík se chvilku otřese, jako když zvoní, a pak se rozletí
+// na střepy. Střepy jsou klony skutečného časovače oříznuté clip-pathem na
+// trojúhelníky, k nim pár kostek a tlaková vlna. Vrstva leží pod panelem
+// mezihry (z-index 1000), takže exploze doběhne na pozadí přechodové obrazovky.
+function explodeTimer(gen) {
+    const src = document.querySelector('#progress .gp-timer');
+    if (!src || !src.animate || REDUCED_MOTION.matches) return;
+    src.animate([
+        { transform: 'rotate(0) scale(1)' }, { transform: 'rotate(-10deg) scale(1.06)' },
+        { transform: 'rotate(9deg) scale(1.08)' }, { transform: 'rotate(-7deg) scale(1.1)' },
+        { transform: 'rotate(5deg) scale(1.12)' }, { transform: 'rotate(0) scale(1.14)' },
+    ], { duration: 320, easing: 'ease-in-out' });
+    setTimeout(() => {
+        if (state.gen !== gen || !src.isConnected) return;
+        const r = src.getBoundingClientRect();
+        const layer = el('div');
+        layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden';
+        document.body.appendChild(layer);
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const rnd = (a, b) => a + Math.random() * (b - a);
+        const fly = (node, dx, dy, rot, ms, extra = '') => node.animate([
+            { transform: 'translate(0,0) rotate(0)', opacity: 1 },
+            { transform: `translate(${dx * .6}px, ${dy * .6 - 24}px) rotate(${rot * .6}deg)`, opacity: 1, offset: .45 },
+            { transform: `translate(${dx}px, ${dy + rnd(90, 200)}px) rotate(${rot}deg) ${extra}`, opacity: 0 },
+        ], { duration: ms, easing: 'cubic-bezier(.12,.7,.35,1)', fill: 'forwards' });
+
+        // střepy: mřížka 4×3 s rozházenými vnitřními vrcholy, každé pole = 2 trojúhelníky
+        const C = 4, R = 3, pts = [];
+        for (let j = 0; j <= R; j++) for (let i = 0; i <= C; i++) {
+            const inner = i > 0 && i < C && j > 0 && j < R;
+            pts.push([i / C * 100 + (inner ? rnd(-9, 9) : 0), j / R * 100 + (inner ? rnd(-12, 12) : 0)]);
+        }
+        const P = (i, j) => pts[j * (C + 1) + i];
+        for (let j = 0; j < R; j++) for (let i = 0; i < C; i++) {
+            const [a, b, c, d] = [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)];
+            const tris = Math.random() < .5 ? [[a, b, c], [a, c, d]] : [[a, b, d], [b, c, d]];
+            for (const t of tris) {
+                const mx = (t[0][0] + t[1][0] + t[2][0]) / 3, my = (t[0][1] + t[1][1] + t[2][1]) / 3;
+                const shard = src.cloneNode(true);
+                shard.style.cssText = `position:absolute;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`
+                    + `margin:0;box-sizing:border-box;transform-origin:${mx}% ${my}%;`
+                    + `clip-path:polygon(${t.map(([x, y]) => `${x}% ${y}%`).join(',')})`;
+                layer.appendChild(shard);
+                const ux = (mx - 50) / 50, uy = (my - 50) / 50;   // směr od středu
+                fly(shard, ux * rnd(110, 240) + rnd(-30, 30), uy * rnd(90, 200) - rnd(20, 80), rnd(-320, 320), rnd(800, 1100), 'scale(.75)');
+            }
+        }
+        // pár kostek jako úlomky a tlaková vlna
+        const colors = ['var(--red)', 'var(--orange)', 'var(--gold)', 'var(--red-lip)'];
+        for (let k = 0; k < 12; k++) {
+            const s = rnd(9, 17), ang = rnd(0, Math.PI * 2), dist = rnd(120, 260);
+            const bit = el('div');
+            bit.style.cssText = `position:absolute;left:${cx - s / 2}px;top:${cy - s / 2}px;width:${s}px;height:${s}px;`
+                + `border-radius:${s / 3.5}px;background:${colors[k % colors.length]}`;
+            layer.appendChild(bit);
+            fly(bit, Math.cos(ang) * dist, Math.sin(ang) * dist * .8, rnd(-400, 400), rnd(700, 1000));
+        }
+        const ring = el('div'), d = Math.max(r.width, r.height);
+        ring.style.cssText = `position:absolute;left:${cx - d / 2}px;top:${cy - d / 2}px;width:${d}px;height:${d}px;`
+            + 'border-radius:50%;border:8px solid var(--orange)';
+        layer.appendChild(ring);
+        ring.animate([{ transform: 'scale(.3)', opacity: .9 }, { transform: 'scale(1.7)', opacity: 0 }],
+            { duration: 480, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
+        src.style.visibility = 'hidden';   // další slovo časovač vykreslí znovu (updateUI)
+        haptic('miss');
+        setTimeout(() => layer.remove(), 1300);
+    }, 320);
+}
+
 function handleTimeout() {
     if (state.processing) return;
     state.processing = true;
     const gen = state.gen;
     haptic('miss');
     playMissSound();
+    explodeTimer(gen);
     clearIncorrectState();
 
     const wd = $('wordDisplay');
