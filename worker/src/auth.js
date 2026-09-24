@@ -28,16 +28,22 @@ async function sha256(text) {
 
 const peppered = (env, value) => sha256(String(value) + (env.HASH_PEPPER || 'no-pepper'));
 
-// Přihlášení je zapnuté, jen když je čím poslat e-mail.
-export const authEnabled = (env) => !!(env.RESEND_KEY && env.MAIL_FROM);
+// Lokální vývoj: DEV=1 v .dev.vars (ten se nikdy nenasazuje). Přihlášení pak
+// jede i bez Resendu — kód a odkaz se místo e-mailu vypíšou do terminálu
+// wrangleru — a cookie nemá Secure, ať jde přihlásit i z telefonu přes http.
+export const devMode = (env) => env.DEV === '1';
+
+// Přihlášení je zapnuté, jen když je čím poslat e-mail (nebo ve vývoji).
+export const authEnabled = (env) => devMode(env) || !!(env.RESEND_KEY && env.MAIL_FROM);
 
 const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
 const validEmail = (e) => /^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$/.test(e);
 
 /* ---------------- session ---------------- */
 
-function cookie(name, value, maxAgeSec) {
-    return `${name}=${value}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${maxAgeSec}`;
+function cookie(env, name, value, maxAgeSec) {
+    const secure = devMode(env) ? '' : ' Secure;';
+    return `${name}=${value}; HttpOnly;${secure} Path=/; SameSite=Lax; Max-Age=${maxAgeSec}`;
 }
 
 export async function currentUser(request, env) {
@@ -60,7 +66,7 @@ async function startSession(env, userId) {
     await env.DB.prepare(
         'INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?1, ?2, ?3, ?4)'
     ).bind(await sha256(token), userId, now(), now() + SESSION_DAYS * 86400000).run();
-    return cookie('sid', token, SESSION_DAYS * 86400);
+    return cookie(env, 'sid', token, SESSION_DAYS * 86400);
 }
 
 const publicUser = (u) => ({ id: u.id, handle: u.handle, needsHandle: !u.handle });
@@ -68,6 +74,10 @@ const publicUser = (u) => ({ id: u.id, handle: u.handle, needsHandle: !u.handle 
 /* ---------------- e-mail ---------------- */
 
 async function sendLoginMail(env, email, link, code) {
+    if (devMode(env) && !env.RESEND_KEY) {
+        console.log(`\n✉️  Přihlášení pro ${email}\n    kód:   ${code}\n    odkaz: ${link}\n`);
+        return;
+    }
     // RESEND_URL je jen pro lokální vývoj (mock místo skutečného odesílání);
     // v produkci se nenastavuje a míří se na Resend.
     const res = await fetch(env.RESEND_URL || 'https://api.resend.com/emails', {
@@ -223,7 +233,7 @@ export async function authLogout(request, env, url, ctx, json) {
     const raw = request.headers.get('Cookie') || '';
     const m = raw.match(/(?:^|;\s*)sid=([a-f0-9]+)/);
     if (m) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?1').bind(await sha256(m[1])).run();
-    return json({ ok: true }, 200, { 'Set-Cookie': cookie('sid', '', 0) });
+    return json({ ok: true }, 200, { 'Set-Cookie': cookie(env, 'sid', '', 0) });
 }
 
 export async function meGet(request, env, url, ctx, json) {
@@ -258,7 +268,22 @@ export async function meDelete(request, env, url, ctx, json) {
         env.DB.prepare('DELETE FROM sessions WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM users WHERE id = ?1').bind(u.id),
     ]);
-    return json({ ok: true }, 200, { 'Set-Cookie': cookie('sid', '', 0) });
+    return json({ ok: true }, 200, { 'Set-Cookie': cookie(env, 'sid', '', 0) });
+}
+
+// Jen pro lokální vývoj: rovnou přihlásí účet ze seedu (worker/seed-dev.mjs),
+// bez e-mailu — /api/dev/login?kdo=Tester. Mimo DEV=1, mimo lokální adresu
+// a pro jiné než seedované účty (id dev-…) neexistuje.
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/;
+export async function devLogin(request, env, url, ctx, json) {
+    if (!devMode(env) || !LOCAL_HOST.test(url.hostname)) return json({ error: 'not found' }, 404);
+    const handle = (url.searchParams.get('kdo') || 'Tester').toLowerCase();
+    const { results } = await env.DB.prepare(
+        "SELECT id FROM users WHERE handle_lc = ?1 AND id LIKE 'dev-%'"
+    ).bind(handle).all();
+    if (!results.length) return json({ error: 'Účet nenalezen. Spusť nejdřív: node worker/seed-dev.mjs' }, 404);
+    const setCookie = await startSession(env, results[0].id);
+    return new Response(null, { status: 302, headers: { Location: '/', 'Set-Cookie': setCookie } });
 }
 
 // Úklid v cronu — prošlé žádosti a session, ať IP hashe nezůstávají ležet.

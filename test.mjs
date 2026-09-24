@@ -1,10 +1,12 @@
 // Jediná spustitelná kontrola projektu:  node test.mjs
-// Bez frameworku, jen assert. Hlídá tři místa, kde tichá chyba nejvíc bolí:
-// validaci významů, neporušitelné vlastnosti slovníku a úplnost přesmyček.
+// Bez frameworku, jen assert. Hlídá místa, kde tichá chyba nejvíc bolí:
+// vývojové přihlášení, validaci významů, neporušitelné vlastnosti slovníku
+// a úplnost přesmyček.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { clean, defTextError, validClient, DEF_MIN, DEF_MAX } from './worker/src/validate.js';
+import { authEnabled, devLogin } from './worker/src/auth.js';
 
 // words.js se spouští ve vm, takže pole z něj mají prototyp z jiného realmu
 // a deepStrictEqual by je odmítl. Proto se porovnává jen obsah.
@@ -16,6 +18,25 @@ const test = (name, fn) => {
     try { fn(); passed++; }
     catch (e) { console.error(`✘ ${name}\n  ${e.message}`); process.exitCode = 1; }
 };
+
+/* ---------------- vývojové přihlášení (worker) ---------------- */
+
+// /api/dev/login obchází e-mail — nesmí existovat mimo DEV=1 ani z veřejné
+// adresy. Stráž je před prvním dotazem do DB; prázdná DB pak ukáže, že prošla.
+const emptyDb = { prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }) };
+const devError = async (env, host) => (await devLogin(null, { DB: emptyDb, ...env },
+    new URL(`http://${host}/api/dev/login`), null, (o) => o)).error;
+const [prodLocal, devPublic, devLan] = await Promise.all([
+    devError({}, 'localhost:8787'), devError({ DEV: '1' }, '20slov.cz'), devError({ DEV: '1' }, '192.168.1.5:8787')]);
+
+test('dev přihlášení v produkci neexistuje', () => assert.equal(prodLocal, 'not found'));
+test('dev přihlášení z veřejné adresy neexistuje', () => assert.equal(devPublic, 'not found'));
+test('dev přihlášení z lokální sítě projde stráží', () => assert.match(devLan, /seed-dev/));
+test('účty běží jen s poštou nebo ve vývoji', () => {
+    assert.equal(authEnabled({}), false);
+    assert.equal(authEnabled({ DEV: '1' }), true);
+    assert.equal(authEnabled({ RESEND_KEY: 'k', MAIL_FROM: 'a@b.cz' }), true);
+});
 
 /* ---------------- validace významů (worker) ---------------- */
 

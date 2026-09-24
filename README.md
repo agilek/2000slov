@@ -37,6 +37,27 @@ npx wrangler dev --port 8787
 # → http://localhost:8787
 ```
 
+### Vývoj s účty a významy
+
+Lokálně jdou vyzkoušet i účty a komunitní významy, bez Resendu a bez e-mailu:
+
+```bash
+echo DEV=1 >> .dev.vars          # jednou; .dev.vars se necommituje ani nenasazuje
+node worker/seed-dev.mjs         # testovací účty, ~870 významů, hlasy
+npx wrangler dev --port 8787     # z telefonu: --ip 0.0.0.0 a http://<IP počítače>:8787
+```
+
+- **Přihlášení jedním klepnutím:** `http://localhost:8787/api/dev/login` přihlásí
+  účet **Tester** a vrátí tě do hry (jiný autor: `?kdo=Terka`, `Kuba`, `Bára`,
+  `Ondra`, `Míša`). Funguje jen s `DEV=1` a z lokální adresy.
+- **Přihlášení e-mailem** jde taky: `tester@20slov.test`, kód a odkaz se místo
+  e-mailu vypíšou do terminálu wrangleru.
+- **Data:** v Lehké obtížnosti má význam ~70 % slov (u 45 nejčastějších ručně
+  psané, u některých víc verzí), zbytek je bez významu kvůli výzvě „Víš, co
+  znamená…?". Tester má 4 vlastní významy (úprava, profil).
+- Seed jde pouštět opakovaně: vrátí dev data do výchozího stavu, včetně toho,
+  co testovací účty mezitím přidaly.
+
 Samotná statika je pořád bez závislostí a bez buildu, takže na rychlou úpravu
 vzhledu stačí i `python3 -m http.server 8000` v `public/` — jen bez `/api/*`.
 

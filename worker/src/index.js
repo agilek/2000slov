@@ -8,7 +8,7 @@ import { buildPushHTTPRequest } from '@pushforge/builder';
 import { clean, defTextError, validClient, VULGAR, AUTHOR_MAX } from './validate.js';
 import {
     authEnabled, authStart, authPoll, authVerify, authApprove, authLandingPage,
-    authLogout, meGet, meSetHandle, meDelete, currentUser, purgeAuth,
+    authLogout, meGet, meSetHandle, meDelete, currentUser, purgeAuth, devMode, devLogin,
 } from './auth.js';
 import { apiProfile, profilePage, validPlayedOn } from './profile.js';
 
@@ -45,6 +45,7 @@ const ROUTES = {
     'POST /api/me/delete': (rq, env, url, ctx) => meDelete(rq, env, url, ctx, json),
     'GET /api/profile': (rq, env, url, ctx) => apiProfile(rq, env, url, ctx, json),
     'POST /api/profile/backfill': handleBackfill,
+    'GET /api/dev/login': (rq, env, url, ctx) => devLogin(rq, env, url, ctx, json),   // jen DEV=1, viz auth.js
 };
 
 // Limity na významy. Drží se v D1 dotazech, žádné nové úložiště.
@@ -242,11 +243,13 @@ async function handleDefsBatch(request, env, url, ctx) {
     if (!words.length) return json({ defs: {} }, 200);
     const me = await currentUser(request, env);
 
-    const cache = caches.default;
+    // Ve vývoji bez cache: seed zapisuje rovnou do D1 a uložené „bez významu"
+    // by ho 5 minut zakrývalo.
+    const cache = devMode(env) ? null : caches.default;
     const rows = {};                                    // slovo -> řádek | null
     const misses = [];
     for (const w of words) {
-        const hit = await cache.match(defCacheKey(w));
+        const hit = cache && await cache.match(defCacheKey(w));
         if (hit) rows[w] = await hit.json();
         else misses.push(w);
     }
@@ -263,7 +266,7 @@ async function handleDefsBatch(request, env, url, ctx) {
         for (const r of results) rows[r.word] = r;
         // Ukládá se i to prázdno — slov bez významu je zdaleka nejvíc a právě
         // ta nemá smysl pouštět na D1 pořád dokola.
-        for (const w of misses) {
+        for (const w of cache ? misses : []) {
             const body = new Response(JSON.stringify(rows[w]), {
                 headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' },
             });

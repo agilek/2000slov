@@ -2,6 +2,25 @@
 
 ## 2026-09-24
 
+### Vývojové prostředí pro účty a významy: DEV=1, seed, přihlášení bez e-mailu
+Účty a komunitní významy jdou konečně vyzkoušet lokálně. `DEV=1` v `.dev.vars`
+zapne přihlášení bez Resendu (kód a odkaz se vypíšou do terminálu wrangleru),
+cookie bez `Secure` (jde i z telefonu přes http), vypne edge cache významů a
+přidá `GET /api/dev/login?kdo=Tester`. `node worker/seed-dev.mjs` založí účty
+Tester + 5 autorů, ~870 významů (48 ručně psaných, zbytek ukázkový pro ~70 %
+Lehké) a hlasy; jde pouštět opakovaně. Karta v mezihře se po hlasu ze sheetu
+nově přepočítá.
+
+**Root cause / approach:** Bez secretů vracel `/api/me` `auth:false` a psaní
+významů bylo nedosažitelné i lokálně — proto „význam není vidět". Tři tiché
+pasti: `Secure` cookie se přes `http://192.168…` z telefonu neuloží; edge cache
+drží i „slovo nemá význam" 5 minut, takže by čerstvý seed nebyl vidět; a stará
+lokální D1 má `definitions.client_id NOT NULL`, protože `CREATE TABLE IF NOT
+EXISTS` existující tabulku nezmění (seed píše `'dev-seed'`). Dev přihlášení je
+za stráží `DEV=1` + lokální adresa + jen účty `dev-…` a hlídá ho `test.mjs`.
+
+→ *Memory saved: `dev_accounts_and_seed.md`*
+
 ### Mezihra: víc hlášek, bez času, výzva k doplnění významu
 Hlášky po uhodnutí mají tři zásobníky po 6–8 (do 5 s, zbývalo ≤ 10 s, běžně),
 nikdy stejná dvakrát po sobě a všechny ≤ 12 znaků kvůli štítku série. Čas pod

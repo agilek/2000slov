@@ -116,18 +116,25 @@ přihlašovací e-mail (žádná oznámení, žádná hromadná zpráva).
 
 ### Lokální vyzkoušení bez skutečného odesílání
 
-`RESEND_URL` přesměruje odchozí poštu na vlastní mock (jen pro vývoj, v produkci
-se nenastavuje). Do `.dev.vars` v kořeni repa:
+`DEV=1` v `.dev.vars` (kořen repa) zapne účty i bez Resendu: přihlašovací kód
+a odkaz se místo e-mailu vypíšou do terminálu `wrangler dev`, cookie `sid` je
+bez `Secure` (přihlášení jde i z telefonu přes `http://<IP>:8787`), edge cache
+významů je vypnutá (seed píše rovnou do D1) a existuje
+`GET /api/dev/login?kdo=Tester` — přihlásí seedovaný účet bez e-mailu. To jen
+pro účty s id `dev-…` a jen z lokální adresy; mimo `DEV=1` endpoint vrací 404
+(hlídá `test.mjs`). `.dev.vars` se nikdy nenasazuje.
 
-```
-RESEND_KEY=test
-MAIL_FROM=hra@example.com
-RESEND_URL=http://localhost:9099/emails
-HASH_PEPPER=local-dev-pepper
-```
+Testovací data: `node worker/seed-dev.mjs` (účty Tester, Terka, Kuba, Bára,
+Ondra, Míša; ~870 významů; hlasy; pár dní na profilu). Pouští se opakovaně
+a vrátí dev data do výchozího stavu.
 
-Mock, který odchycený e-mail uloží do souboru, stačí na pár řádků v Node.
-Odkaz i kód se pak vyčtou z jeho těla.
+Kdo chce vidět skutečný e-mail, pořád může `RESEND_KEY` + `MAIL_FROM`
+a `RESEND_URL` na vlastní mock — `DEV=1` pak poštu nevypisuje, ale posílá.
+
+> **Pozor na starou lokální D1:** `schema.sql` je jen `CREATE TABLE IF NOT
+> EXISTS`, takže tabulka vytvořená dřívější verzí zůstane ve starém tvaru —
+> lokálně má `definitions.client_id` pořád `NOT NULL`. Seed proto zapisuje
+> `client_id = 'dev-seed'`.
 
 > **Pozor:** `.dev.vars` patří vedle `wrangler.toml`, tedy do **kořene repa**,
 > ne do `worker/`. Po přesunu konfigurace do kořene se soubor ve `worker/`

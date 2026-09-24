@@ -539,6 +539,13 @@ async function voteDef(def, btn) {
     def.voted = r.data.voted;
     setEmojiText(btn, `👍 ${def.votes}`);
     btn.classList.toggle('voted', !!def.voted);
+    // Hlas ze sheetu významů promítnout i do karty v mezihře pod ním.
+    const top = defCache.get(state.wdWord);
+    if (top && top !== def && top.id === def.id) {
+        top.votes = def.votes;
+        top.voted = def.voted;
+        renderWdCard(state.wdWord);
+    }
 }
 
 /* ---------------- modal se všemi významy ---------------- */
