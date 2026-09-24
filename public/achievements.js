@@ -82,11 +82,10 @@ const Achievements = (() => {
     // Dlaždice v mřížce. `tag: 'span'` na veřejném profilu (bez JS, neklikací).
     function tile(a, st, { avatar, isNew, tag = 'button' } = {}) {
         const locked = !done(a, st);
-        const mini = locked && a.goal > 1 && val(a, st) ? `<span class="ach-mini"><i style="width:${pct(a, st) * 100}%"></i></span>` : '';
         const name = hidden(a, st) ? '???' : a.name;
         const cls = `ach-tile${locked ? ' ach-tile--locked' : ''}${isNew ? ' ach-tile--new' : ''}`;
         const attrs = tag === 'button' ? ` data-ach="${a.id}" aria-label="${name}${locked ? ', zamčeno' : ''}"` : '';
-        return `<${tag} class="${cls}"${attrs}>${badge(a, st, avatar)}<span class="ach-name">${name}</span>${mini}</${tag}>`;
+        return `<${tag} class="${cls}"${attrs}>${badge(a, st, avatar)}<span class="ach-name">${name}</span></${tag}>`;
     }
 
     // Stav, který zná server (veřejný profil): stats() + points() + avatar.

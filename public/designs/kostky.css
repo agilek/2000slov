@@ -658,6 +658,10 @@
 .points-pill[hidden], .profile-section[hidden] { display: none; }
 /* počet vpravo v nadpisu sekce („12 z 27") */
 .profile-section-title:has(small) { display: flex; justify-content: space-between; align-items: baseline; }
+/* „7 z 27“ s celkovým pruhem v nadpisu sekce Úspěchy */
+.ach-head-count { display: inline-flex; align-items: center; gap: 10px; align-self: center; }
+.ach-head-count .ach-bar { flex: none; width: 72px; height: 10px; }
+.ach-head-count .ach-bar i::after { content: none; }
 .profile-section-title small { font-family: 'Nunito', system-ui, sans-serif; font-size: 15px; font-weight: 700; color: var(--muted-text); }
 /* nový, ještě neotevřený úspěch: červená tečka na Profilu vlevo nahoře.
    Na tlačítku, ne na kostce: squircle.js v Safari maskuje kostku a tečka
@@ -699,15 +703,19 @@
     box-shadow: 0 calc(var(--s) * .07) 0 var(--r-lip);
     flex: none;
 }
-.ach::before {                         /* odlesk: krátký oblouk soustředný s levým horním rohem, kulaté konce */
+.ach::before {                         /* odlesk jako na ikonách (kostka.svg): krátká světlá pilulka u horní hrany vlevo */
     content: '';
     position: absolute;
-    inset: 0;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M12 38V32A20 20 0 0 1 32 12H38' fill='none' stroke='%23fff' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
-    opacity: .55;
+    top: 7%;
+    left: 17%;
+    width: 30%;
+    height: 8%;
+    border-radius: 999px;
+    background: #fff;
+    opacity: .35;
     pointer-events: none;
 }
-.ach--locked::before { opacity: .9; }
+.ach--locked::before { opacity: .6; }
 .ach-medal {
     display: grid;
     place-items: center;
@@ -776,8 +784,6 @@
 .ach-tile:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 4px; border-radius: 16px; }
 .ach-name { font-size: 13px; font-weight: 800; line-height: 1.2; text-align: center; min-height: 2.4em; }
 .ach-tile--locked .ach-name { color: var(--muted-text); }
-.ach-mini { width: 60px; height: 6px; margin-top: -6px; border-radius: 999px; background: var(--ghost); overflow: hidden; }
-.ach-mini i { display: block; height: 100%; background: var(--orange); border-radius: inherit; }
 /* nový, ještě neotevřený: červená tečka jako u notifikace */
 .ach-tile--new::after {
     content: '';

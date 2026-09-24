@@ -1357,6 +1357,7 @@ function renderAchievements() {
     const got = L.filter(done);
     const count = `${got.length} z ${L.length}`;
     $('achCount').textContent = count;
+    $('achCountBar').style.width = got.length / L.length * 100 + '%';
     // V profilu: nové, pak nejčerstvější, pak nejbližší zamčené — ať je co dohánět.
     const byDate = got.slice().sort((a, b) => (persist.achGot[b.id] || '').localeCompare(persist.achGot[a.id] || ''));
     const near = achNear(st);

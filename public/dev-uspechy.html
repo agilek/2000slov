@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="designs/kostky.css?v=62">
+<link rel="stylesheet" href="designs/kostky.css?v=64">
 <style>
     /* ---------- chrome téhle stránky (sg-), s hrou se nemíchá ---------- */
     html, body.sg { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; background: #f4f1ec !important; }
@@ -59,7 +59,7 @@
         <p class="sg-cap">V profilu (sekce Úspěchy)</p>
         <div class="phone">
             <div class="profile-section">
-                <h3 class="profile-section-title">Úspěchy <small id="profCount"></small></h3>
+                <h3 class="profile-section-title">Úspěchy <span class="ach-head-count"><span class="ach-bar"><i id="profBar"></i></span><small id="profCount"></small></span></h3>
                 <div class="ach-grid" id="profGrid"></div>
                 <button class="btn btn-secondary" onclick="document.getElementById('allPhone').scrollIntoView({ behavior: 'smooth' })">Všechny úspěchy</button>
             </div>
@@ -115,6 +115,7 @@ function render() {
     $('sumCount').innerHTML = `${got.length} <small>z ${ACH.length}</small>`;
     $('sumBar').style.width = got.length / ACH.length * 100 + '%';
     $('profCount').textContent = `${got.length} z ${ACH.length}`;
+    $('profBar').style.width = got.length / ACH.length * 100 + '%';
     const fresh = got.filter(a => (st.isNew || []).includes(a.id));
     const near = ACH.filter(a => !done(a) && !a.secret && val(a)).sort((a, b) => pct(b) - pct(a));
     $('profGrid').innerHTML = [...new Set([...fresh, ...got.slice().reverse(), ...near, ...ACH.filter(a => !done(a))])].slice(0, 8).map(tile).join('');

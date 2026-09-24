@@ -2,6 +2,16 @@
 
 ## 2026-09-24
 
+### Odlesk odznaku jako na ikonách, celkový pruh úspěchů u „N z 27“
+Odlesk je krátká světlá pilulka u horní hrany vlevo (30 % × 8 %, bílá .35),
+stejná jako na ikonách v `designs/kostky/` (kostka.svg, kalendar.svg).
+Oblouky podle rohu uživateli stylově neseděly. Malé oranžové pruhy pod
+zamčenými dlaždicemi nebylo jasné, co znamenají. Jsou pryč a v nadpisu
+sekce je jeden celkový pruh vedle „N z 27“. Postup jednotlivých odznaků
+zůstal v detailu a v „Na dosah“, kde má popisek.
+
+→ *No new memory entries.*
+
 ### Série v mezihře nad slovem, profil bez věty „Série i postup…“
 Odznak „N v řadě“ je v mezihře hned pod nadpisem („Výborně!“), přímo nad
 slovem (`#wdStreak` zpátky v `.wd-head`, za nadpisy). Z profilu zmizela
