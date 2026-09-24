@@ -2,6 +2,13 @@
 
 ## 2026-09-24
 
+### Otisk po vzatém písmenu čárkovaně, víc místa nad symbolem mezihry
+Vzaté písmeno nechá tmavší důlek (`--ghost` + 7 % `--ink`) s čárkovaným
+okrajem `--muted`; rámeček 2 px už písmeno mělo, takže nic neposkočí.
+Panel mezihry má nad symbolem 40 px místo 20.
+
+→ *No new memory entries.*
+
 ### Hra bez ikony hodin
 Ikona hodin před „Slovo N · obtížnost“ je pryč, i s pravidlem, které ji
 v posledních sekundách barvilo červeně. Nahoře zůstal jen text, pod ním čas.

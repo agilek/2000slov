@@ -503,8 +503,10 @@
 .letter.selected,
 .letter.selected.correct,
 .letter.selected.incorrect {
-    background: var(--ghost);
-    border-color: transparent;
+    /* otisk po vzatém písmenu: tmavší důlek s čárkovaným okrajem */
+    background: color-mix(in srgb, var(--ghost), var(--ink) 7%);
+    border-color: var(--muted);
+    border-style: dashed;
     color: transparent;
     box-shadow: none;
     translate: 0 4px;
@@ -1049,6 +1051,7 @@
    přeskládají z rozsypaného pořadí. Na milníku série plamen vzplane a jiskří. */
 .word-done { background: color-mix(in srgb, var(--overlay) 22%, transparent); }
 .wd-panel {
+    padding-top: 40px;                    /* místo nad velkým symbolem */
     background: var(--ok-bg);
     border-top: 2px solid var(--ok-line);
     box-shadow: 0 -10px 40px var(--shadow-card);
