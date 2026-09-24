@@ -2,6 +2,25 @@
 
 ## 2026-09-24
 
+### Veřejný profil v podobě hry, otevírá se uvnitř aplikace
+Profil `/u/<přezdívka>` měl vlastní starý vzhled (Baloo, béžová, zelená škála)
+a otevíral se v nové kartě. Teď používá markup a styly hry: avatar, dlaždice
+statistik s ikonami Kostek, sekce. Rok denních výzev je svisle jako kalendář
+(týden = řádek Po–Ne, zlatá za všech 20, dnešek v kroužku) a začíná týdnem
+prvního odehraného dne. Nově ukazuje i hráčovy významy slov. Ve hře
+„Můj veřejný profil“ otevře obrazovku se šipkou zpět do profilu.
+
+**Root cause / approach:** Jeden markup pro dvě cesty. `profileBody()`
+ve `worker/src/profile.js` vrací obsah. `?cast=1` ho pošle samotný (no-store)
+a hra ho vloží do `#publicProfileBody` (`display: contents`, ať sekce sedí
+v mezerách obrazovky). Bez parametru ho server obalí stránkou, která linkuje
+`/style.css` a `/designs/kostky.css`. „Nejlepší význam“ se ukáže, jen když
+význam porazil jiné kandidáty. Legenda je `<p>`, takže ji přebíjel
+`.screen p:not(.welcome-instruction)` (20px, margin 34px) a potřebovala
+`#publicProfile` v selektoru.
+
+→ *Memory saved: `public_profile_shared_markup.md`*
+
 ### Tlačítka výsledku dole na dosah palce; odkaz na veřejný profil z localhostu
 Pochlubit se, Upozornit na další výzvu (zase se zvonkem), iOS banner, nudge
 série a odpočet jsou v `.result-bottom` u spodního okraje. Skóre a mřížka jsou

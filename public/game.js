@@ -914,10 +914,9 @@ function renderSignedIn(box) {
     box.append(el('p', 'profile-note', `Přihlášen jako ${auth.user.handle}. Významy se ukládají k účtu.`));
     // Profil žije na serveru, kde je účet — ne na FALLBACK_URL pro sdílení z localhostu.
     const link = `${location.origin}/u/${encodeURIComponent(auth.user.handle)}`;
-    const show = el('a', 'btn btn-secondary', 'Můj veřejný profil');
-    show.href = link;
-    show.target = '_blank';
-    show.rel = 'noopener';
+    const show = el('button', 'btn btn-secondary', 'Můj veřejný profil');
+    show.type = 'button';
+    show.onclick = showPublicProfile;
     const share = el('button', 'btn-tertiary', 'Sdílet odkaz na profil');
     share.onclick = async () => {
         if (navigator.share) { try { await navigator.share({ url: link }); return; } catch (e) { return; } }
@@ -1125,6 +1124,22 @@ function myDefItem(d) {
     meta.append(votes, editBtn(d, li, p, () => setEmojiText(votes, `👍 ${d.votes}`)));
     li.append(head, p, meta);
     return li;
+}
+
+// Veřejný profil jako obrazovka hry (zpět = profil), ne nová karta. Obsah
+// renderuje server — stejný markup jako sdílená stránka /u/<přezdívka>;
+// texty hráčů v něm escapuje worker/src/profile.js.
+async function showPublicProfile() {
+    const body = $('publicProfileBody');
+    body.replaceChildren(el('p', 'profile-note', 'Načítám profil…'));
+    showScreen('publicProfile');
+    scrollTo(0, 0);
+    try {
+        const res = await fetch(`/u/${encodeURIComponent(auth.user.handle)}?cast=1`, { cache: 'no-store' });
+        body.innerHTML = await res.text();
+    } catch (e) {
+        body.replaceChildren(el('p', 'profile-note', 'Profil se nepodařilo načíst. Zkontroluj připojení a zkus to znovu.'));
+    }
 }
 
 function editNick() {

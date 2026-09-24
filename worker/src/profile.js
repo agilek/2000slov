@@ -1,6 +1,8 @@
-// Veřejný profil hráče: rok denních výzev jako mřížka + pár statistik.
+// Veřejný profil hráče: statistiky, rok denních výzev a jeho významy slov.
 // Renderuje se na serveru kvůli náhledu při sdílení (og:*) — SPA route by
-// poslala prázdný index.html. Mřížka je statické inline SVG, žádný JS.
+// poslala prázdný index.html. Markup používá třídy a styly samotné hry
+// (style.css + kostky.css), takže vypadá stejně jako aplikace. Hra si
+// ?cast=1 bere jen obsah a ukáže ho jako svou obrazovku — jeden vzhled, dvě cesty.
 
 const PER_DAY = 20;
 const DAYS = 365;
@@ -47,16 +49,29 @@ function stats(rows) {
     };
 }
 
+const DEFS_SHOWN = 10;
+
 async function loadProfile(env, handle) {
     const { results: users } = await env.DB.prepare(
         'SELECT id, handle, hide_profile FROM users WHERE handle_lc = ?1'
     ).bind(String(handle || '').toLowerCase()).all();
     const user = users[0];
     if (!user || user.hide_profile) return null;
-    const { results: rows } = await env.DB.prepare(
-        'SELECT played_on, day_idx, score FROM profile_days WHERE user_id = ?1 AND played_on >= ?2 ORDER BY played_on'
-    ).bind(user.id, dayBefore(iso(new Date()), DAYS)).all();
-    return { user, rows, stats: stats(rows) };
+    const [{ results: rows }, { results: defs }, { results: cnt }] = await Promise.all([
+        env.DB.prepare(
+            'SELECT played_on, day_idx, score FROM profile_days WHERE user_id = ?1 AND played_on >= ?2 ORDER BY played_on'
+        ).bind(user.id, dayBefore(iso(new Date()), DAYS)).all(),
+        // „best" = význam, který hra u slova ukazuje nahoře (nejvíc hlasů, při
+        // shodě starší) — a jen když porazil jiné; jediný význam slova není výhra.
+        env.DB.prepare(`SELECT d.word, d.text, d.votes, EXISTS (
+                SELECT 1 FROM definitions o WHERE o.word = d.word AND o.hidden = 0 AND o.id != d.id) AND NOT EXISTS (
+                SELECT 1 FROM definitions o WHERE o.word = d.word AND o.hidden = 0 AND o.id != d.id
+                AND (o.votes > d.votes OR (o.votes = d.votes AND o.created_at < d.created_at))) AS best
+            FROM definitions d WHERE d.user_id = ?1 AND d.hidden = 0
+            ORDER BY d.votes DESC, d.created_at DESC LIMIT ?2`).bind(user.id, DEFS_SHOWN).all(),
+        env.DB.prepare('SELECT COUNT(*) AS n FROM definitions WHERE user_id = ?1 AND hidden = 0').bind(user.id).all(),
+    ]);
+    return { user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n };
 }
 
 export async function apiProfile(request, env, url, ctx, json) {
@@ -69,106 +84,124 @@ export async function apiProfile(request, env, url, ctx, json) {
     }, 200);
 }
 
-// Odstín podle skóre — pět stupňů, ať je vidět rozdíl mezi „odehráno" a „čistý den".
-const tint = (score) =>
-    score === undefined ? 'var(--empty)'
-    : score === PER_DAY ? '#2e9e5b'
-    : score >= 15 ? '#57b97c'
-    : score >= 10 ? '#8ed0a5'
-    : score >= 1 ? '#c5e6d1'
-    : 'var(--empty)';
+const num = (n) => n.toLocaleString('cs-CZ');
+const plural = (n, one, few, many) => n === 1 ? one : n >= 2 && n <= 4 ? few : many;
+const MESICE = ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'];
+const DNY = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
+const kratce = (d) => `${+d.slice(8, 10)}. ${+d.slice(5, 7)}.`;
+const dlouze = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
-function grid(rows) {
+// Stupeň kostky: 0 nehráno, 1–3 odstíny zelené, 4 zlatá za všech 20.
+const stupen = (score) =>
+    score === undefined ? 0 : score === PER_DAY ? 4 : score >= 15 ? 3 : score >= 10 ? 2 : 1;
+
+// Rok svisle jako kalendář: týden = řádek Po–Ne, nahoře nejstarší. Začíná
+// týdnem prvního odehraného dne (nejdál před rokem), ať nový hráč nemá
+// stránku prázdných řádků.
+function calendar(rows) {
     const byDate = new Map(rows.map(r => [r.played_on, r.score]));
     const dnes = iso(new Date());
-    // Zarovnat konec na dnešek a začátek na pondělí, ať řádky sedí na dny v týdnu.
-    const posun = (new Date(dnes + 'T00:00:00Z').getUTCDay() + 6) % 7;   // 0 = pondělí
-    const start = dayBefore(dnes, DAYS - 1 + ((7 - ((DAYS - 1 - posun) % 7)) % 7));
-    const bunky = [];
-    const tydny = Math.ceil((DAYS + posun) / 7) + 1;
-    for (let w = 0; w < tydny; w++) {
-        for (let d = 0; d < 7; d++) {
-            const datum = dayBefore(start, -(w * 7 + d));
-            if (datum > dnes) continue;
-            const score = byDate.get(datum);
-            bunky.push(
-                `<rect x="${w * 14}" y="${d * 14}" width="11" height="11" rx="2.5" `
-                + `fill="${tint(score)}"><title>${datum}${score === undefined ? '' : ` — ${score}/20`}</title></rect>`);
+    const od = rows.length ? rows[0].played_on : dnes;
+    const pondeli = dayBefore(od, (new Date(od + 'T00:00:00Z').getUTCDay() + 6) % 7);
+    const out = ['<span></span>', ...DNY.map(d => `<span class="yc-head">${d}</span>`)];
+    for (let tyden = pondeli; tyden <= dnes; tyden = dayBefore(tyden, -7)) {
+        const dny = DNY.map((_, i) => dayBefore(tyden, -i));
+        const prvni = dny.find(d => d.endsWith('-01'));
+        const mesic = prvni || (tyden === pondeli ? tyden : null);
+        out.push(`<span class="yc-month">${mesic ? MESICE[+mesic.slice(5, 7) - 1] : ''}</span>`);
+        for (const d of dny) {
+            if (d > dnes) { out.push('<i class="yc-day yc-future"></i>'); continue; }
+            const score = byDate.get(d);
+            out.push(`<i class="yc-day s${stupen(score)}${d === dnes ? ' yc-today' : ''}" `
+                + `title="${kratce(d)} — ${score === undefined ? 'nehráno' : `${score}/20`}"></i>`);
         }
     }
-    return `<svg width="${tydny * 14}" height="98" viewBox="0 0 ${tydny * 14} 98" role="img" `
-        + `aria-label="Rok denních výzev">${bunky.join('')}</svg>`;
+    return out.join('');
 }
 
-const statTile = (v, l) =>
-    `<div class="t"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`;
+const statTile = (value, label, extra = '') =>
+    `<div class="stat-tile${extra}"><div class="stat-value">${esc(value)}</div><div class="stat-label">${esc(label)}</div></div>`;
+
+const defItem = (d) => `<li class="def-item${d.best ? ' def-item--best' : ''}">`
+    + (d.best ? '<div class="def-best-label">Nejlepší význam</div>' : '')
+    + `<div class="def-word">${esc(d.word)}</div><p class="wd-text">${esc(d.text)}</p>`
+    + `<div class="wd-meta"><span><span class="emoji" data-emoji="palec">👍</span> ${num(d.votes)}</span></div></li>`;
+
+// Obsah profilu — stejný pro samostatnou stránku i obrazovku ve hře.
+function profileBody(data) {
+    const s = data.stats;
+    const jmeno = esc(data.user.handle);
+    const zbyva = data.defsTotal - data.defs.length;
+    return `
+      <div class="profile-head">
+        <div class="profile-avatar" aria-hidden="true">${esc(data.user.handle.charAt(0).toUpperCase())}</div>
+        <div class="profile-name">${jmeno}</div>
+        <div class="profile-sub">${data.rows.length ? `Hraje od ${esc(dlouze(data.rows[0].played_on))}` : 'Zatím bez odehraného dne'}</div>
+      </div>
+      <div class="profile-section">
+        <h3 class="profile-section-title">Statistiky</h3>
+        <div class="stat-grid">
+          ${statTile(num(s.serie), 'dní v řadě', s.serie ? '' : ' stat-tile--off')}
+          ${statTile(num(s.dny), 'odehraných dní')}
+          ${statTile(num(s.slova), 'slov v denní výzvě')}
+          ${statTile(`${s.uspesnost} %`, 'úspěšnost')}
+        </div>
+      </div>
+      <div class="profile-section">
+        <h3 class="profile-section-title">Rok denních výzev</h3>
+        <div class="year-cal" role="img" aria-label="Rok denních výzev: ${num(s.dny)} odehraných dní, ${num(s.perfektnich)}× všech 20 slov">${calendar(data.rows)}</div>
+        <p class="yc-legend" aria-hidden="true"><span>méně</span>${[0, 1, 2, 3].map(n => `<i class="yc-day s${n}"></i>`).join('')}<span>více</span><i class="yc-day s4"></i><span>všech 20</span></p>
+      </div>
+      <div class="profile-section">
+        <h3 class="profile-section-title">Významy slov</h3>
+        ${data.defs.length
+            ? `<ul class="defs-list">${data.defs.map(defItem).join('')}</ul>`
+              + (zbyva > 0 ? `<p class="profile-note">…a ${plural(zbyva, 'další', 'další', 'dalších')} ${num(zbyva)} ${plural(zbyva, 'význam', 'významy', 'významů')}.</p>` : '')
+            : '<div class="empty-card">Zatím žádný význam.</div>'}
+      </div>`;
+}
 
 export async function profilePage(request, env, url) {
     const handle = decodeURIComponent(url.pathname.replace(/^\/u\//, '')).trim();
     const data = await loadProfile(env, handle);
     const site = url.origin;
+    const cast = url.searchParams.has('cast');
+    const html = (body, status, cache) => new Response(body, {
+        status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': cache },
+    });
     if (!data) {
-        return new Response(page('Profil nenalezen', `<h1>Profil nenalezen</h1>
-            <p class="note">Tenhle hráč tu není, nebo má profil skrytý.</p>
-            <p><a class="btn" href="${site}/">Zahrát si 20 slov</a></p>`, '', site),
-            { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+        const body = `<div class="profile-head"><div class="profile-name">Profil nenalezen</div>
+            <div class="profile-sub">Tenhle hráč tu není, nebo má profil skrytý.</div></div>`;
+        return html(cast ? body : page('Profil nenalezen', body, ''), 404, 'no-store');
     }
+    // Hra chce vidět čerstvé číslo hned po dohrání dne, sdílený odkaz snese 5 minut.
+    if (cast) return html(profileBody(data), 200, 'no-store');
+
     const s = data.stats;
     const jmeno = esc(data.user.handle);
     const popis = `${s.dny} odehraných dní · série ${s.serie} · ${s.perfektnich}× všech 20 slov`;
-    const telo = `
-      <div class="head"><div class="av">${esc(jmeno.charAt(0).toUpperCase())}</div>
-        <h1>${jmeno}</h1><p class="note">${esc(popis)}</p></div>
-      <div class="stats">
-        ${statTile(String(s.serie), 'dní v řadě')}
-        ${statTile(String(s.dny), 'odehraných dní')}
-        ${statTile(String(s.perfektnich), 'čistých dní')}
-        ${statTile(s.uspesnost + ' %', 'úspěšnost')}
-      </div>
-      <h2>Rok denních výzev</h2>
-      <div class="scroll" dir="rtl"><div dir="ltr">${grid(data.rows)}</div></div>
-      <p class="legend"><span>méně</span>
-        ${[undefined, 1, 10, 15, 20].map(v => `<i style="background:${tint(v)}"></i>`).join('')}
-        <span>více</span></p>
-      <p><a class="btn" href="${site}/">Zahrát si taky</a></p>`;
     const meta = `
       <meta property="og:title" content="${jmeno} — 20 slov">
       <meta property="og:description" content="${esc(popis)}">
       <meta property="og:type" content="profile">
       <meta property="og:url" content="${site}/u/${encodeURIComponent(data.user.handle)}">
       <meta name="twitter:card" content="summary">`;
-    return new Response(page(`${jmeno} — 20 slov`, telo, meta, site), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' },
-    });
+    return html(page(`${jmeno} — 20 slov`, profileBody(data), meta), 200, 'public, max-age=300');
 }
 
-function page(title, body, meta, site) {
+// Samostatná stránka pro sdílený odkaz: styly a písma hry, obsah jako
+// obrazovka hry, dole pozvánka do hry.
+function page(title, body, meta) {
     return `<!doctype html><html lang="cs"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title)}</title>${meta}
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#fff;--ink:#1c1c1e;--muted:#616162;--card:#fff;--line:#ece9e0;--empty:#dcd9d0;--blue:#4169f1;color-scheme:light}
-@media(prefers-color-scheme:dark){:root{--bg:#171614;--ink:#f3f1ec;--muted:#a29c92;--card:#211f1c;--line:#332f2a;--empty:#2b2825;color-scheme:dark}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;
-padding:32px 20px calc(32px + env(safe-area-inset-bottom));display:flex;justify-content:center}
-.wrap{width:100%;max-width:440px}
-h1{font-family:'Baloo 2',sans-serif;font-size:26px;margin:0}
-h2{font-family:'Baloo 2',sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:26px 0 10px}
-.head{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
-.av{width:78px;height:78px;border-radius:50%;background:var(--blue);color:#fff;display:flex;
-align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:32px}
-.note{color:var(--muted);font-size:14px;margin:0;line-height:1.5}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
-.t{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px}
-.v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:25px;line-height:1.1}
-.l{color:var(--muted);font-size:13px}
-.scroll{overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
-.scroll>div{display:inline-block}
-.legend{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px;margin:8px 0 0}
-.legend i{width:11px;height:11px;border-radius:2.5px;display:inline-block}
-.btn{display:inline-block;margin-top:26px;background:#2e9e5b;color:#fff;text-decoration:none;
-font-family:'Baloo 2',sans-serif;font-weight:800;padding:14px 32px;border-radius:999px}
-</style></head><body><div class="wrap">${body}</div></body></html>`;
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131f24" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
+<link rel="preload" href="/fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/designs/kostky.css">
+</head><body><div class="screen active public-page" id="publicProfile">${body}
+<a class="btn btn-play" href="/">Zahrát si taky</a></div></body></html>`;
 }

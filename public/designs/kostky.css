@@ -519,7 +519,7 @@
 }
 .profile-name { font-weight: 700; font-size: 26px; }
 .profile-sub { font-size: 15px; font-weight: 700; color: var(--muted-text); }
-#profile .profile-note, #myDefs .profile-note { font-size: 14px; font-weight: 600; margin: -6px 0 0; }
+#profile .profile-note, #myDefs .profile-note, #publicProfile .profile-note { font-size: 14px; font-weight: 600; margin: -6px 0 0; }
 .profile-section { gap: 12px; }
 .profile-section-title {
     font-weight: 700;
@@ -562,8 +562,8 @@
     border-radius: 16px;
     font-weight: 600;
 }
-#profile .wd-text, #myDefs .wd-text { font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--ink); margin: 0; }
-#profile .wd-meta span, #myDefs .wd-meta span { font-size: 13px; }
+#profile .wd-text, #myDefs .wd-text, #publicProfile .wd-text { font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--ink); margin: 0; }
+#profile .wd-meta span, #myDefs .wd-meta span, #publicProfile .wd-meta span { font-size: 13px; }
 /* oblak štítků: ploché (bez retu), ať nevypadají jako tlačítka */
 .def-tag { font-family: var(--display); font-weight: 600; font-size: 16px; padding: 5px 11px 5px 13px; }
 .def-tag-votes { display: inline-flex; align-items: center; gap: 1px; font-weight: 600; }
