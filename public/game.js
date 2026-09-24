@@ -293,8 +293,6 @@ function showWelcome() {
     stopConfetti();
     placeGameGrid('game');
     renderWelcomeGrid();
-    const dayNum = dayIndex() + 1;
-    $('welcomeDate').textContent = `Den ${dayNum}/${TOTAL_LEVELS} · ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
     const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
     $('playBtnLabel').textContent = todayDone ? 'Výsledek' : 'Hrát';
     $('welcomeRules').innerHTML = persist.attempts > 0
@@ -1010,6 +1008,7 @@ function showProfile() {
 }
 
 function renderProfile() {
+    $('collectionChip').textContent = `Den ${dayIndex() + 1}/${TOTAL_LEVELS} · ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
     const days = Object.keys(persist.results).length;
     const words = Object.values(persist.results).reduce((a, b) => a + b, 0);
     const pct = days ? Math.round(words / (days * WORDS_PER_DAY) * 100) : 0;
@@ -1175,7 +1174,8 @@ function startGame() {
     state.gen++;
     state.mode = 'daily';
     $('game').classList.remove('practice');
-    $('closeGameBtn').style.display = 'none';
+    $('closeGameBtn').style.display = 'flex';
+    $('closeGameBtn').setAttribute('aria-label', 'Ukončit výzvu');
     const idx = dayIndex(today);
     state.words = dayWords(idx);
 
@@ -1267,6 +1267,7 @@ function startPracticeGame() {
     state.mode = 'practice';
     $('game').classList.add('practice');
     $('closeGameBtn').style.display = 'flex';
+    $('closeGameBtn').setAttribute('aria-label', 'Ukončit trénink');
     refreshAuth();                       // mezihra podle něj popisuje odkaz na významy
     state.pool = pool;
     state.practiceQueue = shuffleCopy(pool);
@@ -1778,6 +1779,43 @@ function resumeGame() {
     startTimer();
 }
 
+// Křížek ve hře: trénink rovnou skončí, denní výzva se nejdřív zeptá.
+function exitGame() {
+    if (state.mode === 'practice') return exitPractice();
+    openQuit();
+}
+
+// Ukončení denní výzvy je nevratné (dnešek už nejde dohrát), proto potvrzení.
+// Čas mezitím stojí; „Hrát dál" i zavření sheetu jiným způsobem ho rozjede.
+function openQuit() {
+    if (state.mode !== 'daily' || state.processing) return;   // mezi slovy chvíli počkat
+    clearInterval(state.timer);
+    const left = WORDS_PER_DAY - state.marks.length;
+    $('quitText').textContent = (left === 1
+        ? 'Poslední slovo se ti započítá jako neuhodnuté.'
+        : `${plural(left, '', `Zbývající ${left} slova se ti započítají`, `Zbývajících ${left} slov se ti započítá`)} jako neuhodnutá.`)
+        + ' Dnešek už pak nepůjde dohrát.';
+    $('quitModal').onclose = () => { if (!state.quitting) startTimer(); };
+    openModal('quitModal');
+}
+
+// Zbylá slova dne jako neuhodnutá a rovnou výsledek, jako by den doběhl.
+function quitDaily() {
+    if (state.mode !== 'daily' || !persist.day) return;
+    state.quitting = true;
+    closeModal();
+    state.quitting = false;
+    state.gen++;                                          // zahodit naplánované kroky kola
+    clearInterval(state.timer);
+    while (state.marks.length < WORDS_PER_DAY) state.marks.push(false);
+    state.wordIdx = WORDS_PER_DAY;
+    state.solved = state.marks.filter(Boolean).length;
+    state.processing = false;
+    updateGameGrid();
+    saveDayProgress();
+    finishDay();
+}
+
 function exitPractice() {
     if (state.mode !== 'practice') return;
     state.gen++;
@@ -2241,6 +2279,10 @@ function closeSheet(modal) {
     if (!modal.classList.contains('active') || modal.classList.contains('closing')) return;
     const sheet = modal.querySelector('.modal-content');
     modal.classList.add('closing');
+    // co má sheet po zavření udělat (quitModal rozjede čas), ať se zavře jakkoli
+    const onclose = modal.onclose;
+    modal.onclose = null;
+    if (onclose) onclose();
     const finish = () => {
         if (!modal.classList.contains('closing')) return; // mezitím se znovu otevřel
         modal.classList.remove('active', 'closing');
@@ -2389,9 +2431,7 @@ document.onkeydown = e => {
     if (
         !$('game').classList.contains('active') ||
         state.processing ||
-        $('collectionModal').classList.contains('active') ||
-        $('feedbackModal').classList.contains('active') ||
-        $('defsModal').classList.contains('active') ||
+        document.querySelector('.modal.active') ||
         $('wordDoneOverlay').classList.contains('active') ||
         $('pauseOverlay').classList.contains('active')
     ) return;

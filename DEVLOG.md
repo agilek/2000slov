@@ -2,6 +2,20 @@
 
 ## 2026-09-24
 
+### Denní výzvu jde ukončit křížkem; sbírka slov přesunutá do profilu
+Denní hra má vpravo nahoře stejný × jako trénink. Otevře sheet „Ukončit dnešní
+výzvu?“ s počtem zbývajících slov; čas mezitím stojí. „Hrát dál“, klepnutí vedle,
+tažení nebo Esc hru obnoví. „Ukončit výzvu“ zapíše zbývající slova jako
+neuhodnutá (červená) a ukáže výsledek, den je pak hotový. Štítek
+„Den X/365 · N slov“ se přesunul z úvodu do profilu (sekce Sbírka slov) a ikony
+horní lišty mají o 4 px větší mezeru k popisku.
+
+**Root cause / approach:** `closeSheet` teď volá `modal.onclose` jednou,
+ať sheet zavře cokoli. Obnovu času stačí pověsit na to jedno místo; při
+potvrzení ji přeskočí příznak `state.quitting`.
+
+→ *Memory saved: `modals_are_bottom_sheets.md` (hook `onclose`)*
+
 ### Celé Kostky ve Slovka One — „špatné háčky" byly záložní Nunito
 Google Fredoka, kterou Kostky používaly na tlačítka, kostky písmen, štítky
 a popisky, **nemá ů č ď ě ň ř ť ani velké** — přesně ty, co chyběly i ve Fredoka

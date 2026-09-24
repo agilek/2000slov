@@ -205,7 +205,7 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     margin: 0 auto;
 }
 .welcome-actions > .btn-play { margin: 0; }
-.welcome-date {
+.collection-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -219,10 +219,10 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     white-space: nowrap;
     transition: color .12s, transform .06s;
 }
-@media (hover: hover) { .welcome-date:hover { color: var(--blue); } }
-.welcome-date:active { transform: scale(.98); }
-.welcome-date:focus { outline: none; }
-.welcome-date:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
+@media (hover: hover) { .collection-chip:hover { color: var(--blue); } }
+.collection-chip:active { transform: scale(.98); }
+.collection-chip:focus { outline: none; }
+.collection-chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
 
 .welcome-grid {
     display: grid;
@@ -437,7 +437,7 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     background: var(--grid-cell);
     overflow: hidden;
 }
-#game.practice .time-bar { margin-right: 50px; }   /* místo pro křížek */
+#game .time-bar { margin-right: 50px; }   /* místo pro křížek (trénink i denní výzva) */
 .time-bar-fill {
     display: block;
     height: 100%;
@@ -928,6 +928,14 @@ body:has(#profile.active, #myDefs.active) { overflow: visible; height: auto; min
 .pager .btn { margin: 0; padding: 12px 18px; font-size: 15px; }
 .pager .btn:disabled { opacity: .4; cursor: default; }
 .pager-info { font-weight: 700; color: var(--muted-text); font-variant-numeric: tabular-nums; }
+
+/* Štítek sbírky slov v profilu (dřív na úvodu) */
+#profile .collection-chip { align-self: flex-start; }
+
+/* Potvrzení ukončení denní výzvy (sheet) */
+.quit-text { margin: -2px 0 20px; text-align: center; font-size: 16px; line-height: 1.5; color: var(--muted-text); }
+.quit-actions { display: flex; flex-direction: column; gap: 12px; }
+.quit-actions .btn { width: 100%; max-width: 400px; margin: 0 auto; }
 
 /* Výběr obtížnosti tréninku (sheet) */
 .level-list { display: flex; flex-direction: column; gap: 10px; }

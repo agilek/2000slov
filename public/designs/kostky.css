@@ -83,7 +83,7 @@
 }
 
 /* Písmo: Slovka One na všechno, co je „předmět" nebo nadpis, Nunito na text. */
-.btn, .btn-tertiary, .icon-btn, .screen h1, .screen h2, .welcome-date,
+.btn, .btn-tertiary, .icon-btn, .screen h1, .screen h2, .collection-chip,
 .screen-title, .profile-avatar, .profile-name, .profile-section-title, .stat-value,
 .gp-headline, .gp-timer, .word-display, .answer-slot, .letter,
 .modal-header h2, .collection-count, .archive-date, .archive-score, .kb-toast,
@@ -167,7 +167,7 @@
 .welcome-actions > .btn-play { width: 100%; }
 
 /* Datum jako plastový štítek — klepnutím otevře sbírku. */
-.welcome-date {
+.collection-chip {
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 0;
@@ -180,7 +180,7 @@
     box-shadow: 0 3px 0 var(--lip);
     transition: translate .08s ease, box-shadow .08s ease, background .15s ease;
 }
-.welcome-date::before {
+.collection-chip::before {
     content: '';
     width: 20px;
     height: 20px;
@@ -188,9 +188,9 @@
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6v13'/%3E%3Cpath d='M12 6v13'/%3E%3Cpath d='M21 6v13'/%3E%3C/svg%3E") center / contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6v13'/%3E%3Cpath d='M12 6v13'/%3E%3Cpath d='M21 6v13'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.welcome-date:active { transform: none; translate: 0 3px; box-shadow: 0 0 0 transparent; }
-.welcome-date:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; border-radius: 14px; }
-@media (hover: hover) { .welcome-date:hover { color: var(--ink); background: var(--hover-tint); } }
+.collection-chip:active { transform: none; translate: 0 3px; box-shadow: 0 0 0 transparent; }
+.collection-chip:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; border-radius: 14px; }
+@media (hover: hover) { .collection-chip:hover { color: var(--ink); background: var(--hover-tint); } }
 
 /* Mřížka dne: 20 kostek s retem. Při každém zobrazení úvodu (mřížka se
    staví znovu) i výsledku (mřížka se do něj přesune) napadají vlnou —
@@ -491,7 +491,7 @@
 }
 
 /* ---- Horní lišta úvodu + profil ---- */
-.icon-btn { gap: 6px; }
+.icon-btn { gap: 10px; }
 .icon-btn-circle {
     width: 52px;
     height: 52px;
