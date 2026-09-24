@@ -112,9 +112,9 @@
     <div class="sg-item"><div class="sg-label">.points-pill — body za aktivitu pod jménem v profilu (vlastní i veřejný), ikona kostky/hvezda.svg</div><div class="sg-demo" data-tag><div class="points-pill"><span class="emoji" data-emoji="hvezda">⭐</span> 1 240 bodů</div></div></div>
     <div class="sg-item" style="grid-column: 1 / -1;"><div class="sg-label">.ach-grid + .ach-tile (.ach--common/rare/epic/legend/locked, .ach-tile--new) — úspěchy, markup z achievements.js; plná ukázka v dev-uspechy.html</div><div class="sg-demo" style="display:block;"><div class="ach-grid" id="sgAch"></div></div></div>
     <script src="avatar.js"></script><script src="achievements.js"></script>
-    <script>{ const st = { dny: 1, serie: 7, trenink: 60, slova: 1000, perfekt: 0 }; const pick = ['prvni-kolo', 'tyden', 'tisicovka', 'stovka', 'posilovna', 'dvacitka', 'nocni-sova', 'cely-slovnik'];
+    <script>{ const st = { dny: 50, serie: 7, trenink: 60, perfekt: 0 }; const pick = ['prvni-kolo', 'tyden', 'tisicovka', 'stovka', 'posilovna', 'dvacitka', 'nocni-sova', 'cely-slovnik'];
         document.getElementById('sgAch').innerHTML = pick.map(id => Achievements.LIST.find(a => a.id === id)).map((a, i) => Achievements.tile(a, { ...st, ...(a.id === 'stovka' ? { serie: 100 } : {}) }, { tag: 'span', isNew: i === 1 })).join(''); }</script>
-    <div class="sg-item"><div class="sg-label">.btn.btn-secondary.btn-collection — Sbírka slov v profilu</div><div class="sg-demo" data-tag><button class="btn btn-secondary btn-collection">40/7 300 slov</button></div></div>
+    <div class="sg-item"><div class="sg-label">.btn.btn-secondary.btn-collection — Denní výzva v profilu (otevře přehled dní)</div><div class="sg-demo" data-tag><button class="btn btn-secondary btn-collection">Odehráno 12 dní</button></div></div>
     <div class="sg-item"><div class="sg-label">.info-chip.info-chip--level (lehká/střední/těžká)</div><div class="sg-demo">
         <span class="info-chip info-chip--level info-chip--lehka" data-tag>lehká</span>
         <span class="info-chip info-chip--level info-chip--stredni" data-tag>střední</span>

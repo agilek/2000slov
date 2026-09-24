@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="designs/kostky.css?v=52">
+<link rel="stylesheet" href="designs/kostky.css?v=54">
 <style>
     /* ---------- chrome téhle stránky (sg-), s hrou se nemíchá ---------- */
     html, body.sg { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; background: #f4f1ec !important; }
@@ -95,10 +95,10 @@
 // Tady jen ukázkoví hráči a sheet. Poznámka „Jak to hra pozná" je pole `how`.
 const { LIST: ACH, GROUPS, RARITY, DNY, done: isDone, val: valOf, pct: pctOf, hidden: isHidden, unitOf } = Achievements;
 const PRESETS = {
-    novy: { dny: 1, serie: 1, slova: 20, isNew: ['prvni-kolo'] },
-    tyden: { dny: 9, serie: 7, slova: 180, perfekt: 1, perfektSerie: 1, fenix: 1, trenink: 64, treninkRada: 12, tezka: 3, blesk: 1,
+    novy: { dny: 1, serie: 1, isNew: ['prvni-kolo'] },
+    tyden: { dny: 9, serie: 7, perfekt: 1, perfektSerie: 1, fenix: 1, trenink: 64, treninkRada: 12, tezka: 3, blesk: 1,
              avatar: 1, sdileno: 1, vyznamu: 2, ziskanych: 4, maxHlasu: 3, danych: 11, isNew: ['tyden', 'bleskovka'] },
-    veteran: { dny: 140, serie: 100, slova: 2800, perfekt: 23, perfektSerie: 4, cisty: 1, fenix: 1, trenink: 1250, treninkRada: 41, tezka: 180,
+    veteran: { dny: 140, serie: 100, perfekt: 23, perfektSerie: 4, cisty: 1, fenix: 1, trenink: 1250, treninkRada: 41, tezka: 180,
                blesk: 1, avatar: 1, sdileno: 1, vyznamu: 38, ziskanych: 96, maxHlasu: 14, nejlepsi: 6, danych: 210, sova: 1, chlup: 1, isNew: ['stovka'] },
 };
 let st = PRESETS.tyden;

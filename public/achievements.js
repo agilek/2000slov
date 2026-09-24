@@ -6,7 +6,7 @@
 // (hráč ho nevidí) a skládá ho achState() v game.js / publicState() níž.
 const Achievements = (() => {
     const GROUPS = [
-        ['zacatky', 'Začátky'], ['serie', 'Série'], ['den', 'Denní výzva'], ['sbirka', 'Sbírka'],
+        ['zacatky', 'Začátky'], ['serie', 'Série'], ['den', 'Denní výzva'], ['sbirka', 'Kalendář'],
         ['trenink', 'Trénink'], ['vyznamy', 'Významy'], ['tajne', 'Tajné'],
     ];
     const RARITY = { common: 'Běžný', rare: 'Vzácný', epic: 'Epický', legend: 'Legendární' };
@@ -28,9 +28,11 @@ const Achievements = (() => {
         { id: 'cista-prace', g: 'den', r: 'epic', icon: 'terc', name: 'Čistá práce', desc: 'Dej všech 20 slov bez jediného chybného pokusu.', v: 'cisty', goal: 1, how: 'persist.day.wrong = 0 v perfektním dni' },
         { id: 'zpatky', g: 'den', r: 'rare', icon: 'raketa', name: 'Zpátky ve hře', desc: 'Po dni bez trofeje (8 slov a méně) dej hned další den aspoň 17.', v: 'fenix', goal: 1, how: 'persist.results dvou po sobě jdoucích dnů' },
 
-        { id: 'sto-slov', g: 'sbirka', r: 'common', icon: 'kostka', num: '100', name: 'Stovka slov', desc: 'Odkryj ve sbírce 100 slov.', v: 'slova', goal: 100, unit: SLOV, how: 'odehrané dny × 20 (uncoveredCount)' },
-        { id: 'tisicovka', g: 'sbirka', r: 'epic', icon: 'kostka', num: '1000', name: 'Tisícovka', desc: 'Odkryj ve sbírce 1000 slov.', v: 'slova', goal: 1000, unit: SLOV, how: 'odehrané dny × 20 ≥ 1000 (50 dní)' },
-        { id: 'cely-slovnik', g: 'sbirka', r: 'legend', icon: 'trofej', num: '7300', name: 'Celý slovník', desc: 'Odkryj všech 7300 slov. To je rok hraní.', v: 'slova', goal: 7300, unit: SLOV, how: 'odehrané dny × 20 = 7300' },
+        // Cíl denní výzvy je nasbírat všech 365 dní. Id zůstala ze „slov“:
+        // 100 / 1000 / 7300 slov jsou přesně 5 / 50 / 365 dní, získané nezmizí.
+        { id: 'sto-slov', g: 'sbirka', r: 'common', icon: 'kalendar', num: '5', name: 'Pět dní', desc: 'Odehraj 5 dní denní výzvy.', v: 'dny', goal: 5, unit: DNY, how: 'odehrané dny (klíče persist.results, max 365)' },
+        { id: 'tisicovka', g: 'sbirka', r: 'epic', icon: 'kalendar', num: '50', name: 'Padesátka', desc: 'Odehraj 50 dní denní výzvy.', v: 'dny', goal: 50, unit: DNY, how: 'odehrané dny ≥ 50' },
+        { id: 'cely-slovnik', g: 'sbirka', r: 'legend', icon: 'trofej', num: '365', name: 'Celý rok', desc: 'Odehraj všech 365 dní denní výzvy. Co propásneš, vrátí se až za rok.', v: 'dny', goal: 365, unit: DNY, how: 'odehrané dny = 365 (všechny indexy dne)' },
 
         { id: 'posilovna', g: 'trenink', r: 'rare', icon: 'cinka', num: '100', name: 'Posilovna', desc: 'Uhodni v tréninku 100 slov.', v: 'trenink', goal: 100, unit: SLOV, how: 'persist.practiceWords' },
         { id: 'v-razi', g: 'trenink', r: 'rare', icon: 'hvezda', num: '20', name: 'V ráži', desc: 'Uhodni v tréninku 20 slov v řadě.', v: 'treninkRada', goal: 20, unit: SLOV, how: 'persist.practiceBestRun (nejdelší „N v řadě")' },
@@ -90,7 +92,7 @@ const Achievements = (() => {
     // Stav, který zná server (veřejný profil): stats() + points() + avatar.
     // Odznaky jen z klienta (sdílení, rychlost, …) tam zůstanou zamčené.
     const publicState = (s, p, hasAvatar) => ({
-        dny: s.dny, serie: s.nejdelsi, perfekt: s.perfektnich, slova: s.dny * 20, avatar: hasAvatar ? 1 : 0,
+        dny: s.dny, serie: s.nejdelsi, perfekt: s.perfektnich, avatar: hasAvatar ? 1 : 0,
         trenink: p.slovTreninku, vyznamu: p.vyznamu, ziskanych: p.ziskanychHlasu, maxHlasu: p.maxHlasu,
         nejlepsi: p.nejlepsi, danych: p.danychHlasu,
     });

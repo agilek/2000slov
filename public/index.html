@@ -26,7 +26,7 @@
 <!-- ExtraLight: .wd-title, na panelu po každém slově -->
 <link rel="preload" href="fonts/SlovkaOne-ExtraLight.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css?v=25">
-<link rel="stylesheet" href="designs/kostky.css?v=52">
+<link rel="stylesheet" href="designs/kostky.css?v=54">
 </head>
 <body>
 
@@ -92,7 +92,7 @@
         </div>
 
         <div class="profile-section">
-            <h3 class="profile-section-title">Sbírka slov</h3>
+            <h3 class="profile-section-title">Denní výzva</h3>
             <button class="btn btn-secondary btn-collection" id="collectionChip" onclick="showCollection()"></button>
         </div>
 
@@ -271,8 +271,14 @@
     <div class="modal" id="collectionModal">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="collectionTitle" tabindex="-1">
             <div class="modal-header">
-                <h2 id="collectionTitle">Sbírka slov <span id="collectionCount" class="collection-count"></span></h2>
+                <h2 id="collectionTitle">Denní výzva</h2>
                 <button class="close-modal" onclick="closeModal()">Zavřít</button>
+                <!-- cíl: nasbírat všech 365 dní; v hlavičce, ať je vidět i při scrollu -->
+                <div class="ach-sum challenge-sum">
+                    <span class="ach-sum-count" id="collectionCount"></span>
+                    <div class="ach-bar"><i id="collectionBar"></i></div>
+                </div>
+                <p class="challenge-note">Co propásneš, vrátí se až za rok.</p>
             </div>
             <ul class="archive-list" id="collectionList"></ul>
         </div>
@@ -364,7 +370,7 @@
 <script src="squircle.js?v=3"></script>
 <script src="words.js?v=4"></script>
 <script src="avatar.js?v=3"></script>
-<script src="achievements.js?v=3"></script>
-<script src="game.js?v=46"></script>
+<script src="achievements.js?v=4"></script>
+<script src="game.js?v=48"></script>
 </body>
 </html>

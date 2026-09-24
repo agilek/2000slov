@@ -681,21 +681,15 @@
     box-shadow: 0 calc(var(--s) * .07) 0 var(--r-lip);
     flex: none;
 }
-.ach::before {                         /* odlesk: oblouk kopíruje levý horní roh */
+.ach::before {                         /* odlesk: krátký oblouk soustředný s levým horním rohem, kulaté konce */
     content: '';
     position: absolute;
-    inset: 7%;
-    border-radius: 25%;                   /* 30 % kostky minus odsazení, oblouk je soustředný s rohem */
-    border: calc(var(--s) * .05) solid transparent;
-    border-top-color: #fff;
-    border-left-color: #fff;
-    opacity: .38;
-    /* jen levý horní roh, oblouk do zhruba třetiny obou stran, bez přechodu */
-    -webkit-mask: linear-gradient(#000 0 0) 0 0 / 45% 45% no-repeat;
-            mask: linear-gradient(#000 0 0) 0 0 / 45% 45% no-repeat;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M12 38V32A20 20 0 0 1 32 12H38' fill='none' stroke='%23fff' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    opacity: .55;
     pointer-events: none;
 }
-.ach--locked::before { opacity: .7; }
+.ach--locked::before { opacity: .9; }
 .ach-medal {
     display: grid;
     place-items: center;
@@ -932,7 +926,12 @@
 .modal-header { background: var(--card); }
 .modal-header::before { background: var(--lip); opacity: 1; width: 42px; }
 .modal-header h2 { font-weight: 700; font-size: 22px; }
-.collection-count { font-weight: 600; color: var(--muted-text); }
+/* přehled denní výzvy: počet dní s pruhem přímo v (přilepené) hlavičce */
+#collectionModal .modal-header { flex-direction: column; align-items: stretch; gap: 10px; }
+#collectionModal .modal-header h2 { text-align: center; }
+#collectionModal .modal-header::before { left: 50%; translate: -50% 0; }   /* úchyt zůstane uprostřed i ve sloupci */
+.challenge-sum .ach-sum-count { font-size: 26px; }
+.challenge-note { margin: -4px 0 0; font-size: 14px; font-weight: 700; color: var(--muted-text); text-align: center; }
 .close-modal { font-family: var(--display); font-weight: 600; }
 .close-modal:focus-visible { outline: 3px solid var(--blue-soft); }
 

@@ -150,7 +150,6 @@ function dayIndex(dateStr) {
 
 function playedDays() { return Object.keys(persist.results).length; }
 
-function uncoveredCount() { return Math.min(playedDays() * WORDS_PER_DAY, TOTAL_WORDS); }
 
 // Slova se rozbalují až na vyžádání — celý rok v jednom poli by stačilo
 // vypsat v konzoli a zamíchání v words.js by bylo k ničemu.
@@ -1210,7 +1209,8 @@ function showProfile() {
 }
 
 function renderProfile() {
-    $('collectionChip').textContent = `${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
+    const played = playedDays();
+    $('collectionChip').textContent = `${plural(played, 'Odehrán', 'Odehrány', 'Odehráno')} ${fmtNum(played)} ${plural(played, 'den', 'dny', 'dní')}`;
     const days = Object.keys(persist.results).length;
     const words = Object.values(persist.results).reduce((a, b) => a + b, 0);
     const pct = days ? Math.round(words / (days * WORDS_PER_DAY) * 100) : 0;
@@ -1280,7 +1280,7 @@ function achState() {
     const fenix = Object.keys(r).some(i => r[i] <= 8 && r[+i + 1] >= 17) ? 1 : 0;
     const p = (auth.user && state.points) || {};
     const st = {
-        dny: playedDays(), serie: Math.max(persist.bestStreak, longestRun(r)), fenix, slova: uncoveredCount(),
+        dny: playedDays(), serie: Math.max(persist.bestStreak, longestRun(r)), fenix,
         perfekt: Object.values(r).filter(n => n === WORDS_PER_DAY).length,
         perfektSerie: longestRun(r, n => n === WORDS_PER_DAY),
         avatar: Avatar.valid((auth.user && auth.user.avatar) || persist.avatar) ? 1 : 0,
@@ -2535,7 +2535,7 @@ function showResult(instant) {
     setEmojiText($('percentile'), percentileDisplayText(survived, persist.day.realTopPct));
     // Ne „den N": číslo dne hráči nic neřekne. Důvod přijít zítra je série.
     const streak = liveStreak();
-    setEmojiText($('progressLine'), (perfect ? `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.\n` : '')
+    setEmojiText($('progressLine'), (perfect ? `🔓 Odehráno ${fmtNum(playedDays())} z ${TOTAL_LEVELS} dní výzvy.\n` : '')
         + (streak >= 2
             ? `🔥 ${fmtNum(streak)} ${plural(streak, 'den', 'dny', 'dní')} v řadě. Zítra v tom pokračuj!`
             : 'Zítra čeká 20 nových slov. Přijď a rozjeď sérii!'));
@@ -3042,10 +3042,10 @@ async function enableNotifications() {
     $('notifyBtn').style.display = 'none';
 }
 
-/* ---------------- sbírka slov ---------------- */
+/* ---------------- denní výzva: přehled dní (dřív „Sbírka slov") ---------------- */
 
-// Datum dne `lvl` v dnešním ročním cyklu. Ve Sbírce data, ne „Den N":
-// podle data si hráči porovnají, co kdo ten den hrál.
+// Datum dne `lvl` v dnešním ročním cyklu. V přehledu data bez roku, ne „Den N":
+// den se každý rok vrací, cílem je nasbírat všech 365.
 function cycleDate(lvl, today = dayIndex()) {
     const d = new Date();
     d.setHours(12, 0, 0, 0);                              // poledne: posun o dny nepřeskočí změna času
@@ -3054,7 +3054,9 @@ function cycleDate(lvl, today = dayIndex()) {
 }
 
 function showCollection() {
-    $('collectionCount').textContent = `${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)}`;
+    const played = playedDays();
+    $('collectionCount').innerHTML = `${fmtNum(played)} <small>z ${TOTAL_LEVELS} dní</small>`;
+    $('collectionBar').style.width = played / TOTAL_LEVELS * 100 + '%';
     const list = $('collectionList');
     list.innerHTML = '';
     const today = dayIndex();
@@ -3066,11 +3068,11 @@ function showCollection() {
         const current = lvl === today;
         const label = document.createElement('span');
         label.className = 'archive-date';
-        label.textContent = fmtDateLong(cycleDate(lvl, today));
+        label.textContent = cycleDate(lvl, today).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
         const badge = document.createElement('span');
         badge.className = 'archive-score';
         if (played) {
-            badge.textContent = `${score === WORDS_PER_DAY ? '✓' : '·'} ${score} ${plural(score, 'slovo', 'slova', 'slov')}`;
+            badge.textContent = `${score === WORDS_PER_DAY ? '✓ ' : ''}${score} ${plural(score, 'slovo', 'slova', 'slov')}`;
             const words = document.createElement('div');
             words.className = 'archive-words';
             dayWords(lvl).forEach(w => {

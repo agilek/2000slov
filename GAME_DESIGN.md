@@ -73,7 +73,9 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 
    postup; Chrome: nativní instalace přes `beforeinstallprompt`, po instalaci
    zmizí samo; křížek nabídku skryje natrvalo),
    Sbírka slov + Trénink, řádek se zpětnou vazbou. Perfektní den = konfety.
-5. **Sbírka** (modal ve stylu archivu originálu) — 365 dní podle data (ne „Den N“), odehrané se rozbalí
+5. **Denní výzva** (dřív „Sbírka slov“; sheet ve stylu archivu originálu) — cílem je nasbírat
+   všech 365 dní, nahoře „N z 365 dní“ s pruhem. Dny podle data bez roku
+   (ne „Den N“): co hráč propásne, vrátí se až za rok. Odehrané se rozbalí
    na 20 slov a ukážou skóre, aktuální „dnes", zbytek zamčený.
    Významy slov: **číst je může kdokoli, psát a hlasovat jen přihlášený**.
    Anonymní autor neexistuje — u významu vždy stojí přezdívka z účtu, takže

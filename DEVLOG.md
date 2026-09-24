@@ -2,6 +2,20 @@
 
 ## 2026-09-24
 
+### „Sbírka slov“ → „Denní výzva“: cílem je nasbírat 365 dní
+Přehled dní se jmenuje Denní výzva. Tlačítko v profilu ukazuje „Odehráno
+N dní“, sheet má nahoře „N z 365 dní“ s pruhem a větu „Co propásneš, vrátí
+se až za rok“. Data jsou bez roku, den se každý rok vrací. Odznaky skupiny
+„Sbírka“ jsou teď „Kalendář“ na dny (5, 50, 365). Id i prahy zůstaly
+(100/1000/7300 slov = 5/50/365 dní), získané nezmizí. Odlesk odznaku je
+krátký SVG oblouk s kulatými konci, soustředný s rohem.
+
+**Root cause / approach:** Hlavička sheetu ve sloupci (`flex-direction:
+column`) posunula absolutně umístěný úchyt `::before` doleva: nemá `left`,
+bere statickou polohu. Opravuje to `left: 50%; translate: -50% 0`.
+
+→ *No new memory entries.*
+
 ### Začátky těžší: Rozcvička 5 slov v řadě, Chlouba 3 dny sdílení
 Hráč získal všechny Začátky za pár minut. Rozcvička teď chce 5 uhodnutých
 slov tréninku v řadě, Chlouba kartu sdílenou ve 3 různých dnech (počítá se
