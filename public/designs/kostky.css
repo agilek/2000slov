@@ -690,9 +690,9 @@
     border-top-color: #fff;
     border-left-color: #fff;
     opacity: .38;
-    /* jen kolem rohu, do stran se ztrácí */
-    -webkit-mask: radial-gradient(circle at 0 0, #000 30%, transparent 58%);
-            mask: radial-gradient(circle at 0 0, #000 30%, transparent 58%);
+    /* jen levý horní roh, oblouk do zhruba třetiny obou stran, bez přechodu */
+    -webkit-mask: linear-gradient(#000 0 0) 0 0 / 45% 45% no-repeat;
+            mask: linear-gradient(#000 0 0) 0 0 / 45% 45% no-repeat;
     pointer-events: none;
 }
 .ach--locked::before { opacity: .7; }

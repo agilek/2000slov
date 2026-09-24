@@ -16,7 +16,9 @@ stojí. Scrollovací obrazovky se nahoře a dole pružně dotahují. Tah prstem
 přes tlačítko ho už nespustí. Pruh času ve hře na iPhonu nebliká. „Přidej
 si hru na plochu“ je tlačítko, které rozbalí postup, v Chromu spustí
 instalaci. Sbírka ukazuje data a v profilu je tlačítkem přes celou šířku.
-Odznaky mají zahnutý odlesk podle rohu místo rovné čárky.
+Odznaky mají zahnutý odlesk podle rohu místo rovné čárky: plný oblouk
+(border-top/left na vnořeném rámečku, ořez maskou na 45 % × 45 %), bez
+přechodu do ztracena. Přechod se uživateli nelíbil.
 
 **Root cause / approach:**
 - Sheet: tah dolů na scrollovatelné stránce vzal prohlížeč jako scroll
