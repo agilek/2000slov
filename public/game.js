@@ -390,8 +390,10 @@ function showWordDone(word, gen, solved) {
     const gap = PRACTICE_GAP[solved ? 'solved' : 'missed'];
     const next = $('wdNextBtn');
     next.style.setProperty('--gap', gap + 's');
+    next.classList.remove('paused');
     next.classList.add('counting');
     ov.classList.add('active');
+    state.wdDeadline = Date.now() + gap * 1000;
     state.nextTimer = setTimeout(nextWord, gap * 1000);
     if (!defCache.has(word)) {
         apiGet(defsUrl(word)).then(d => {
@@ -478,12 +480,30 @@ function nextWord() {
     loadWord();
 }
 
-// Odpočet se zruší, ne pozastaví: kdo sáhl na význam, klepne na Další sám.
+// Odpočet se zruší, ne pozastaví: kdo klepl na význam, klepne na Další sám.
 function holdWordDone() {
     if (!$('wordDoneOverlay').classList.contains('active')) return;
     clearTimeout(state.nextTimer);
     state.nextTimer = null;
-    $('wdNextBtn').classList.remove('counting');
+    $('wdNextBtn').classList.remove('counting', 'paused');
+}
+
+// Podržení prstu: odpočet (i vyplňování tlačítka) stojí, puštěním běží dál.
+function pauseCountdown() {
+    if (!state.nextTimer) return false;
+    clearTimeout(state.nextTimer);
+    state.nextTimer = null;
+    state.wdLeftMs = Math.max(0, state.wdDeadline - Date.now());
+    $('wdNextBtn').classList.add('paused');
+    return true;
+}
+
+function resumeCountdown() {
+    const next = $('wdNextBtn');
+    if (state.nextTimer || !next.classList.contains('paused')) return;
+    next.classList.remove('paused');
+    state.wdDeadline = Date.now() + state.wdLeftMs;
+    state.nextTimer = setTimeout(nextWord, state.wdLeftMs);
 }
 
 function hideWordDone(animated) {
@@ -491,9 +511,9 @@ function hideWordDone(animated) {
     if (!ov.classList.contains('active')) return;
     const panel = ov.querySelector('.wd-panel');
     const finish = () => {
-        ov.classList.remove('active', 'closing');
+        ov.classList.remove('active', 'closing', 'holding');
         panel.style.cssText = '';
-        $('wdNextBtn').classList.remove('counting');
+        $('wdNextBtn').classList.remove('counting', 'paused');
     };
     if (!animated || REDUCED_MOTION.matches) return finish();
     ov.classList.add('closing');
@@ -742,6 +762,8 @@ function renderAccount() {
     const section = $('accountSection');
     const box = $('accountBox');
     box.innerHTML = '';
+    $('profileDanger').replaceChildren();
+    $('profileDanger').hidden = true;
     if (!auth.enabled) { section.style.display = 'none'; return; }
     section.style.display = 'flex';
 
@@ -868,7 +890,7 @@ function renderSignedIn(box) {
         renderProfile();
         showToast('Odhlášeno.');
     };
-    const del = el('button', 'btn-tertiary', 'Smazat účet');
+    const del = el('button', 'btn btn-danger', 'Smazat účet');
     del.onclick = async () => {
         if (!confirm('Opravdu smazat účet? Tvoje významy zůstanou ostatním, jen se z nich sundá tvoje jméno.')) return;
         await apiPost('/api/me/delete', {});
@@ -878,7 +900,10 @@ function renderSignedIn(box) {
         renderProfile();
         showToast('Účet smazán.');
     };
-    box.append(out, del);
+    box.append(out);
+    // Smazání je nevratné, proto úplně dole na profilu, ne mezi běžnými akcemi.
+    $('profileDanger').replaceChildren(del);
+    $('profileDanger').hidden = false;
 }
 
 function onLoggedIn(user) {
@@ -2186,14 +2211,41 @@ document.addEventListener('pointerdown', e => {
     document.addEventListener('pointercancel', end);
 })();
 
-// Mezihra: sáhnutí na kartu s významem zruší odpočet (čte se), klepnutí
-// kamkoli jinam mimo tlačítka = hned další slovo.
+// Mezihra, ovládání prstem (jako příběhy na Instagramu):
+//  - podržení kdekoli na panelu mimo tlačítka odpočet na chvíli zastaví —
+//    dlouhý význam jde dočíst; puštěním běží dál,
+//  - krátké klepnutí mimo kartu = hned další slovo, na kartu = odpočet zruší.
+// Puštění po podržení se nepočítá jako klepnutí, i kdyby z něj prohlížeč
+// udělal click.
+const HOLD_MS = 250;
+let wdPress = null;
 $('wordDoneOverlay').addEventListener('pointerdown', e => {
-    if (e.target.closest('.wd-card')) holdWordDone();
+    if (e.target.closest('button, a') || !e.target.closest('.wd-panel')) return;
+    wdPress = { long: false, timer: setTimeout(() => {
+        wdPress.long = true;
+        if (!pauseCountdown()) return;
+        $('wordDoneOverlay').classList.add('holding');
+        haptic('tap');
+    }, HOLD_MS) };
 });
+const wdRelease = () => {
+    if (!wdPress) return;
+    clearTimeout(wdPress.timer);
+    state.wdSkipClick = wdPress.long;
+    wdPress = null;
+    $('wordDoneOverlay').classList.remove('holding');
+    resumeCountdown();
+};
+document.addEventListener('pointerup', wdRelease);
+document.addEventListener('pointercancel', wdRelease);
 $('wordDoneOverlay').addEventListener('click', e => {
-    if (!e.target.closest('button, a, .wd-card')) nextWord();
+    if (state.wdSkipClick) { state.wdSkipClick = false; return; }
+    if (e.target.closest('button, a')) return;
+    if (e.target.closest('.wd-card')) return holdWordDone();
+    nextWord();
 });
+// Podržení nesmí otevřít kontextové menu (Android, pravé tlačítko myši).
+$('wordDoneOverlay').addEventListener('contextmenu', e => e.preventDefault());
 
 // Na pozadí se odpočet zruší, ať hráči slovo neuteče.
 document.addEventListener('visibilitychange', () => {

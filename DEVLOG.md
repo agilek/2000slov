@@ -2,6 +2,22 @@
 
 ## 2026-09-24
 
+### Podržení pauzne mezihru, kolečko myši na profilu, Smazat účet dole
+Podržení prstu kdekoli na panelu mezihry (mimo tlačítka) odpočet na chvíli
+zastaví — vyplňování tlačítka stojí a ukáže se pauza; puštěním běží dál. Krátké
+klepnutí funguje jako dřív (mimo kartu = další slovo). Profil a výsledek jdou
+zase scrollovat kolečkem myši. „Smazat účet" je červené tlačítko na konci profilu.
+
+**Root cause / approach:** Scroll: pravidla `html:has(#profile.active),
+body:has(#profile.active) { overflow-y: auto }` dělala z body scroll kontejner,
+který sám scrollovat nemůže, a spolu s `overscroll-behavior: none` kolečko ani
+tah nepustil dál k viewportu — programový `scrollTo` přitom fungoval, proto to
+nebylo vidět. Scrolluje teď jen html, body má `overflow: visible`. Podržení:
+po puštění se click nepočítá (prohlížeč ho po dlouhém stisku klidně pošle)
+a text významu v mezihře nejde označit, jinak by podržení vybíralo text.
+
+→ *Memory updated: `ios_native_feel_gotchas.md`*
+
 ### Vývojové prostředí pro účty a významy: DEV=1, seed, přihlášení bez e-mailu
 Účty a komunitní významy jdou konečně vyzkoušet lokálně. `DEV=1` v `.dev.vars`
 zapne přihlášení bez Resendu (kód a odkaz se vypíšou do terminálu wrangleru),
