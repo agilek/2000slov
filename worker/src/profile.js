@@ -86,7 +86,8 @@ export async function apiProfile(request, env, url, ctx, json) {
 
 const num = (n) => n.toLocaleString('cs-CZ');
 const plural = (n, one, few, many) => n === 1 ? one : n >= 2 && n <= 4 ? few : many;
-const MESICE = ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'];
+const MESICE = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
+const MESICE_KRATCE = ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'];
 const DNY = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
 const kratce = (d) => `${+d.slice(8, 10)}. ${+d.slice(5, 7)}.`;
 const dlouze = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -97,25 +98,34 @@ const stupen = (score) =>
 
 // Rok svisle jako kalendář: týden = řádek Po–Ne, nahoře nejstarší. Začíná
 // týdnem prvního odehraného dne (nejdál před rokem), ať nový hráč nemá
-// stránku prázdných řádků.
+// stránku prázdných řádků. Měsíc je otočený popisek přes všechny své řádky;
+// týden patří měsíci, do kterého padne jeho čtvrtek (většina dnů, jako ISO týden).
 function calendar(rows) {
     const byDate = new Map(rows.map(r => [r.played_on, r.score]));
     const dnes = iso(new Date());
     const od = rows.length ? rows[0].played_on : dnes;
-    const pondeli = dayBefore(od, (new Date(od + 'T00:00:00Z').getUTCDay() + 6) % 7);
+    const tydny = [];
+    for (let t = dayBefore(od, (new Date(od + 'T00:00:00Z').getUTCDay() + 6) % 7); t <= dnes; t = dayBefore(t, -7)) tydny.push(t);
+    const ctvrtek = (t) => dayBefore(t, -3);
+    const mesic = (t) => ctvrtek(t).slice(0, 7);
     const out = ['<span></span>', ...DNY.map(d => `<span class="yc-head">${d}</span>`)];
-    for (let tyden = pondeli; tyden <= dnes; tyden = dayBefore(tyden, -7)) {
-        const dny = DNY.map((_, i) => dayBefore(tyden, -i));
-        const prvni = dny.find(d => d.endsWith('-01'));
-        const mesic = prvni || (tyden === pondeli ? tyden : null);
-        out.push(`<span class="yc-month">${mesic ? MESICE[+mesic.slice(5, 7) - 1] : ''}</span>`);
-        for (const d of dny) {
+    tydny.forEach((t, i) => {
+        if (i === 0 || mesic(tydny[i - 1]) !== mesic(t)) {
+            let n = 1;
+            while (i + n < tydny.length && mesic(tydny[i + n]) === mesic(t)) n++;
+            const m = +ctvrtek(t).slice(5, 7) - 1;
+            // jeden řádek plný název neunese — tam zkratka
+            const nazev = n > 1 ? MESICE[m] + (m === 0 && i > 0 ? ` ${ctvrtek(t).slice(0, 4)}` : '') : MESICE_KRATCE[m];
+            out.push(`<span class="yc-month" style="grid-row: span ${n}">${nazev}</span>`);
+        }
+        for (let k = 0; k < 7; k++) {
+            const d = dayBefore(t, -k);
             if (d > dnes) { out.push('<i class="yc-day yc-future"></i>'); continue; }
             const score = byDate.get(d);
             out.push(`<i class="yc-day s${stupen(score)}${d === dnes ? ' yc-today' : ''}" `
                 + `title="${kratce(d)} — ${score === undefined ? 'nehráno' : `${score}/20`}"></i>`);
         }
-    }
+    });
     return out.join('');
 }
 

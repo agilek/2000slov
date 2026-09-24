@@ -925,16 +925,26 @@ body:has(#profile.active, #myDefs.active, #publicProfile.active) { overflow: vis
 #publicProfileBody { display: contents; }   /* sekce jsou přímo v mezerách obrazovky */
 .public-page { padding-top: calc(36px + env(safe-area-inset-top)); }
 .public-page > .btn-play { width: 100%; max-width: 400px; margin: 8px auto 0; text-decoration: none; }
-/* Rok denních výzev svisle: týden = řádek Po–Ne, vlevo měsíc */
+/* Rok denních výzev svisle: týden = řádek Po–Ne přes celou šířku sloupce,
+   vlevo měsíc jako otočený popisek na podkladu přes všechny své řádky. */
 .year-cal {
     display: grid;
-    grid-template-columns: 30px repeat(7, minmax(0, 34px));
-    gap: 8px 6px;
-    justify-content: center;
+    grid-template-columns: 22px repeat(7, minmax(0, 1fr));
+    gap: 7px 6px;
     align-items: center;
 }
 .yc-head, .yc-month { font-size: 12px; font-weight: 700; color: var(--muted-text); }
 .yc-head { text-align: center; }
+.yc-month {
+    align-self: stretch;
+    display: flex; align-items: center; justify-content: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);            /* čte se zdola nahoru jako popisek osy */
+    white-space: nowrap;
+    border-radius: 8px;
+    background: var(--chip-bg);
+    margin-bottom: 3px;                   /* ret kostek, ať podklad nekončí nad ním */
+}
 .yc-day { display: block; aspect-ratio: 1; border-radius: 9px; background: var(--ghost); box-shadow: 0 3px 0 var(--lip); }
 .yc-day.s1 { background: color-mix(in srgb, var(--green) 30%, var(--ghost)); box-shadow: 0 3px 0 color-mix(in srgb, var(--green-lip) 30%, var(--lip)); }
 .yc-day.s2 { background: color-mix(in srgb, var(--green) 62%, var(--ghost)); box-shadow: 0 3px 0 color-mix(in srgb, var(--green-lip) 62%, var(--lip)); }

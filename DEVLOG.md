@@ -2,6 +2,20 @@
 
 ## 2026-09-24
 
+### Kalendář profilu přes celou šířku, měsíce otočené a celým názvem
+Kostky vyplní šířku sloupce (7 × `1fr`, na 390px telefonu 40 px místo 34).
+Měsíc je svislý popisek na podkladu přes všechny řádky svých týdnů,
+jednořádkový měsíc dostane zkratku. Simulace 5 měsíců hraní:
+dev hráčka „Klára“ (`dev-sim-klara`, 128 dní) vložená přímo do lokální D1,
+`seed-dev.mjs` zůstal beze změny.
+
+**Root cause / approach:** Popisek měsíce je grid položka se
+`grid-row: span N`. Automatické umístění pak kostky dalších řádků samo
+posune za obsazený první sloupec. Týden patří měsíci svého čtvrtka.
+`writing-mode: vertical-rl` + `rotate(180deg)` čte zdola nahoru.
+
+→ *Memory saved: `parallel_sessions_commits.md` (aktualizace: nikdy `open(p, 'w')` před kontrolou)*
+
 ### Profil: „všech 20“ zeleně s fajfkou, záložky Denní výzvy / Významy
 Zlatá kostka za všech 20 v kalendáři mátla, působila jako jiná kategorie. Teď
 je to plná zelená s bílou fajfkou na konci stejné zelené řady. Kalendář
