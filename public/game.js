@@ -2931,7 +2931,11 @@ async function shareScore() {
 function shareCardFile() {
     const file = shareCard && shareCard.file;
     if (!file) return;
-    persist.ach.sdileno = 1;
+    // Chlouba počítá dny se sdílenou kartou, ne klepnutí
+    if (persist.ach.sdilenoDen !== todayStr()) {
+        persist.ach.sdileno = (persist.ach.sdileno || 0) + 1;
+        persist.ach.sdilenoDen = todayStr();
+    }
     savePersist();
     syncAchievements();
     if (!canShareCard(file)) { downloadCard(file); closeModal(); return; }

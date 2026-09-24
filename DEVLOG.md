@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+### Začátky těžší: Rozcvička 5 slov v řadě, Chlouba 3 dny sdílení
+Hráč získal všechny Začátky za pár minut. Rozcvička teď chce 5 uhodnutých
+slov tréninku v řadě, Chlouba kartu sdílenou ve 3 různých dnech (počítá se
+den, ne klepnutí). Popis v detailu odznaku má `text-wrap: pretty`. Kdo už
+odznak má, o něj nepřijde (`achGot`).
+
+→ *No new memory entries.*
+
 ### Mobilní doladění: sheety, scroll, tap po tahu, blikající pruh, Přidat na plochu
 Sheety (hlavně Sbírka z profilu) jdou stáhnout prstem a stránka pod nimi
 stojí. Scrollovací obrazovky se nahoře a dole pružně dotahují. Tah prstem

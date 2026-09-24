@@ -169,8 +169,10 @@ Stejný soubor používá hra, worker (veřejný profil) i `dev-uspechy.html`.
   modrá vzácný, fialová epický, zlatá legendární (s odleskem).
 - **Zamčené jsou vidět dopředu:** šedý stín ikony a postup („Ještě 3 dny!“).
   „Na dosah“ ukazuje tři nejbližší. Tajné mají jen `???` a nápovědu.
-- **Snadné hned na začátku:** první den, vlastní avatar, první slovo
-  tréninku, sdílení karty, první význam.
+- **Snadné hned na začátku:** první den, vlastní avatar, první význam.
+  Trochu práce chtějí Rozcvička (5 slov tréninku v řadě) a Chlouba (karta
+  sdílená ve 3 různých dnech). Se všemi čtyřmi Začátky za jedno sezení
+  to bylo moc snadné (2026-09-24).
 - **Odemčení:** `syncAchievements()` zapíše datum do `persist.achGot`.
   Získaný odznak už nezmizí, ani když počet klesne. Nový dostane červenou
   tečku na Profilu a u dlaždice, první otevření je oslava „Nový úspěch!“.

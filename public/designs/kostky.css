@@ -856,7 +856,7 @@
     border-radius: 999px;
 }
 .ach--locked.ach-rarity { color: var(--muted-text); }
-.ach-desc { font-size: 17px; font-weight: 700; line-height: 1.4; margin: 14px 8px 0; }
+.ach-desc { font-size: 17px; font-weight: 700; line-height: 1.4; margin: 14px 8px 0; text-wrap: pretty; }
 .ach-meta { font-size: 14px; font-weight: 700; color: var(--muted-text); margin: 8px 0 0; }
 .ach-progress { display: flex; flex-direction: column; gap: 8px; margin: 18px 4px 0; }
 .ach-progress .ach-bar { flex: none; --r: var(--orange); }

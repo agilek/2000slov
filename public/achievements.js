@@ -15,8 +15,8 @@ const Achievements = (() => {
     const LIST = [
         { id: 'prvni-kolo', g: 'zacatky', r: 'common', icon: 'vlajka', name: 'První kolo', desc: 'Dohraj svou první denní výzvu. Na skóre nezáleží.', v: 'dny', goal: 1, how: 'persist.results, profile_days' },
         { id: 'nova-tvar', g: 'zacatky', r: 'common', icon: 'avatar', name: 'Nová tvář', desc: 'Poskládej si vlastního avatara v úpravě profilu.', v: 'avatar', goal: 1, how: 'persist.avatar / users.avatar (uloží se jen v úpravě profilu)' },
-        { id: 'rozcvicka', g: 'zacatky', r: 'common', icon: 'lehka', name: 'Rozcvička', desc: 'Uhodni první slovo v tréninku.', v: 'trenink', goal: 1, how: 'persist.practiceWords, training_days' },
-        { id: 'chlouba', g: 'zacatky', r: 'common', icon: 'sdilet', name: 'Chlouba', desc: 'Pochlub se kartou dne.', v: 'sdileno', goal: 1, how: 'persist.ach.sdileno ze shareCardFile / shareText' },
+        { id: 'rozcvicka', g: 'zacatky', r: 'common', icon: 'lehka', num: '5', name: 'Rozcvička', desc: 'Uhodni v tréninku 5 slov v řadě.', v: 'treninkRada', goal: 5, unit: SLOV, how: 'persist.practiceBestRun ≥ 5 (nejdelší „N v řadě")' },
+        { id: 'chlouba', g: 'zacatky', r: 'common', icon: 'sdilet', num: '3', name: 'Chlouba', desc: 'Pochlub se kartou dne ze tří různých dnů.', v: 'sdileno', goal: 3, unit: DNY, how: 'persist.ach.sdileno = počet dní se sdílenou kartou (shareCardFile), sdilenoDen hlídá jeden za den' },
 
         { id: 'rozjezd', g: 'serie', r: 'common', icon: 'plamen-zivy', num: '3', name: 'Rozjezd', desc: 'Hraj denní výzvu 3 dny v kuse.', v: 'serie', goal: 3, unit: DNY, how: 'nejdelší řada odehraných dní: persist.bestStreak / longestRun(results), na serveru stats().nejdelsi' },
         { id: 'tyden', g: 'serie', r: 'rare', icon: 'plamen-zivy', num: '7', name: 'Týden v kuse', desc: 'Hraj denní výzvu 7 dní v kuse.', v: 'serie', goal: 7, unit: DNY, how: 'nejdelší řada odehraných dní ≥ 7' },
