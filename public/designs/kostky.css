@@ -545,10 +545,12 @@
 #profile .wd-meta span { font-size: 13px; }
 
 /* ---- Sheety ---- */
+/* okraj i po stranách: na širokém displeji je sheet užší než okno */
 .modal-content {
     border-radius: 22px 22px 0 0;
     background: var(--card);
-    border-top: 2px solid var(--line);
+    border: 2px solid var(--line);
+    border-bottom: 0;
 }
 .modal-header { border-bottom: 2px solid var(--line); background: var(--card); }
 .modal-header::before { background: var(--lip); opacity: 1; width: 42px; }
@@ -556,9 +558,6 @@
 .collection-count { font-weight: 600; color: var(--muted-text); }
 .close-modal { color: var(--muted); width: 44px; height: 44px; top: 14px; font-size: 30px; }
 .close-modal:focus-visible { outline: 3px solid var(--blue-soft); }
-@media (min-width: 600px) and (hover: hover) {
-    .modal-content { border: 2px solid var(--line); box-shadow: 0 6px 0 var(--lip), 0 24px 60px var(--shadow-card); }
-}
 
 .archive-item {
     border: 2px solid var(--line);

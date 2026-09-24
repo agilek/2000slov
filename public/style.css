@@ -702,7 +702,8 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 }
 .modal.active { display: flex; }
 /* Sheet zdola, jak to dělá iOS: úchyt nahoře, přilepená hlavička, obsah
-   scrolluje pod ní. Na širokém displeji se vrací klasický dialog na střed. */
+   scrolluje pod ní. Jediný vzor pro všechny modály — i na desktopu, žádný
+   dialog na střed (na širokém displeji je sheet jen užší, max-width). */
 .modal-content {
     background: var(--card);
     border-radius: 22px 22px 0 0;
@@ -740,13 +741,6 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     background: var(--muted);
     opacity: .5;
 }
-@media (min-width: 600px) and (hover: hover) {
-    .modal { align-items: center; padding: 20px; }
-    .modal-content { border-radius: 24px; max-height: 78vh; padding-bottom: 26px; animation: rise .22s ease; }
-    .modal-header::before { display: none; }
-    .modal-header { padding-top: 14px; }
-}
-@keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
 .modal-content::-webkit-scrollbar { display: none; }
 .modal-header h2 { font-family: 'Baloo 2', sans-serif; font-size: 24px; font-weight: 800; margin: 0; }
 .collection-count { font-family: 'Baloo 2', sans-serif; font-size: 15px; font-weight: 700; color: var(--muted); }

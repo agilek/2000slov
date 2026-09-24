@@ -2,6 +2,18 @@
 
 ## 2026-09-24
 
+### Modály jsou sheet zdola i na desktopu
+Z `style.css` i `designs/kostky.css` zmizela desktopová varianta
+(`@media (min-width: 600px) and (hover: hover)`), která z sheetu dělala dialog
+na střed. Teď je jediný vzor: sheet přilepený dole s úchytem, na širokém
+displeji jen užší (460 px); Kostky mu daly okraj i po stranách.
+
+**Root cause / approach:** Uživatel chce sheet jako stabilní vzor napříč
+zařízeními. Tažení dolů funguje i myší — `sheetDrag` v `game.js` je na pointer
+eventech, takže desktop nepotřeboval nic navíc.
+
+→ *Memory saved: `modals_are_bottom_sheets.md`*
+
 ### Obtížnost tréninku: Lehká / Střední / Těžká
 Trénink teď před startem nabídne tři úrovně (sheet po klepnutí na Trénink
 na úvodu i ve výsledku): Lehká = 3000 nejčastějších slov, Střední = 7300
