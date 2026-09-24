@@ -472,11 +472,62 @@ function showToast(msg) {
     toastTimeout = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+// Navigace jako v mobilních appkách. Zásobník obrazovek: jít hlouběji =
+// nová přijede zprava přes starou (ta ustoupí doleva), zpět = odjede doprava
+// a předchozí se vrátí i se scrollem. Hra je vrstva přes aplikaci: otevře se
+// zvětšením z mírně menší, při konci se rozplyne. Domov je úvod i výsledek.
+const NAV_MS = 380, NAV_EASE = 'cubic-bezier(.32, .72, 0, 1)';
+const navKey = (id) => id === 'result' ? 'welcome' : id;
+let navStack = [];
+const navScroll = {};
+
 function showScreen(id) {
+    const from = document.querySelector('.screen.active');
+    const to = $(id);
     // Profil a trénink v rozích patří domovu — a ten je po dohrání dne výsledek.
-    if (id === 'welcome' || id === 'result') $(id).prepend($('topBar'));
-    $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+    if (id === 'welcome' || id === 'result') to.prepend($('topBar'));
+    if (!navStack.length) navStack = [navKey(id)];
+    if (from === to) return;
+    const fromId = from && from.id, key = navKey(id);
+    let kind;
+    if (!from) kind = 'none';
+    else if (id === 'game') kind = navStack.includes('game') ? 'pop' : 'present';
+    else if (fromId === 'game' && id !== 'publicProfile') kind = 'dismiss';
+    else if (navStack.slice(0, -1).includes(key)) kind = 'pop';
+    else if (key === 'welcome') kind = 'fade';
+    else kind = 'push';
+
+    if (from) navScroll[navKey(fromId)] = scrollY;
+    if (kind === 'pop') navStack = navStack.slice(0, navStack.indexOf(key) + 1);
+    else if (kind === 'dismiss' || key === 'welcome') navStack = key === 'welcome' ? ['welcome'] : navStack.filter(k => k !== 'game').concat(key);
+    else if (kind !== 'pop') navStack.push(key);
+
+    // odcházející obrazovka zůstane na chvíli vidět tam, kde byla
+    if (from && kind !== 'none' && !REDUCED_MOTION.matches) {
+        from.classList.add('screen-leaving');
+        from.style.top = -scrollY + 'px';
+    }
+    $$('.screen').forEach(s => s.classList.toggle('active', s === to));
+    if (kind === 'pop' || kind === 'dismiss') scrollTo(0, navScroll[key] || 0);
+    if (from) navAnimate(from, to, kind);
     if (id === 'welcome' || id === 'profile' || id === 'achievements') whenCalm();   // výsledek čeká na konec odhalení
+}
+
+function navAnimate(from, to, kind) {
+    const done = () => { from.classList.remove('screen-leaving', 'screen-over'); from.style.top = ''; to.classList.remove('screen-over'); };
+    if (REDUCED_MOTION.matches || kind === 'none') return done();
+    const opt = { duration: NAV_MS, easing: NAV_EASE };
+    const pair = {
+        push:    [[{ translate: '100% 0' }, { translate: '0 0' }], [{ translate: '0 0', opacity: 1 }, { translate: '-30% 0', opacity: .6 }]],
+        pop:     [[{ translate: '-30% 0', opacity: .6 }, { translate: '0 0', opacity: 1 }], [{ translate: '0 0' }, { translate: '100% 0' }]],
+        present: [[{ scale: .94, opacity: 0 }, { scale: 1, opacity: 1 }], [{ opacity: 1 }, { opacity: 0 }]],
+        dismiss: [[{ opacity: 0 }, { opacity: 1 }], [{ scale: 1, opacity: 1 }, { scale: .94, opacity: 0 }]],
+        fade:    [[{ opacity: 0, translate: '0 12px' }, { opacity: 1, translate: '0 0' }], [{ opacity: 1 }, { opacity: 0 }]],
+    }[kind];
+    // nahoře je vždy ta, která se hýbe přes druhou: přijíždějící, nebo odjíždějící zpět
+    (kind === 'pop' || kind === 'dismiss' ? from : to).classList.add('screen-over');
+    to.animate(pair[0], opt);
+    from.animate(pair[1], opt).finished.then(done, done);
 }
 
 /* ---------------- welcome ---------------- */

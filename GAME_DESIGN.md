@@ -98,6 +98,22 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 
    význam odpočet zruší. Trénink se ukončí křížkem vpravo nahoře (i z mezihry).
    Bez vlivu na denní výzvu.
 
+### Navigace a přechody
+
+Jako v mobilních appkách, ať hráč ví, kde je a jak se tam dostal
+(`showScreen` + `navAnimate` v game.js, zásobník `navStack`):
+
+- **Hlouběji** (domov → Profil → Úspěchy / Moje významy / Upravit profil /
+  Veřejný profil): nová obrazovka přijede zprava přes starou, ta ustoupí
+  o 30 % doleva a ztmavne.
+- **Zpět** (šipka, uložení profilu): obrazovka odjede doprava, předchozí se
+  vrátí zleva i se scrollem, kde hráč byl.
+- **Hra** (Hrát, Trénink) je vrstva přes aplikaci: zvětší se z 94 % a vynoří,
+  při konci se zmenší a rozplyne. Z mezihry na profil autora a zpět je
+  hlouběji/zpět.
+- **Domov** je úvod i výsledek (jeden klíč v zásobníku). Sheety vyjíždějí
+  zdola. `prefers-reduced-motion` přechody vypne.
+
 ## 3. Trofeje a sdílení
 
 Trofejová hláška je (stejně jako v originále) **statická tabulka** — žádný backend:

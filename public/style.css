@@ -131,7 +131,13 @@ html, body {
     text-align: center;
     justify-content: center;
 }
-.screen.active { display: flex; animation: screenIn .4s cubic-bezier(.22,1,.36,1) both; }
+.screen.active { display: flex; }
+/* Přechod mezi obrazovkami (showScreen/navAnimate v game.js): odcházející
+   zůstane chvíli vidět na svém místě, pevně, i když stránka scrollovala. */
+.screen.screen-leaving { display: flex; position: fixed; left: 0; right: 0; margin: 0 auto; pointer-events: none; z-index: 1; }
+.screen.active, .screen.screen-leaving { background: var(--bg); }
+.screen.screen-over { position: relative; z-index: 2; box-shadow: 0 0 40px var(--shadow-card); }
+.screen.screen-leaving.screen-over { position: fixed; }
 /* Scrolluje jen viewport (html). Body nesmí být vlastní scroll kontejner:
    nescrollovatelný kontejner s overscroll-behavior: none by kolečko myši
    i tah prstem spolkl a k viewportu by nedošly. */
@@ -143,7 +149,6 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
    na Androidu by auto tahem dolů obnovilo stránku. */
 html:has(#result.active, #profile.active, #myDefs.active, #achievements.active, #publicProfile.active, #profileEdit.active),
 body:has(#result.active, #profile.active, #myDefs.active, #achievements.active, #publicProfile.active, #profileEdit.active) { overscroll-behavior-y: contain; }
-@keyframes screenIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
 /* Buttons */
 .btn {

@@ -2,6 +2,23 @@
 
 ## 2026-09-24
 
+### Přechody obrazovek jako v mobilních appkách (push/pop, hra jako vrstva)
+Místo stejného náběhu zespodu pro všechno mají přechody směr podle
+hierarchie. Hlouběji přijede nová obrazovka zprava, zpět odjede doprava
+a předchozí se vrátí i se scrollem. Hra se otevírá a zavírá jako vrstva přes
+aplikaci. Popsané v GAME_DESIGN.md „Navigace a přechody“.
+
+**Root cause / approach:** Jedno místo, `showScreen`: zásobník `navStack`.
+Obrazovka, která už v něm je, znamená zpět, jinak jde hlouběji; `result`
+a `welcome` jsou jeden klíč „domov“. Obrazovky se jinak jen přepínají
+`display` a stránka scrolluje celý dokument. Proto odcházející dostane na
+dobu animace `.screen-leaving` (`position: fixed`, `top: -scrollY`) a zůstane
+vidět přesně, kde byla. Příchozí je v toku. Animace přes WAAPI (`translate`,
+`opacity`, `scale`), nahoře je vždy ta, která se hýbe přes druhou
+(`.screen-over`). Ověřeno ve WebKitu snímky uprostřed přechodu.
+
+→ *Memory saved: `ios_native_feel_gotchas.md` (doplněno)*
+
 ### Odlesk odznaku jako na ikonách, celkový pruh úspěchů u „N z 27“
 Odlesk je krátká světlá pilulka u horní hrany vlevo (30 % × 8 %, bílá .35),
 stejná jako na ikonách v `designs/kostky/` (kostka.svg, kalendar.svg).
