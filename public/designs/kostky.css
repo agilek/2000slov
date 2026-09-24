@@ -336,7 +336,7 @@
 .feedback-link { color: var(--blue-ink); text-decoration-thickness: 2px; }
 
 /* ---- Hra: rozvržení lekce ---- */
-.game-screen { gap: 20px; padding-top: calc(14px + env(safe-area-inset-top)); }
+.game-screen { gap: 20px; padding-top: calc(14px + env(safe-area-inset-top)); padding-bottom: calc(44px + env(safe-area-inset-bottom)); }   /* písmena nesmí sedět na spodní hraně */
 
 /* Lišta času nahoře: jako lišta lekce v Duolingu, se světlým proužkem. */
 #game { --time-mid: var(--gold); }
@@ -441,6 +441,10 @@
 
 /* ---- Sloty odpovědi: prázdné pole → dlaždice s retem ---- */
 .word-display { color: var(--ink); gap: 10px 8px; margin-bottom: 30px; }   /* odstup od písmen */
+/* Políčka hned pod časem, volné místo až nad písmeny: slovo patří k času,
+   písmena do palcové zóny dole. */
+#game .word-display { margin-top: 14px; }
+#game .letter-row { margin-top: auto; }
 .word-display.found { color: #fff; }
 .answer-slot {
     border: 2px solid transparent;

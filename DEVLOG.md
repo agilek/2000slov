@@ -2,6 +2,15 @@
 
 ## 2026-09-24
 
+### Hra: políčka pod časem, víc místa dole
+Políčka odpovědi jsou hned pod časem (`margin-top: 14px`) a volné místo
+jde nad písmena (`#game .letter-row { margin-top: auto }`). Spodní okraj hry
+je 44 px (dřív 20) + safe area. Na iPhonu SE i 13 v tréninku i ve výzvě
+čas → políčka 34 px, dole 44 px. Starý SE 320×568 se do výšky nevejde celý
+(dole 31 px) a písmena tam přetékají do šířky; to bylo i dřív.
+
+→ *No new memory entries.*
+
 ### Profil bez věty o přezdívce, zlatá ocenění bez retu, celá tužka u avataru
 Z profilu zmizela věta „Přezdívka se ukazuje u…“. Hláška „Top X % hráčů“
 na výsledku a bodová pilulka v profilu nemají spodní ret: jsou to ocenění,
