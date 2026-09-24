@@ -2,6 +2,17 @@
 
 ## 2026-09-24
 
+### Lehká obtížnost jen do 5 písmen
+Lehká bere z 3000 nejběžnějších slov jen ta do 5 písmen (1215 slov, třeba
+*hotel, nákup, beton*). Střední a Těžká beze změny.
+
+**Root cause / approach:** Lehká byla pořád těžká kvůli délce, ne frekvenci:
+mezi 3000 nejčastějšími má 60 % slov 6+ písmen (*inteligence, trojúhelník*)
+a obtížnost přesmyčky roste s délkou faktoriálně (5 písmen = 120 pořadí,
+7 = 5040). Úroveň má proto volitelné `maxLetters` vedle `size`.
+
+→ *No new memory entries.*
+
 ### Modály jsou sheet zdola i na desktopu
 Z `style.css` i `designs/kostky.css` zmizela desktopová varianta
 (`@media (min-width: 600px) and (hover: hover)`), která z sheetu dělala dialog

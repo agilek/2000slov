@@ -1014,8 +1014,10 @@ function startGame() {
 
 // Obtížnost tréninku = kolik nejčastějších slov z PRACTICE_WORDS se hraje
 // (pool je seřazený podle frekvence). Střední je přesně rozsah denní výzvy.
+// Lehká navíc jen do 5 písmen: u přesmyčky rozhoduje hlavně délka (5 písmen =
+// 120 pořadí, 7 = 5040) a mezi 3000 nejčastějšími je 60 % slov delších.
 const PRACTICE_LEVELS = {
-    lehka:   { label: 'Lehká',   size: 3000 },
+    lehka:   { label: 'Lehká',   size: 3000, maxLetters: 5 },   // 1215 slov
     stredni: { label: 'Střední', size: TOTAL_WORDS },
     tezka:   { label: 'Těžká',   size: PRACTICE_WORDS.length },
 };
@@ -1035,7 +1037,9 @@ function pickPracticeLevel(level) {
 }
 
 function startPracticeGame() {
-    const pool = PRACTICE_WORDS.slice(0, practiceLevel().size);
+    const level = practiceLevel();
+    const pool = PRACTICE_WORDS.slice(0, level.size)
+        .filter(w => !level.maxLetters || lettersOf(w).length <= level.maxLetters);
     state.gen++;
     state.mode = 'practice';
     $('closeGameBtn').style.display = 'flex';

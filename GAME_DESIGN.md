@@ -74,7 +74,8 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 
 
 6. **Trénink** — nekonečná volná hra z poolu 15 000 slov, bez ohledu na datum.
    Před startem si hráč vybere **obtížnost** = kolik nejčastějších slov se hraje:
-   **Lehká** 3000, **Střední** 7300 (přesně slova denní výzvy, výchozí), **Těžká**
+   **Lehká** z 3000 nejběžnějších jen slova do 5 písmen (1215 — délka rozhoduje
+   u přesmyčky víc než frekvence), **Střední** 7300 (přesně slova denní výzvy, výchozí), **Těžká**
    všech 15 000 včetně vzácných (dřív jediná možnost — polovina slov pak byla
    z řídkého konce poolu, třeba *douglaska*). Volba se pamatuje (`practiceLevel`)
    a je vidět v liště („Slovo 5 · Lehká"). **Nemá výsledkovou obrazovku ani žádné
