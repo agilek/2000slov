@@ -91,8 +91,6 @@ Můžu udělat, až řekneš.
 - **Úspěchy (běží, 2026-09-24):** 27 odznaků, seznam v `public/achievements.js`,
   náhled v `public/dev-uspechy.html`. Zbývá: seznam a prahy (přidat,
   škrtnout, přejmenovat?).
-- **„Den N/365“ na úvodu a v profilu** (čip Sbírky): stejný problém jako u
-  sdílení, hráči číslo dne nic neřekne. Nahradit datem, nebo jen „N/7300 slov“?
 - **Dvě mrtvé větve** `claude/button-haptic-feedback-8kgxkn` a
   `claude/czech-word-game-f2hnia` na originu, dávno zmergované.
 
@@ -107,6 +105,7 @@ Můžu udělat, až řekneš.
 | Nestihnuté slovo | den se **neopakuje** | Wordle model |
 | Série (2026-09-24) | **odehrané dny v kuse**, na skóre nezáleží; dřív jen dny 20/20 | jedna série pro hru, server i úspěchy; perfektní řadu nese úspěch Hattrick |
 | Oznámení úspěchu (2026-09-24) | až po skončení aktivity (výsledek dne, konec tréninku, zavřený sheet), nikdy uprostřed; po zavření hráč zůstane, kam šel | nesmí vyrušit hráče, ale musí se ukázat |
+| Pořadí dne „Den N“ (2026-09-24) | hráč ho nevidí nikde: sdílení a Sbírka ukazují datum, profil „N/7 300 slov“, výsledek sérii | číslo dne nic neřekne, podle data si hráči porovnají výsledky |
 | „Má ho X % hráčů“ (2026-09-24) | počítá server z hlášení zařízení, od 15 zařízení | i bez účtu; klient si to tvrdí sám, jde jen o orientační číslo |
 | Přihlášení | magic link + 6místný kód | odkaz z mailu neotevře PWA |
 | Avatary | generované z přezdívky | žádný upload, žádná moderace obrázků |

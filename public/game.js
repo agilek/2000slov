@@ -41,7 +41,8 @@ const VAPID_PUBLIC_KEY = 'BIfOSyPsUDTwcGscDllPUF7bWF7iAMqJnMgwxlrDmUu0l3nQ_AySyk
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 const IS_DESKTOP = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+// iPadOS se v Safari hlásí jako Mac; prozradí ho dotykový displej.
+const IS_IOS = (/iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream;
 const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
 /* ---------------- trvalý stav ---------------- */
@@ -231,6 +232,28 @@ function haptic(kind) {
 // Skutečný, neviditelný přepínač přes celé tlačítko: dotyk ho přepne a iOS
 // vydá haptiku nativně — funguje i na iOS 26.5+, kde programový trik nejde.
 // Klik dál probublá na tlačítko, takže onclick funguje beze změny.
+// Tah prstem není klepnutí. Kdo začne scrollovat na tlačítku, nesmí ho
+// spustit: iOS přepínač v tlačítku (haptika níž) se dá i posunout, a to
+// click pošle. Capture a jako první, ať click nedostane ani tap zvuk.
+let touchFrom = null;
+document.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    touchFrom = { x: t.clientX, y: t.clientY, sy: scrollY, moved: false };
+}, { capture: true, passive: true });
+document.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (touchFrom && Math.hypot(t.clientX - touchFrom.x, t.clientY - touchFrom.y) > 10) touchFrom.moved = true;
+}, { capture: true, passive: true });
+document.addEventListener('touchend', () => {
+    const t = touchFrom;
+    setTimeout(() => { if (touchFrom === t) touchFrom = null; }, 500);   // klávesnici pak nic neblokuje
+}, { capture: true, passive: true });
+document.addEventListener('click', e => {
+    if (!touchFrom || !(touchFrom.moved || Math.abs(scrollY - touchFrom.sy) > 2)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+}, true);
+
 function addHapticOverlays() {
     if ('vibrate' in navigator || !COARSE_POINTER) return;
     $$('button:not([type="submit"])').forEach(el => {
@@ -1187,7 +1210,7 @@ function showProfile() {
 }
 
 function renderProfile() {
-    $('collectionChip').textContent = `Den ${dayIndex() + 1}/${TOTAL_LEVELS} · ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
+    $('collectionChip').textContent = `${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov`;
     const days = Object.keys(persist.results).length;
     const words = Object.values(persist.results).reduce((a, b) => a + b, 0);
     const pct = days ? Math.round(words / (days * WORDS_PER_DAY) * 100) : 0;
@@ -2673,8 +2696,10 @@ function getTrophyShareLine(survived) {
 // (ten den hráli všichni stejná slova), pořadové číslo dne nic neřekne.
 function shareDate(day) {
     const [y, m, d] = ((day && day.date) || todayStr()).split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+    return fmtDateLong(new Date(y, m - 1, d));
 }
+
+const fmtDateLong = (d) => d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
 
 function buildShareMessage() {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
@@ -2937,6 +2962,9 @@ function updateNotifyPrompt() {
         if (!persist.a2hsPromptDismissed) banner.style.display = 'block';
         return;
     }
+    // Chrome/Android: beforeinstallprompt přijde jen neinstalované hře, takže
+    // nabídka zmizí sama. Safari nic takového nemá (viz a2hsPromptDismissed).
+    if (installPrompt && !IS_STANDALONE && !persist.a2hsPromptDismissed) banner.style.display = 'block';
     if (!('Notification' in window && 'PushManager' in window)) return;
     if (Notification.permission === 'default') notifyBtn.style.display = 'flex';
     // Povolení ještě neznamená odběr: mohl selhat nebo vypršet a připomínky by
@@ -2948,6 +2976,32 @@ function updateNotifyPrompt() {
             .then(sub => { if (!sub) notifyBtn.style.display = 'flex'; })
             .catch(() => {});
     }
+}
+
+// Safari: instalaci nejde spustit ani poznat (plocha má vlastní úložiště,
+// o přidání se hra v prohlížeči nedozví), zbývá ukázat postup.
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();                                   // vlastní tlačítko místo lišty prohlížeče
+    installPrompt = e;
+    if ($('result').classList.contains('active')) updateNotifyPrompt();
+});
+window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    persist.a2hsPromptDismissed = true;
+    savePersist();
+    $('a2hsBanner').style.display = 'none';
+});
+
+function addToHomeScreen() {
+    if (installPrompt) {
+        installPrompt.prompt();
+        installPrompt.userChoice.then(() => { installPrompt = null; updateNotifyPrompt(); });
+        return;
+    }
+    const steps = $('a2hsSteps'), open = steps.hidden;
+    steps.hidden = !open;
+    $('a2hsBtn').setAttribute('aria-expanded', String(open));
 }
 
 function dismissA2hs() {
@@ -2986,6 +3040,15 @@ async function enableNotifications() {
 
 /* ---------------- sbírka slov ---------------- */
 
+// Datum dne `lvl` v dnešním ročním cyklu. Ve Sbírce data, ne „Den N":
+// podle data si hráči porovnají, co kdo ten den hrál.
+function cycleDate(lvl, today = dayIndex()) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);                              // poledne: posun o dny nepřeskočí změna času
+    d.setDate(d.getDate() + lvl - today);
+    return d;
+}
+
 function showCollection() {
     $('collectionCount').textContent = `${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)}`;
     const list = $('collectionList');
@@ -2999,7 +3062,7 @@ function showCollection() {
         const current = lvl === today;
         const label = document.createElement('span');
         label.className = 'archive-date';
-        label.textContent = `Den ${lvl + 1}`;
+        label.textContent = fmtDateLong(cycleDate(lvl, today));
         const badge = document.createElement('span');
         badge.className = 'archive-score';
         if (played) {
@@ -3058,6 +3121,7 @@ function openModal(id) {
     modal.classList.remove('closing');                    // otevřený během zavírání zůstane
     modal.querySelector('.modal-content').style.cssText = '';
     modal.classList.add('active');
+    lockScroll(true);
     // Fokus na sheet samotný (role=dialog), ne na tlačítko — čtečka se ocitne
     // uvnitř, ale nic se nerozsvítí; Zavřít ukáže až Tab. Na původní místo se
     // fokus vrací jen klávesnici: po klepnutí by na kartě zůstal rámeček.
@@ -3078,6 +3142,7 @@ function closeSheet(modal) {
         if (!modal.classList.contains('closing')) return; // mezitím se znovu otevřel
         modal.classList.remove('active', 'closing');
         sheet.style.cssText = '';
+        if (!document.querySelector('.modal.active')) lockScroll(false);
         if (modal.opener && modal.opener.isConnected) modal.opener.focus({ preventScroll: true });
         modal.opener = null;
         whenCalm(250);   // další úspěch ve frontě (nebo ten, co čekal na zavření sheetu)
@@ -3086,6 +3151,23 @@ function closeSheet(modal) {
     slideDown(sheet, SHEET_CLOSE_MS);
     // časovač, ne transitionend — ten probublává i z přechodů uvnitř sheetu
     setTimeout(finish, SHEET_CLOSE_MS);
+}
+
+// Stránka pod otevřeným sheetem stojí. Profil a výsledek scrolluje celý
+// dokument a iOS overflow: hidden na něm při tahu prstem nerespektuje, proto
+// body na chvíli position: fixed a po zavření zpět na stejné místo.
+function lockScroll(on) {
+    const b = document.body;
+    if (on === ('lockY' in b.dataset)) return;
+    if (on) {
+        b.dataset.lockY = String(scrollY);
+        Object.assign(b.style, { position: 'fixed', top: `-${scrollY}px`, left: '0', right: '0' });
+    } else {
+        const y = +b.dataset.lockY;
+        delete b.dataset.lockY;
+        Object.assign(b.style, { position: '', top: '', left: '', right: '' });
+        scrollTo(0, y);
+    }
 }
 
 // Sjede prvkem dolů z místa, kde právě je (i z půlky tahu nebo otevírání).
@@ -3120,7 +3202,9 @@ function submitFeedback(e) {
     });
 }
 
-document.addEventListener('pointerdown', e => {
+// Klepnutí do pozadí sheet zavře. Na click, ne pointerdown: tah přes
+// pozadí sheet nezavírá.
+document.addEventListener('click', e => {
     const modal = e.target.closest('.modal');
     if (modal && e.target === modal) closeModal();
 });
@@ -3129,15 +3213,24 @@ document.addEventListener('pointerdown', e => {
 // (úchyt) nebo za obsah, který už je nascrollovaný nahoře — jinak by tah
 // kradl scrollování seznamu.
 (function sheetDrag() {
-    let box = null, y0 = 0, dy = 0;
+    let box = null, y0 = 0, dy = 0, fromHeader = false;
     document.addEventListener('pointerdown', e => {
         const content = e.target.closest('.modal.active .modal-content');
         if (!content || e.target.closest('input, textarea, button, a')) return;
-        const fromHeader = !!e.target.closest('.modal-header');
+        fromHeader = !!e.target.closest('.modal-header');
         if (!fromHeader && content.scrollTop > 0) return;
         box = content; y0 = e.clientY; dy = 0;
         box.style.transition = 'none';
     });
+    // Na dotyku by tah dolů prohlížeč vzal jako scroll (a pointercancel tah
+    // ukončil). Dolů z vrcholu = tah sheetu, tak mu scroll nedovolit. Nahoru
+    // v obsahu = obyčejné scrollování seznamu, tah se pustí.
+    document.addEventListener('touchmove', e => {
+        if (!box) return;
+        const d = e.touches[0].clientY - y0;
+        if (d > 0 && (fromHeader || box.scrollTop <= 0)) e.preventDefault();
+        else if (d < 0 && !fromHeader && !dy) { box.style.transition = ''; box = null; }
+    }, { passive: false });
     document.addEventListener('pointermove', e => {
         if (!box) return;
         dy = Math.max(0, e.clientY - y0);

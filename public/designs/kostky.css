@@ -89,7 +89,7 @@
 * { corner-shape: squircle; }
 
 /* Písmo: Slovka One na všechno, co je „předmět" nebo nadpis, Nunito na text. */
-.btn, .btn-tertiary, .icon-btn, .screen h1, .screen h2, .collection-chip,
+.btn, .btn-tertiary, .icon-btn, .screen h1, .screen h2,
 .screen-title, .profile-avatar, .profile-name, .profile-section-title, .stat-value,
 .gp-headline, .gp-timer, .word-display, .answer-slot, .letter,
 .modal-header h2, .collection-count, .archive-date, .archive-score, .kb-toast,
@@ -173,20 +173,10 @@
 .welcome-actions > .btn-play { width: 100%; }
 
 /* Datum jako plastový štítek — klepnutím otevře sbírku. */
-.collection-chip {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: none;
-    color: var(--ink);
-    padding: 9px 16px 9px 12px;
-    gap: 8px;
-    border: 2px solid var(--line);
-    border-radius: 14px;
-    box-shadow: 0 3px 0 var(--lip);
-    transition: translate .08s ease, box-shadow .08s ease, background .15s ease;
-}
-.collection-chip::before {
+/* Sbírka slov v profilu: tlačítko jako ostatní, s ikonou knihy */
+.btn-collection { gap: 10px; }
+.btn-collection::before {
+    flex: none;
     content: '';
     width: 20px;
     height: 20px;
@@ -194,9 +184,6 @@
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6v13'/%3E%3Cpath d='M12 6v13'/%3E%3Cpath d='M21 6v13'/%3E%3C/svg%3E") center / contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6v13'/%3E%3Cpath d='M12 6v13'/%3E%3Cpath d='M21 6v13'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.collection-chip:active { transform: none; translate: 0 3px; box-shadow: 0 0 0 transparent; }
-.collection-chip:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; border-radius: 14px; }
-@media (hover: hover) { .collection-chip:hover { color: var(--ink); background: var(--hover-tint); } }
 
 /* Mřížka dne: 20 kostek s retem. Při každém zobrazení úvodu (mřížka se
    staví znovu) i výsledku (mřížka se do něj přesune) napadají vlnou —
@@ -285,15 +272,42 @@
 }
 .share-actions .btn { padding: 14px 24px; font-size: 17px; width: 100%; }
 #streakNudge { margin: 0 auto 22px; width: 100%; padding: 16px; }
-.a2hs-banner, .streak-nudge {
+.streak-nudge {
     background: var(--card);
     border: 2px solid var(--line);
     box-shadow: 0 4px 0 var(--lip);
     border-radius: 18px;
 }
-#a2hsBanner p { font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--muted-text); margin: 0; }
 #streakNudge p { font-size: 16px; font-weight: 700; line-height: 1.45; color: var(--ink); margin: 0 0 14px; }
-.a2hs-close { color: var(--muted-text); }
+/* Přidat na plochu: tlačítko jako ostatní, vedle křížek, pod ním postup */
+.a2hs { width: 100%; max-width: 400px; margin: 16px auto 0; }
+.a2hs-row { display: flex; align-items: center; gap: 6px; }
+.a2hs-btn { flex: 1; gap: 8px; }
+.a2hs-btn .emoji { width: 1.4em; height: 1.4em; flex-shrink: 0; }
+.a2hs-close {
+    flex: none;
+    width: 44px; height: 44px;
+    border: 0; background: none;
+    font-size: 24px; line-height: 1;
+    color: var(--muted-text);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.a2hs-steps {
+    margin: 14px 0 0;
+    padding: 14px 16px 14px 36px;
+    border: 2px solid var(--line);
+    border-radius: 16px;
+    text-align: left;
+    font-size: 15px; font-weight: 600; line-height: 1.5;
+    color: var(--ink);
+    animation: a2hsIn .3s var(--spring);
+}
+.a2hs-steps li + li { margin-top: 6px; }
+.a2hs-steps li::marker { font-family: var(--display); color: var(--blue-ink); }
+.a2hs-share { width: 1.2em; height: 1.2em; vertical-align: -.2em; fill: none; stroke: var(--blue-ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes a2hsIn { from { opacity: 0; translate: 0 -6px; } }
+@media (prefers-reduced-motion: reduce) { .a2hs-steps { animation: none; } }
 #feedbackLine { font-size: 15px !important; font-weight: 600 !important; }
 .feedback-link { color: var(--blue-ink); text-decoration-thickness: 2px; }
 
@@ -667,15 +681,21 @@
     box-shadow: 0 calc(var(--s) * .07) 0 var(--r-lip);
     flex: none;
 }
-.ach::before {                         /* světlý pruh jako na ikonách */
+.ach::before {                         /* odlesk: oblouk kopíruje levý horní roh */
     content: '';
     position: absolute;
-    top: 9%; left: 15%;
-    width: 26%; height: 6%;
-    border-radius: 999px;
-    background: #fff;
-    opacity: .4;
+    inset: 7%;
+    border-radius: 25%;                   /* 30 % kostky minus odsazení, oblouk je soustředný s rohem */
+    border: calc(var(--s) * .05) solid transparent;
+    border-top-color: #fff;
+    border-left-color: #fff;
+    opacity: .38;
+    /* jen kolem rohu, do stran se ztrácí */
+    -webkit-mask: radial-gradient(circle at 0 0, #000 30%, transparent 58%);
+            mask: radial-gradient(circle at 0 0, #000 30%, transparent 58%);
+    pointer-events: none;
 }
+.ach--locked::before { opacity: .7; }
 .ach-medal {
     display: grid;
     place-items: center;
@@ -1257,7 +1277,6 @@ button.wd-author:focus-visible { outline: 3px solid var(--blue-soft); outline-of
 #notifyBtn { flex-basis: 100%; gap: 8px; padding-left: 16px; padding-right: 16px; font-size: min(17px, 4.3vw); }
 #notifyBtn .emoji { width: 1.3em; height: 1.3em; flex-shrink: 0; }
 .result-bottom #countdown { margin-bottom: 0; }
-#a2hsBanner .emoji { width: 1.5em; height: 1.5em; vertical-align: -.4em; }
 .archive-score .emoji { width: 17px; height: 17px; vertical-align: -3px; }
 /* zamčený den: jen zámek, bez pilulky — jako zamčená lekce */
 .archive-item.locked .archive-score { background: none; padding: 0 4px; }

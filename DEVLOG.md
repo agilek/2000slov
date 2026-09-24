@@ -2,6 +2,30 @@
 
 ## 2026-09-24
 
+### Mobilní doladění: sheety, scroll, tap po tahu, blikající pruh, Přidat na plochu
+Sheety (hlavně Sbírka z profilu) jdou stáhnout prstem a stránka pod nimi
+stojí. Scrollovací obrazovky se nahoře a dole pružně dotahují. Tah prstem
+přes tlačítko ho už nespustí. Pruh času ve hře na iPhonu nebliká. „Přidej
+si hru na plochu“ je tlačítko, které rozbalí postup, v Chromu spustí
+instalaci. Sbírka ukazuje data a v profilu je tlačítkem přes celou šířku.
+Odznaky mají zahnutý odlesk podle rohu místo rovné čárky.
+
+**Root cause / approach:**
+- Sheet: tah dolů na scrollovatelné stránce vzal prohlížeč jako scroll
+  dokumentu a `pointercancel` tah ukončil. Nově `lockScroll` (body
+  `position: fixed` po dobu sheetu), `touch-action: none` na backdropu
+  a úchytu a nepasivní `touchmove`, který tah dolů z vrcholu nepustí do scrollu.
+- Tvrdé zaseknutí: globální `overscroll-behavior: none` na html/body.
+  Scrollovací obrazovky mají `contain`: iOS bounce zůstane, Android
+  neobnoví stránku.
+- Tap po tahu: iOS přepínač uvnitř tlačítek (haptika) jde posunout a pošle
+  click. Globální capture guard zahodí click po posunu o víc než 10 px nebo
+  po scrollu. Backdrop zavírá na click, ne na pointerdown.
+- Blikání: `ResizeObserver` v squircle.js skládal výplni pruhu novou masku
+  v každém snímku a Safari ji mezitím zahodilo. Výplně pruhů jsou v `SKIP`.
+
+→ *Memory saved: `squircle_corners.md`, `ios_native_feel_gotchas.md` (doplněno)*
+
 ### Datum místo „den N“, odznaky z klienta na veřejném profilu, ořez v Safari
 Karta, text sdílení a nadpis náhledu ukazují datum („24. září 2026“), ne
 pořadí dne. Podle data si hráči porovnají výsledky. Řádek pod skóre místo

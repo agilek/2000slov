@@ -25,8 +25,8 @@
 <link rel="preload" href="fonts/SlovkaOne-Light.woff2" as="font" type="font/woff2" crossorigin>
 <!-- ExtraLight: .wd-title, na panelu po každém slově -->
 <link rel="preload" href="fonts/SlovkaOne-ExtraLight.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=23">
-<link rel="stylesheet" href="designs/kostky.css?v=47">
+<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="designs/kostky.css?v=50">
 </head>
 <body>
 
@@ -93,7 +93,7 @@
 
         <div class="profile-section">
             <h3 class="profile-section-title">Sbírka slov</h3>
-            <span class="collection-chip" id="collectionChip" role="button" tabindex="0" onclick="showCollection()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showCollection();}"></span>
+            <button class="btn btn-secondary btn-collection" id="collectionChip" onclick="showCollection()"></button>
         </div>
 
         <div class="profile-section">
@@ -200,9 +200,17 @@
                 <button id="shareBtn" class="btn btn-share" onclick="shareScore()">Pochlubit se <span class="emoji" data-emoji="sdilet" aria-hidden="true"></span></button>
                 <button id="notifyBtn" class="btn btn-secondary" style="display:none;" onclick="enableNotifications()">Upozornit na další výzvu <span class="emoji" data-emoji="zvonek">🔔</span></button>
             </div>
-            <div id="a2hsBanner" class="a2hs-banner reveal-item" style="display:none;">
-                <button class="a2hs-close" onclick="dismissA2hs()" aria-label="Zavřít">×</button>
-                <p><span class="emoji" data-emoji="plocha">📲</span> Přidej si hru na plochu a nezmeškej žádný den — klepni na <strong>Sdílet</strong> a pak na <strong>Přidat na plochu</strong>.</p>
+            <!-- Přidat na plochu: v Chromu nativní instalace, v Safari se pod tlačítkem rozbalí postup -->
+            <div id="a2hsBanner" class="a2hs reveal-item" style="display:none;">
+                <div class="a2hs-row">
+                    <button class="btn btn-secondary a2hs-btn" id="a2hsBtn" onclick="addToHomeScreen()" aria-expanded="false" aria-controls="a2hsSteps">Přidat na plochu <span class="emoji" data-emoji="plocha" aria-hidden="true">📲</span></button>
+                    <button class="a2hs-close" onclick="dismissA2hs()" aria-label="Už nenabízet">×</button>
+                </div>
+                <ol class="a2hs-steps" id="a2hsSteps" hidden>
+                    <li>V liště Safari klepni na <strong>Sdílet</strong> <svg class="a2hs-share" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14V3M8 7l4-4 4 4M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/></svg> (v novém Safari je pod <strong>⋯</strong>).</li>
+                    <li>Vyber <strong>Přidat na plochu</strong>.</li>
+                    <li>Potvrď <strong>Přidat</strong> a hru pak spouštěj z plochy. Jen tam chodí připomínky dalšího dne.</li>
+                </ol>
             </div>
             <p id="countdown" class="reveal-item"></p>
         </div>
@@ -353,10 +361,10 @@
         </div>
     </div>
 
-<script src="squircle.js?v=2"></script>
+<script src="squircle.js?v=3"></script>
 <script src="words.js?v=4"></script>
 <script src="avatar.js?v=3"></script>
 <script src="achievements.js?v=2"></script>
-<script src="game.js?v=41"></script>
+<script src="game.js?v=45"></script>
 </body>
 </html>

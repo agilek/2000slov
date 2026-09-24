@@ -114,7 +114,7 @@
     <script src="avatar.js"></script><script src="achievements.js"></script>
     <script>{ const st = { dny: 1, serie: 7, trenink: 60, slova: 1000, perfekt: 0 }; const pick = ['prvni-kolo', 'tyden', 'tisicovka', 'stovka', 'posilovna', 'dvacitka', 'nocni-sova', 'cely-slovnik'];
         document.getElementById('sgAch').innerHTML = pick.map(id => Achievements.LIST.find(a => a.id === id)).map((a, i) => Achievements.tile(a, { ...st, ...(a.id === 'stovka' ? { serie: 100 } : {}) }, { tag: 'span', isNew: i === 1 })).join(''); }</script>
-    <div class="sg-item"><div class="sg-label">.collection-chip</div><div class="sg-demo" data-tag><span class="collection-chip">Den 42</span></div></div>
+    <div class="sg-item"><div class="sg-label">.btn.btn-secondary.btn-collection — Sbírka slov v profilu</div><div class="sg-demo" data-tag><button class="btn btn-secondary btn-collection">40/7 300 slov</button></div></div>
     <div class="sg-item"><div class="sg-label">.info-chip.info-chip--level (lehká/střední/těžká)</div><div class="sg-demo">
         <span class="info-chip info-chip--level info-chip--lehka" data-tag>lehká</span>
         <span class="info-chip info-chip--level info-chip--stredni" data-tag>střední</span>

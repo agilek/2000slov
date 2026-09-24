@@ -80,8 +80,10 @@
 
     var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, SVG: 1, PATH: 1, CIRCLE: 1, LINK: 1, HEAD: 1, TITLE: 1, META: 1 };
     // Maska ořízne i to, co z prvku přesahuje (číslo pod odznakem, oslí uši).
-    // Tyhle prvky zůstanou v Safari s obyčejným zaoblením.
-    var SKIP = '.ach, .ach-medal';
+    // Tyhle prvky zůstanou v Safari s obyčejným zaoblením. Výplně ubývajících
+    // pruhů mění šířku v každém snímku: ResizeObserver by jim pořád skládal
+    // novou masku a Safari ji mezitím zahodí, pruh bliká. Ořízne je rodič.
+    var SKIP = '.ach, .ach-medal, .time-bar-fill, .ach-bar i, .ach-mini i';
 
     function candidates(root) {
         var out = [];

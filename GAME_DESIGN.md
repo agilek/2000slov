@@ -69,8 +69,11 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 
 4. **Výsledek** — mřížka se přesune nahoru, postupné odkrývání řádků:
    „Máš všech 20 slov!" / „Máš 17 z 20 slov!", trofejová řádka, věta o zítřejším dni,
    Sdílet skóre (zelená) + Vyzvat kamaráda (modrá), odpočet do půlnoci,
+   „Přidat na plochu“ (Safari na iPhonu/iPadu mimo plochu: tlačítko rozbalí
+   postup; Chrome: nativní instalace přes `beforeinstallprompt`, po instalaci
+   zmizí samo; křížek nabídku skryje natrvalo),
    Sbírka slov + Trénink, řádek se zpětnou vazbou. Perfektní den = konfety.
-5. **Sbírka** (modal ve stylu archivu originálu) — 365 dní, odehrané se rozbalí
+5. **Sbírka** (modal ve stylu archivu originálu) — 365 dní podle data (ne „Den N“), odehrané se rozbalí
    na 20 slov a ukážou skóre, aktuální „dnes", zbytek zamčený.
    Významy slov: **číst je může kdokoli, psát a hlasovat jen přihlášený**.
    Anonymní autor neexistuje — u významu vždy stojí přezdívka z účtu, takže

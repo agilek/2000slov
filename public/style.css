@@ -138,6 +138,11 @@ html, body {
 html:has(#result.active) { overflow-y: auto; height: auto; min-height: 100dvh; }
 body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; }
 #result { height: auto; min-height: 100dvh; overflow: visible; touch-action: auto; }
+/* Scrollovací obrazovky: pružné dotažení nahoře a dole jako v nativní app
+   (iOS). Jinde zůstává none, hra se pod prstem nehýbe. contain místo auto:
+   na Androidu by auto tahem dolů obnovilo stránku. */
+html:has(#result.active, #profile.active, #myDefs.active, #achievements.active, #publicProfile.active, #profileEdit.active),
+body:has(#result.active, #profile.active, #myDefs.active, #achievements.active, #publicProfile.active, #profileEdit.active) { overscroll-behavior-y: contain; }
 @keyframes screenIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
 /* Buttons */
@@ -205,24 +210,6 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     margin: 0 auto;
 }
 .welcome-actions > .btn-play { margin: 0; }
-.collection-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'Baloo 2', sans-serif;
-    font-weight: 800;
-    font-size: 17px;
-    letter-spacing: .4px;
-    text-transform: uppercase;
-    color: var(--muted-text);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color .12s, transform .06s;
-}
-@media (hover: hover) { .collection-chip:hover { color: var(--blue); } }
-.collection-chip:active { transform: scale(.98); }
-.collection-chip:focus { outline: none; }
-.collection-chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
 
 .welcome-grid {
     display: grid;
@@ -329,32 +316,6 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     cursor: pointer;
 }
 @media (hover: hover) { .btn-tertiary:hover { opacity: 1; color: var(--blue); border-color: var(--blue); } }
-.a2hs-banner {
-    position: relative;
-    width: 100%;
-    max-width: 400px;
-    margin: 16px auto 0;
-    padding: 14px 34px 14px 18px;
-    background: var(--card);
-    border: 2px solid var(--muted);
-    border-radius: 16px;
-    text-align: left;
-}
-.a2hs-banner p { margin: 0; font-size: 14px; font-weight: 600; color: var(--muted-text); line-height: 1.45; }
-.a2hs-close {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    min-width: 44px;
-    min-height: 44px;
-    background: none;
-    border: none;
-    font-size: 20px;
-    color: var(--muted-text);
-    cursor: pointer;
-    touch-action: manipulation;
-}
-@media (hover: hover) { .a2hs-close:hover { color: var(--blue); } }
 .feedback-line {
     margin-top: 40px;
     margin-bottom: 0 !important;
@@ -735,6 +696,10 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
     transition: background-color .3s ease, backdrop-filter .3s ease, -webkit-backdrop-filter .3s ease;
 }
 .modal.active { display: flex; animation: backdropIn .3s ease; }
+/* backdrop se nescrolluje ani netáhne; tah za úchyt je jen tah sheetu (sheetDrag) */
+.modal { touch-action: none; }
+.modal-content { touch-action: pan-y; }
+.modal-header { touch-action: none; }
 @keyframes backdropIn { from { background-color: transparent; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); } }
 /* Zavírání: pozadí se rozplyne a sheet sjede dolů (řídí closeSheet v game.js). */
 .modal.closing { background-color: transparent; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
@@ -924,7 +889,6 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
 .pager-info { font-weight: 700; color: var(--muted-text); font-variant-numeric: tabular-nums; }
 
 /* Štítek sbírky slov v profilu (dřív na úvodu) */
-#profile .collection-chip { align-self: flex-start; }
 
 /* Veřejný profil: ve hře obrazovka (obsah ze /u/<přezdívka>?cast=1), jinde
    samostatná stránka se stejným markupem a styly — viz worker/src/profile.js. */
