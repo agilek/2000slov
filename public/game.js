@@ -1256,10 +1256,6 @@ function renderProfile() {
     }
 
     renderAccount();
-    $('profileDeviceNote').style.display = auth.user ? 'none' : 'block';
-    $('profileDeviceNote').textContent = auth.enabled
-        ? 'Série i postup žijí jen v tomhle zařízení. Přihlášením o ně nepřijdeš.'
-        : 'Série i postup žijí jen v tomhle zařízení — vymazáním dat prohlížeče zmizí.';
     renderAchievements();
     loadAchStats();
     loadMyDefs();

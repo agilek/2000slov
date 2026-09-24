@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+### Série v mezihře nad slovem, profil bez věty „Série i postup…“
+Odznak „N v řadě“ je v mezihře hned pod nadpisem („Výborně!“), přímo nad
+slovem (`#wdStreak` zpátky v `.wd-head`, za nadpisy). Z profilu zmizela
+i druhá věta nahoře, „Série i postup žijí jen v tomhle zařízení…“
+(`#profileDeviceNote`).
+
+→ *No new memory entries.*
+
 ### Otisk po vzatém písmenu čárkovaně, víc místa nad symbolem mezihry
 Vzaté písmeno nechá tmavší důlek (`--ghost` + 7 % `--ink`) s čárkovaným
 okrajem `--muted`; rámeček 2 px už písmeno mělo, takže nic neposkočí.
