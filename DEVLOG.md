@@ -2,6 +2,23 @@
 
 ## 2026-09-24
 
+### Celé Kostky ve Slovka One — „špatné háčky" byly záložní Nunito
+Google Fredoka, kterou Kostky používaly na tlačítka, kostky písmen, štítky
+a popisky, **nemá ů č ď ě ň ř ť ani velké** — přesně ty, co chyběly i ve Fredoka
+One. Prohlížeč je kreslil záložním Nunitem, takže uprostřed slov (Těžká,
+Střední, ZMĚNIT PŘEZDÍVKU, kostka Ř) byl cizí znak. `--display` je teď Slovka
+One a Google Fredoka se už nestahuje.
+
+**Root cause / approach:** Nepoznáš to od oka ani z `getComputedStyle` (hlásí
+jen deklarovaný stack) — až `CSS.getPlatformFontsForNode` přes CDP ukáže, kterým
+písmem se znaky opravdu vykreslily („Fredoka ×4 + Nunito ×1" v „Těžká"). Po
+změně scan 105 listových prvků ve Slovka One: žádný znak nespadne jinam.
+`@font-face` má `font-weight: 100 900`, ať prohlížeč jediný řez neztučňuje;
+jednotka „s" u času dědí písmo (globální `* { font-family: Nunito }` ji dřív
+přepisoval).
+
+→ *Memory updated: `slovka_font.md`*
+
 ### Slovka One: Fredoka One s doplněnými českými znaky na nadpisech
 Fredoka One (2011) sedí hře nejvíc, ale chybělo jí 14 českých znaků
 (ů č ď ě ň ř ť, Ů Č Ď Ě Ň Ř Ť). `tools/cz_font.py` je doplní a uloží kopii jako
