@@ -2268,9 +2268,9 @@ async function drawShareCard() {
         g.font = `104px ${CARD_DISPLAY}`;
         g.font = `${Math.min(104, 104 * (W - 2 * X) / g.measureText(t.dare).width)}px ${CARD_DISPLAY}`;
         g.fillText(t.dare, 0, -40);
-        g.font = '800 44px Nunito, sans-serif';
+        g.font = '800 54px Nunito, sans-serif';
         g.globalAlpha = .85;
-        g.fillText(siteUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), 0, 36);
+        g.fillText('20slov.cz', 0, 42);   // na kartě vlastní doména, ne adresa, odkud se zrovna hraje
     });
     return new Promise((ok, fail) => c.toBlob(b => b ? ok(b) : fail(), 'image/png'));
 }

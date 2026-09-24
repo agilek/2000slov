@@ -251,15 +251,13 @@
     color: var(--muted-text);
     margin-bottom: 26px;
 }
+/* Odpočet je informace, ne tlačítko — bez podkladu a rámečku */
 #countdown {
     align-self: center;
     font-family: var(--display);
     font-size: 17px;
     font-weight: 600;
-    color: var(--blue-ink);
-    background: var(--blue-tint);
-    border-radius: 12px;
-    padding: 8px 14px;
+    color: var(--muted-text);
     margin: 22px auto;
 }
 .share-actions .btn { padding: 14px 24px; font-size: 17px; width: 100%; }
