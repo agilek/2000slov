@@ -176,8 +176,9 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
 @media (hover: hover) { .btn-play:hover { background: var(--green-dark); } }
 .btn-danger { background: var(--red); }
 @media (hover: hover) { .btn-danger:hover { background: color-mix(in srgb, var(--red) 88%, black); } }
-.profile-danger { margin-top: 10px; }
-.profile-danger .btn { width: 100%; max-width: 400px; }
+.account-end { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.account-end[hidden] { display: none; }
+.account-end .btn { width: 100%; max-width: 400px; }
 .btn-secondary {
     background: var(--card); color: var(--muted-text);
     border: 2px solid var(--muted);
@@ -493,9 +494,9 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
 .icon-btn-circle--bare:active { transform: scale(.92); }
 
 /* Profil se scrolluje — .screen je jinak zamčená na 100dvh bez scrollu. */
-html:has(#profile.active) { overflow-y: auto; height: auto; min-height: 100dvh; }   /* viz #result výš */
-body:has(#profile.active) { overflow: visible; height: auto; min-height: 100dvh; }
-#profile {
+html:has(#profile.active, #myDefs.active) { overflow-y: auto; height: auto; min-height: 100dvh; }   /* viz #result výš */
+body:has(#profile.active, #myDefs.active) { overflow: visible; height: auto; min-height: 100dvh; }
+#profile, #myDefs {
     height: auto;
     min-height: 100dvh;
     overflow: visible;
@@ -542,7 +543,7 @@ body:has(#profile.active) { overflow: visible; height: auto; min-height: 100dvh;
 #accountBox .feedback-form { gap: 10px; }
 .streak-nudge { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 18px auto 0; max-width: 400px; }
 .streak-nudge p { margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: var(--ink); }
-#profile .profile-note { text-align: left; font-size: 13px; line-height: 1.5; color: var(--muted-text); margin: -6px 0 0; }
+#profile .profile-note, #myDefs .profile-note { text-align: left; font-size: 13px; line-height: 1.5; color: var(--muted-text); margin: -6px 0 0; }
 .profile-nick { gap: 10px; }
 .profile-section { display: flex; flex-direction: column; gap: 10px; text-align: left; }
 .profile-section-title {
@@ -833,6 +834,39 @@ body:has(#profile.active) { overflow: visible; height: auto; min-height: 100dvh;
     font-weight: 700;
     color: var(--ink);
 }
+
+/* Moje významy: oblak štítků na profilu, stránkování na vlastní obrazovce */
+.def-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+.def-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 12px;
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+}
+.def-tag-votes { font-size: 13px; color: var(--muted-text); }
+.def-tag--hidden { opacity: .55; }
+.def-cloud-all { flex-basis: 100%; margin-top: 6px; }
+.def-hidden {
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted-text);
+    background: var(--chip-bg);
+    vertical-align: 2px;
+}
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pager[hidden] { display: none; }
+.pager .btn { margin: 0; padding: 12px 18px; font-size: 15px; }
+.pager .btn:disabled { opacity: .4; cursor: default; }
+.pager-info { font-weight: 700; color: var(--muted-text); font-variant-numeric: tabular-nums; }
 
 /* Výběr obtížnosti tréninku (sheet) */
 .level-list { display: flex; flex-direction: column; gap: 10px; }

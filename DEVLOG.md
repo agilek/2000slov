@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Moje významy: oblak štítků na profilu + stránkovaná obrazovka; % slovníku
+Na profilu jsou vlastní významy jako oblak štítků (slovo + palce, 12 nejlépe
+hodnocených) s odkazem na novou obrazovku **Moje významy**: karty jako dřív,
+10 na stránku, úprava, označení skrytých po nahlášení. `/api/defs/mine` umí
+`limit`/`offset`/`sort=votes` a vrací `total`. Dlaždice tréninku ukazuje různá
+uhodnutá slova a „to je X % slovníku". Odhlášení je těsně nad Smazat účet.
+
+**Root cause / approach:** Procento slovníku jde poctivě jen z různých slov —
+`practiceWords` sčítá i opakování (mohlo by přes 100 %). Nové `practiceSeen` je
+bitmapa nad PRACTICE_WORDS v base64 (~2,5 kB); počítá se až od teď, starší
+tréninky neznáme. Pod 1 % dvě desetinná místa, jinak by první slova ukázala
+„0 %". `editDef` dostal callback po uložení — dřív natvrdo překresloval mezihru.
+
+→ *No new memory entries.*
+
 ### Podržení pauzne mezihru, kolečko myši na profilu, Smazat účet dole
 Podržení prstu kdekoli na panelu mezihry (mimo tlačítka) odpočet na chvíli
 zastaví — vyplňování tlačítka stojí a ukáže se pauza; puštěním běží dál. Krátké

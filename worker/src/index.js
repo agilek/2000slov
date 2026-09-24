@@ -226,6 +226,7 @@ function defRow(r, userId) {
         author: r.author,          // vždy přezdívka z účtu — anonymní autoři neexistují
         votes: r.votes,
         mine: !!userId && r.user_id === userId,
+        hidden: !!r.hidden,        // veřejné seznamy skryté vynechávají; vidí je jen autor
     };
 }
 
@@ -298,13 +299,20 @@ async function handleDefsForWord(request, env, url) {
     return json({ word, defs: results.map(r => defRow(r, me && me.id)) }, 200);
 }
 
-async function handleMyDefs(request, env) {
+// Vlastní významy po stránkách: ?limit=&offset= (nejnovější první), ?sort=votes
+// pro oblak štítků na profilu. total = kolik jich autor má celkem.
+async function handleMyDefs(request, env, url) {
     const me = await currentUser(request, env);
-    if (!me) return json({ defs: [] }, 200);
-    const { results } = await env.DB.prepare(
-        'SELECT * FROM definitions WHERE user_id = ?1 ORDER BY created_at DESC LIMIT 100'
-    ).bind(me.id).all();
-    return json({ defs: results.map(r => defRow(r, me.id)) }, 200);
+    if (!me) return json({ defs: [], total: 0 }, 200);
+    const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit'), 10) || 20));
+    const offset = Math.max(0, parseInt(url.searchParams.get('offset'), 10) || 0);
+    const order = url.searchParams.get('sort') === 'votes' ? 'votes DESC, created_at DESC' : 'created_at DESC';
+    const [{ results }, { results: cnt }] = await Promise.all([
+        env.DB.prepare(`SELECT * FROM definitions WHERE user_id = ?1 ORDER BY ${order} LIMIT ?2 OFFSET ?3`)
+            .bind(me.id, limit, offset).all(),
+        env.DB.prepare('SELECT COUNT(*) AS n FROM definitions WHERE user_id = ?1').bind(me.id).all(),
+    ]);
+    return json({ defs: results.map(r => defRow(r, me.id)), total: cnt[0].n }, 200);
 }
 
 async function handleDefCreate(request, env, url, ctx) {

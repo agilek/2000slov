@@ -54,7 +54,8 @@ npx wrangler dev --port 8787     # z telefonu: --ip 0.0.0.0 a http://<IP počít
   e-mailu vypíšou do terminálu wrangleru.
 - **Data:** v Lehké obtížnosti má význam ~70 % slov (u 45 nejčastějších ručně
   psané, u některých víc verzí), zbytek je bez významu kvůli výzvě „Víš, co
-  znamená…?". Tester má 4 vlastní významy (úprava, profil).
+  znamená…?". Tester má 33 vlastních významů — oblak na profilu a stránkování
+  obrazovky Moje významy.
 - Seed jde pouštět opakovaně: vrátí dev data do výchozího stavu, včetně toho,
   co testovací účty mezitím přidaly.
 

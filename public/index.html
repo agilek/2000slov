@@ -20,8 +20,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7">
-<link rel="stylesheet" href="designs/kostky.css?v=5">
+<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="designs/kostky.css?v=6">
 </head>
 <body>
 
@@ -86,8 +86,23 @@
             <div class="empty-card" id="profileDefs"></div>
         </div>
 
-        <!-- Nevratná akce úplně dole, ukáže se jen přihlášenému -->
-        <div class="profile-danger" id="profileDanger" hidden></div>
+        <!-- Odhlášení a nevratné smazání úplně dole, jen pro přihlášeného -->
+        <div class="account-end" id="accountEnd" hidden></div>
+    </div>
+
+    <!-- Moje významy: všechny, po stránkách, s úpravou -->
+    <div class="screen" id="myDefs">
+        <div class="screen-bar">
+            <button class="icon-btn-circle icon-btn-circle--bare" onclick="showProfile()" aria-label="Zpět"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" /></svg></button>
+            <span class="screen-title">Moje významy</span>
+        </div>
+        <p class="profile-note" id="myDefsSummary"></p>
+        <ul class="defs-list" id="myDefsList"></ul>
+        <div class="pager" id="myDefsPager" hidden>
+            <button class="btn btn-secondary" id="myDefsPrev" onclick="showMyDefs(state.myDefsPage - 1)">Předchozí</button>
+            <span class="pager-info" id="myDefsInfo"></span>
+            <button class="btn btn-secondary" id="myDefsNext" onclick="showMyDefs(state.myDefsPage + 1)">Další</button>
+        </div>
     </div>
 
     <!-- Game -->
@@ -243,6 +258,6 @@
     </div>
 
 <script src="words.js?v=4"></script>
-<script src="game.js?v=10"></script>
+<script src="game.js?v=12"></script>
 </body>
 </html>

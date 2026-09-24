@@ -37,7 +37,7 @@ const USERS = ['Tester', 'Terka', 'Kuba', 'Bára', 'Ondra', 'Míša'].map(handle
 const uid = (h) => `dev-user-${h.toLowerCase()}`;
 
 // Ručně psané významy [slovo, autor, text]. Tester má pár vlastních (úprava,
-// „Moje významy“ v profilu) a u několika slov jsou víc verzí (řazení podle hlasů).
+// „Moje významy“) a u několika slov jsou víc verzí (řazení podle hlasů).
 const REAL = [
     ['den', 'Terka', 'Doba od rána do večera, kdy je světlo. Taky celých 24 hodin, třeba „za dva dny“.'],
     ['den', 'Kuba', 'Jeden ze sedmi v týdnu. V téhle hře má každý den svých 20 slov.'],
@@ -99,9 +99,12 @@ const TEMPLATES = [
 const authors = USERS.slice(1).map(u => u.handle);
 const realWords = new Set(REAL.map(r => r[0]));
 const defs = REAL.map(([word, author, text]) => ({ word, author, text }));
+// Každé 29. slovo patří Testerovi — má jich pak ~30, ať jde vyzkoušet
+// stránkování „Moje významy".
 easy.forEach((word, i) => {
     if (realWords.has(word) || i % 10 >= 7) return;
-    defs.push({ word, author: authors[i % authors.length], text: TEMPLATES[i % TEMPLATES.length](word) });
+    const author = i % 29 === 0 ? 'Tester' : authors[i % authors.length];
+    defs.push({ word, author, text: TEMPLATES[i % TEMPLATES.length](word) });
 });
 
 // Stejná pravidla jako API — seed nesmí obsahovat nic, co by hra nepřijala.
@@ -151,7 +154,7 @@ wrangler([`--file=${join(root, 'worker/schema.sql')}`]);
 wrangler([`--file=${file}`]);
 
 console.log(`Hotovo: ${USERS.length} účtů, ${defs.length} významů (${REAL.length} ručně psaných), ${voteCount} hlasů.`);
-console.log(`Lehká obtížnost: význam má ${new Set(defs.map(d => d.word)).size} z ${easy.length} slov.`);
+console.log(`Lehká obtížnost: význam má ${new Set(defs.map(d => d.word)).size} z ${easy.length} slov. Tester má ${defs.filter(d => d.author === 'Tester').length} vlastních.`);
 console.log('\nSpusť hru:   npx wrangler dev --port 8787        (z telefonu: --ip 0.0.0.0)');
 console.log('Přihlášení:  http://localhost:8787/api/dev/login   (jiný účet: ?kdo=Terka)');
 console.log(`E-mailem:    ${USERS[0].email} — kód se vypíše do terminálu wrangleru`);

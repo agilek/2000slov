@@ -56,6 +56,7 @@ function defaultPersist() {
         wins: 0,
         kbHintShown: false,
         practiceWords: 0,   // uhodnutá slova v tréninku, opakovaná se počítají znovu
+        practiceSeen: '',   // která různá slova už v tréninku padla (bitmapa, viz markPracticeSeen)
         practiceLevel: 'stredni', // obtížnost tréninku, klíč z PRACTICE_LEVELS
         nick: '',           // přezdívka u přidaných významů
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
@@ -640,7 +641,7 @@ function defItem(d) {
         edit.type = 'button';
         edit.className = 'def-report';
         edit.textContent = 'Upravit';
-        edit.onclick = () => editDef(d, li, p);
+        edit.onclick = () => editDef(d, li, p, () => { loadDefsList(state.wdWord); renderWdCard(state.wdWord); });
         li.appendChild(edit);
     } else if (auth.user) {
         const rep = document.createElement('button');
@@ -655,7 +656,7 @@ function defItem(d) {
 
 // Autor smí svůj význam upravit. Když už má hlasy, úprava je smaže — jinak by
 // šlo vyhlasovat neškodnou větu a pak ji přepsat.
-function editDef(d, li, textEl) {
+function editDef(d, li, textEl, onSaved) {
     if (li.querySelector('form')) return;
     const form = el('form', 'feedback-form');
     const ta = document.createElement('textarea');
@@ -685,9 +686,8 @@ function editDef(d, li, textEl) {
         d.votes = r.data.votes;
         textEl.textContent = d.text;
         form.remove();
-        defCache.delete(state.wdWord);
-        loadDefsList(state.wdWord);
-        renderWdCard(state.wdWord);
+        defCache.delete(d.word);
+        if (onSaved) onSaved();
         showToast(r.data.resetVotes ? 'Upraveno, hlasy vynulovány.' : 'Upraveno.');
     };
     li.appendChild(form);
@@ -762,8 +762,8 @@ function renderAccount() {
     const section = $('accountSection');
     const box = $('accountBox');
     box.innerHTML = '';
-    $('profileDanger').replaceChildren();
-    $('profileDanger').hidden = true;
+    $('accountEnd').replaceChildren();
+    $('accountEnd').hidden = true;
     if (!auth.enabled) { section.style.display = 'none'; return; }
     section.style.display = 'flex';
 
@@ -900,10 +900,9 @@ function renderSignedIn(box) {
         renderProfile();
         showToast('Účet smazán.');
     };
-    box.append(out);
-    // Smazání je nevratné, proto úplně dole na profilu, ne mezi běžnými akcemi.
-    $('profileDanger').replaceChildren(del);
-    $('profileDanger').hidden = false;
+    // Odhlášení a nevratné smazání úplně dole na profilu, ne mezi běžnými akcemi.
+    $('accountEnd').replaceChildren(out, del);
+    $('accountEnd').hidden = false;
 }
 
 function onLoggedIn(user) {
@@ -988,7 +987,7 @@ function renderProfile() {
         [fmtNum(days), 'odehraných dní'],
         [fmtNum(words), 'slov v denní výzvě'],
         [pct + ' %', 'úspěšnost'],
-        [fmtNum(persist.practiceWords), 'uhodnutých slov v tréninku', 'stat-tile--wide'],
+        [fmtNum(practiceSeenCount()), `uhodnutých slov v tréninku, to je ${practiceSeenPct()} % slovníku`, 'stat-tile--wide'],
     ];
     const grid = $('profileStats');
     grid.innerHTML = '';
@@ -1015,41 +1014,76 @@ function renderProfile() {
     loadMyDefs();
 }
 
+// Profil: oblak štítků (slovo + palce) s nejlépe hodnocenými významy a odkaz
+// na obrazovku se všemi. Celé karty s úpravou jsou až tam.
+const PROFILE_TAGS = 12;
 async function loadMyDefs() {
     const box = $('profileDefs');
+    box.className = 'empty-card';
     box.textContent = 'Načítám…';
-    const data = await apiGet('/api/defs/mine');
-    const defs = data && data.defs;
-    if (!defs) {
+    const data = await apiGet(`/api/defs/mine?sort=votes&limit=${PROFILE_TAGS}`);
+    if (!data || !data.defs) {
         box.textContent = 'Významy se teď nepodařilo načíst.';
         return;
     }
-    if (!defs.length) {
+    const total = data.total ?? data.defs.length;
+    if (!total) {
         box.textContent = 'Zatím žádný. V tréninku se ti po každém slově nabídne, ať nějaký přidáš.';
         return;
     }
-    box.classList.remove('empty-card');
-    box.textContent = '';
-    const list = document.createElement('ul');
-    list.className = 'defs-list';
-    for (const d of defs) {
-        const li = document.createElement('li');
-        li.className = 'def-item mine';
-        const w = document.createElement('div');
-        w.className = 'def-word';
-        w.textContent = d.word;
-        const p = document.createElement('p');
-        p.className = 'wd-text';
-        p.textContent = d.text;
-        const meta = document.createElement('div');
-        meta.className = 'wd-meta';
-        const v = document.createElement('span');
-        setEmojiText(v, `👍 ${d.votes}`);
-        meta.appendChild(v);
-        li.append(w, p, meta);
-        list.appendChild(li);
+    box.className = 'def-cloud';
+    box.replaceChildren(...data.defs.map(d => {
+        const tag = el('span', 'def-tag' + (d.hidden ? ' def-tag--hidden' : ''));
+        tag.append(el('span', 'def-tag-word', d.word), setEmojiText(el('span', 'def-tag-votes'), `👍 ${d.votes}`));
+        return tag;
+    }));
+    const all = el('button', 'btn-tertiary def-cloud-all', `Všechny moje významy (${fmtNum(total)})`);
+    all.type = 'button';
+    all.onclick = () => showMyDefs(0);
+    box.appendChild(all);
+}
+
+// Obrazovka Moje významy: po MY_DEFS_PAGE, nejnovější nahoře, s úpravou.
+const MY_DEFS_PAGE = 10;
+async function showMyDefs(page) {
+    state.myDefsPage = page;
+    showScreen('myDefs');
+    window.scrollTo(0, 0);
+    const list = $('myDefsList');
+    list.replaceChildren(el('li', 'def-empty', 'Načítám…'));
+    const data = await apiGet(`/api/defs/mine?limit=${MY_DEFS_PAGE}&offset=${page * MY_DEFS_PAGE}`);
+    if (state.myDefsPage !== page) return;                // mezitím se přeplo jinam
+    const pager = $('myDefsPager');
+    if (!data || !data.defs) {
+        list.replaceChildren(el('li', 'def-empty', 'Významy se teď nepodařilo načíst.'));
+        pager.hidden = true;
+        return;
     }
-    box.appendChild(list);
+    const pages = Math.max(1, Math.ceil(data.total / MY_DEFS_PAGE));
+    if (page > 0 && page >= pages) return showMyDefs(pages - 1);
+    $('myDefsSummary').textContent = data.total
+        ? `${fmtNum(data.total)} ${plural(data.total, 'význam', 'významy', 'významů')}, nejnovější nahoře.`
+        : 'Zatím žádný. V tréninku se ti po každém slově nabídne, ať nějaký přidáš.';
+    list.replaceChildren(...data.defs.map(myDefItem));
+    pager.hidden = pages < 2;
+    $('myDefsPrev').disabled = page === 0;
+    $('myDefsNext').disabled = page >= pages - 1;
+    $('myDefsInfo').textContent = `${page + 1} / ${pages}`;
+}
+
+function myDefItem(d) {
+    const li = el('li', 'def-item mine');
+    const head = el('div', 'def-word', d.word);
+    if (d.hidden) head.appendChild(el('span', 'def-hidden', 'skrytý po nahlášení'));
+    const p = el('p', 'wd-text', d.text);                  // cizí text vždy přes textContent
+    const meta = el('div', 'wd-meta');
+    meta.appendChild(setEmojiText(el('span'), `👍 ${d.votes}`));
+    const edit = el('button', 'def-report', 'Upravit');
+    edit.type = 'button';
+    // po uložení se počet hlasů může vynulovat — překreslit jen tuhle kartu
+    edit.onclick = () => editDef(d, li, p, () => setEmojiText(meta.firstChild, `👍 ${d.votes}`));
+    li.append(head, p, meta, edit);
+    return li;
 }
 
 function editNick() {
@@ -1138,6 +1172,36 @@ const PRACTICE_LEVELS = {
     tezka:   { label: 'Těžká',   size: PRACTICE_WORDS.length },
 };
 const practiceLevel = () => PRACTICE_LEVELS[persist.practiceLevel] || PRACTICE_LEVELS.stredni;
+
+// Různá uhodnutá slova tréninku: bitmapa nad PRACTICE_WORDS v base64
+// (15 000 bitů ≈ 2,5 kB). Jen z nich dává smysl „X % slovníku" — počítadlo
+// practiceWords sčítá i opakování.
+let practiceIndex = null;
+const seenBytes = () => persist.practiceSeen
+    ? Uint8Array.from(atob(persist.practiceSeen), c => c.charCodeAt(0))
+    : new Uint8Array(Math.ceil(PRACTICE_WORDS.length / 8));
+
+function markPracticeSeen(word) {
+    practiceIndex = practiceIndex || new Map(PRACTICE_WORDS.map((w, i) => [w, i]));
+    const i = practiceIndex.get(word);
+    if (i === undefined) return;
+    const bytes = seenBytes();
+    bytes[i >> 3] |= 1 << (i & 7);
+    persist.practiceSeen = btoa(String.fromCharCode(...bytes));
+}
+
+function practiceSeenCount() {
+    let n = 0;
+    for (let b of seenBytes()) for (; b; b &= b - 1) n++;
+    return n;
+}
+
+// Pod 1 % dvě desetinná místa (3 slova = 0,02 %), jinak jedno — první desítky
+// slov nesmí vypadat jako „0 %".
+function practiceSeenPct() {
+    const pct = practiceSeenCount() / PRACTICE_WORDS.length * 100;
+    return pct.toLocaleString('cs-CZ', { maximumFractionDigits: pct < 1 ? 2 : 1 });
+}
 
 function openPracticePicker() {
     $$('#practiceModal .level-option').forEach(b =>
@@ -1401,6 +1465,7 @@ function checkWord() {
     if (state.mode === 'practice') {
         state.practiceCount++;
         persist.practiceWords++;   // trénink se jinak nikam neukládá
+        markPracticeSeen(target);
         savePersist();
     }
     updateGameGrid(state.marks.length - 1);
