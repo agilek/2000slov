@@ -62,9 +62,13 @@ npx wrangler dev --port 8787     # z telefonu: --ip 0.0.0.0 a http://<IP počít
 Samotná statika je pořád bez závislostí a bez buildu, takže na rychlou úpravu
 vzhledu stačí i `python3 -m http.server 8000` v `public/` — jen bez `/api/*`.
 
+**Po změně čehokoli v `public/`:** `node tools/stamp.mjs` — přepíše `?v=`
+v `index.html` na otisk obsahu a v `sw.js` složí `SHELL` a `CACHE`. Ručně se
+verze nezvyšují.
+
 **Kontrola:** `node test.mjs` — bez frameworku, ověří validaci významů,
-neporušitelné vlastnosti slovníku (počty, podmnožina, frekvenční pásma)
-a úplnost přesmyček.
+neporušitelné vlastnosti slovníku (počty, podmnožina, frekvenční pásma),
+úplnost přesmyček a že je statika orazítkovaná.
 
 **Nasazení:** `npx wrangler deploy`, nebo automaticky workflow
 `.github/workflows/deploy.yml` při pushi do `main` (potřebuje secret

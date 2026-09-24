@@ -11,6 +11,7 @@ import { points, profilePage } from './worker/src/profile.js';
 import { DatabaseSync } from 'node:sqlite';
 import Avatar from './public/avatar.js';
 import Achievements from './public/achievements.js';
+import { stamp } from './tools/stamp.mjs';
 
 // words.js se spouští ve vm, takže pole z něj mají prototyp z jiného realmu
 // a deepStrictEqual by je odmítl. Proto se porovnává jen obsah.
@@ -244,6 +245,17 @@ test('alternativa je vždy ze stejných písmen', () => {
             assert.equal(klic(a), klic(slovo), `${slovo} ↔ ${a} nejsou přesmyčky`);
         }
     }
+});
+
+/* ---------------- verze statiky ---------------- */
+
+// ?v= v index.html a CACHE/SHELL v sw.js jsou otisky obsahu. Kdo změní CSS
+// nebo JS a zapomene na `node tools/stamp.mjs`, vracející se hráč dostane
+// ze service workeru starou verzi.
+test('statika je orazítkovaná (node tools/stamp.mjs)', () => {
+    const { html, sw } = stamp();
+    assert.ok(html === readFileSync('public/index.html', 'utf8'), 'index.html má staré ?v=');
+    assert.ok(sw === readFileSync('public/sw.js', 'utf8'), 'sw.js má starý SHELL nebo CACHE');
 });
 
 console.log(`${passed} kontrol prošlo${process.exitCode ? ' (a něco spadlo)' : ''}`);

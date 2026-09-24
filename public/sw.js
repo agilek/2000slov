@@ -5,27 +5,34 @@
 //    offline spadne na uloženou stránku,
 //  - ostatní statika je stale-while-revalidate: odpoví se hned z cache
 //    (takže offline a rychlý start), ale na pozadí se stáhne čerstvá verze
-//    pro příští načtení. Čistě cache-first se neosvědčilo — změna v CSS bez
-//    ručního zvýšení ?v=N se k vracejícímu se hráči nikdy nedostala.
+//    pro příští načtení. Nová verze souboru má v index.html jiné ?v=
+//    (otisk obsahu), takže se stáhne hned.
 //  - /api/*, /u/* a /prihlaseni se necachují vůbec.
+//
+// CACHE a SHELL skládá `node tools/stamp.mjs` z index.html — ručně je neupravuj.
 
-const CACHE = 'slov2000-v86';
+const CACHE = 'slov2000-4120e0fd';
 const SHELL = [
     '/',
-    '/style.css?v=27',
-    '/designs/kostky.css?v=64',
+    '/icons/icon.svg',
+    '/icons/favicon-32.png',
+    '/icons/apple-touch-icon.png',
+    '/manifest.webmanifest',
     '/fonts/SlovkaOne-Regular.woff2',
     '/fonts/SlovkaOne-Light.woff2',
     '/fonts/SlovkaOne-ExtraLight.woff2',
-    '/words.js?v=4',
-    '/avatar.js?v=3',
-    '/achievements.js?v=5',
-    '/game.js?v=54',
-    '/manifest.webmanifest',
+    '/style.css?v=ea8e5ed2',
+    '/designs/kostky.css?v=e95a1f33',
+    '/designs/kostky/profil.svg',
+    '/designs/kostky/cinka.svg',
+    '/designs/kostky/zpet.svg',
+    '/squircle.js?v=847d5c4a',
+    '/words.js?v=a4b29c80',
+    '/avatar.js?v=5bda5401',
+    '/achievements.js?v=04a11446',
+    '/game.js?v=105a84b1',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
-    '/icons/apple-touch-icon.png',
-    '/icons/favicon-32.png',
 ];
 
 self.addEventListener('install', (event) => {
