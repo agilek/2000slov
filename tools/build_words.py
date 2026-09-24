@@ -79,10 +79,21 @@ def _keystream(seed, n):
     return out[:n]
 
 
-def pack_day(words, idx):
-    raw = "\n".join(words).encode("utf-8")
-    key = _keystream(_seed_of(idx), len(raw))
-    return base64.b64encode(bytes(a ^ b for a, b in zip(raw, key))).decode()
+def _xor(raw, idx):
+    return bytes(a ^ b for a, b in zip(raw, _keystream(_seed_of(idx), len(raw))))
+
+
+def pack_day(words, idx, rank):
+    """Den = 20 pořadí v PRACTICE_WORDS (2 bajty LE), ne text slov: denní
+    slova v poolu stejně jsou, takže text by v souboru byl dvakrát
+    (a zašifrovaný se nedá zkomprimovat)."""
+    raw = b"".join(rank[w].to_bytes(2, "little") for w in words)
+    return base64.b64encode(_xor(raw, idx)).decode()
+
+
+def unpack_day(blob, idx, pool):
+    raw = _xor(base64.b64decode(blob), idx)
+    return [pool[int.from_bytes(raw[i:i + 2], "little")] for i in range(0, len(raw), 2)]
 
 
 # Protějšek pack_day v prohlížeči. Mimo f-string, ať se nemusí zdvojovat {}.
@@ -113,7 +124,9 @@ function unpackDay(idx) {
         key >>>= 8;
         have--;
     }
-    return new TextDecoder().decode(bytes).split("\n");
+    const words = [];
+    for (let i = 0; i < bytes.length; i += 2) words.push(PRACTICE_WORDS[bytes[i] | bytes[i + 1] << 8]);
+    return words;
 }"""
 
 NOUNS = "Kategorie:Česká substantiva"
@@ -347,10 +360,16 @@ def main():
                     have.append(other)
                     linked += 1
     print(f"přesmyček uvnitř poolu doplněno: {linked}")
+    write_words_js(args.out, days, pool, alts)
+    print(f"zapsáno {args.out}: PACKED {len(days)} dnů / {len(flat)} slov, PRACTICE_WORDS {len(pool)}")
+
+
+def write_words_js(out, days, pool, alts):
+    rank = {w: i for i, w in enumerate(pool)}
     alts = json.dumps(alts, ensure_ascii=False, separators=(",", ":"))
-    packed = [pack_day(d, i) for i, d in enumerate(days)]
+    packed = [pack_day(d, i, rank) for i, d in enumerate(days)]
     j = lambda xs: "[" + ",".join('"%s"' % w for w in xs) + "]"
-    open(args.out, "w", encoding="utf-8").write(f'''// Denní výzva: {DAILY_SIZE} nejčastějších českých podstatných jmen (Wikislovník,
+    open(out, "w", encoding="utf-8").write(f'''// Denní výzva: {DAILY_SIZE} nejčastějších českých podstatných jmen (Wikislovník,
 // Kategorie:Česká substantiva) = {DAYS} dní po {PER_DAY} slovech. Pořadí slov v poolu
 // je dáno kombinací dvou frekvenčních zdrojů (OpenSubtitles 2018 cs_full
 // + wordfreq cs: Wikipedie, zpravodajství, web, titulky) — průměr obou pořadí,
@@ -363,7 +382,7 @@ def main():
 
 {DECODER}
 
-// Jeden zamíchaný blob na den, {PER_DAY} slov v každém. Rozbalí unpackDay(den).
+// Jeden zamíchaný blob na den: pořadí jeho {PER_DAY} slov v PRACTICE_WORDS. Rozbalí unpackDay(den).
 const PACKED = {j(packed)};
 
 // Trénink: širší pool {POOL_SIZE} slov (nadmnožina WORDS) pro volnou hru bez
@@ -372,7 +391,6 @@ const PRACTICE_WORDS = {j(pool)};
 
 const ALTS = {alts};
 ''')
-    print(f"zapsáno {args.out}: PACKED {len(packed)} dnů / {len(flat)} slov, PRACTICE_WORDS {len(pool)}")
 
 
 if __name__ == "__main__":
