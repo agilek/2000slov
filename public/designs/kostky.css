@@ -3,7 +3,7 @@
    Všechno je hmatatelný předmět, který jde zmáčknout: dlaždice a tlačítka
    mají pevný spodní „ret" a při stisku o něj klesnou. Jazyk Duolinga —
    ploché syté barvy, zaoblené tučné písmo, pružné odezvy a panel se
-   zpětnou vazbou zdola. Vrstva přes style.css, DOM ani logika se nemění.
+   zpětnou vazbou zdola. Vrstva přes style.css.
    ================================================================ */
 
 :root {
@@ -575,6 +575,37 @@
     .archive-item.locked:hover { border-color: var(--line); }
 }
 .archive-date { font-weight: 600; font-size: 17px; }
+
+/* Obtížnost tréninku: karty s retem jako dny ve sbírce, vlevo síla 1–3
+   sloupků (zelená → oranžová → červená); naposledy zvolená je modrá. */
+.level-intro { font-family: var(--display); font-weight: 600; font-size: 17px; }
+.level-list { gap: 12px; }
+.level-option {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 2px;
+    border-radius: 16px;
+    box-shadow: 0 4px 0 var(--lip);
+    transition: translate .08s ease, box-shadow .08s ease, border-color .12s ease, background .12s ease;
+}
+.level-option::before {
+    content: '';
+    grid-row: span 2;
+    width: 40px;
+    height: 40px;
+    background: center / contain no-repeat;
+}
+.level-option[data-level="lehka"]::before   { background-image: url(kostky/lehka.svg); }
+.level-option[data-level="stredni"]::before { background-image: url(kostky/stredni.svg); }
+.level-option[data-level="tezka"]::before   { background-image: url(kostky/tezka.svg); }
+.level-option:active { translate: 0 4px; box-shadow: 0 0 0 var(--lip); }
+.level-option.current { background: var(--blue-tint); border-color: var(--blue-soft); box-shadow: 0 4px 0 var(--blue-soft); }
+.level-option:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; }
+@media (hover: hover) { .level-option:hover { border-color: var(--blue-soft); } }
+.level-name { font-family: var(--display); font-weight: 700; font-size: 19px; }
+.level-desc { font-weight: 600; font-size: 14px; }
 .archive-score { font-weight: 700; font-size: 14px; padding: 5px 12px; background: var(--ok-bg); color: var(--ok-ink); }
 .archive-score.not-played { background: var(--ghost); color: var(--muted-text); }
 /* dnešek: jediný neodehraný den, který není zamčený */

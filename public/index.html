@@ -33,7 +33,7 @@
                 <span class="icon-btn-circle"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg></span>
                 <span class="icon-btn-label">Profil</span>
             </button>
-            <button class="icon-btn" onclick="startPracticeGame()" aria-label="Trénink">
+            <button class="icon-btn" onclick="openPracticePicker()" aria-label="Trénink">
                 <span class="icon-btn-circle"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 12h1" /><path d="M6 8h-2a1 1 0 0 0 -1 1v6a1 1 0 0 0 1 1h2" /><path d="M6 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z" /><path d="M9 12h6" /><path d="M15 7v10a1 1 0 0 0 1 1h1a1 1 0 0 0 1 -1v-10a1 1 0 0 0 -1 -1h-1a1 1 0 0 0 -1 1z" /><path d="M18 8h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2" /><path d="M22 12h-1" /></svg></span>
                 <span class="icon-btn-label">Trénink</span>
             </button>
@@ -116,7 +116,7 @@
         </div>
         <p id="countdown" class="reveal-item"></p>
         <div id="resultActions" class="result-actions reveal-item">
-            <button id="practiceBtn" class="btn btn-secondary" onclick="startPracticeGame()">Trénink</button>
+            <button id="practiceBtn" class="btn btn-secondary" onclick="openPracticePicker()">Trénink</button>
         </div>
         <button id="collectionBtn" class="btn-tertiary reveal-item" onclick="showCollection()">Sbírka slov</button>
         <div id="a2hsBanner" class="a2hs-banner reveal-item" style="display:none;">
@@ -167,6 +167,31 @@
                 <button class="close-modal" onclick="closeModal()">&times;</button>
             </div>
             <ul class="archive-list" id="collectionList"></ul>
+        </div>
+    </div>
+
+    <!-- Obtížnost tréninku: klepnutí na úroveň trénink rovnou spustí -->
+    <div class="modal" id="practiceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Trénink</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <p class="level-intro">Jak těžká slova chceš?</p>
+            <div class="level-list">
+                <button class="level-option" data-level="lehka" onclick="pickPracticeLevel('lehka')">
+                    <span class="level-name">Lehká</span>
+                    <span class="level-desc">3 000 nejběžnějších slov, třeba kontakt nebo obyvatel</span>
+                </button>
+                <button class="level-option" data-level="stredni" onclick="pickPracticeLevel('stredni')">
+                    <span class="level-name">Střední</span>
+                    <span class="level-desc">7 300 slov, stejně jako v denní výzvě</span>
+                </button>
+                <button class="level-option" data-level="tezka" onclick="pickPracticeLevel('tezka')">
+                    <span class="level-name">Těžká</span>
+                    <span class="level-desc">Všech 15 000 včetně vzácných, třeba douglaska</span>
+                </button>
+            </div>
         </div>
     </div>
 

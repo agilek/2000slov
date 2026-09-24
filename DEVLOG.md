@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Obtížnost tréninku: Lehká / Střední / Těžká
+Trénink teď před startem nabídne tři úrovně (sheet po klepnutí na Trénink
+na úvodu i ve výsledku): Lehká = 3000 nejčastějších slov, Střední = 7300
+(přesně slova denní výzvy, výchozí), Těžká = všech 15 000. Klepnutí na úroveň
+trénink rovnou spustí, volba se pamatuje v `persist.practiceLevel` a je vidět
+v liště („Slovo 5 · Lehká"). V Kostkách karty s retem a ikonou síly 1–3 sloupků.
+
+**Root cause / approach:** Trénink míchal celý pool, a protože je seřazený podle
+frekvence, polovina slov chodila z řídkého konce (7300–15 000: *douglaska,
+větrolam*), navíc delších (průměr 7,7 písmene proti 5,9 u prvního tisíce).
+Úroveň je proto jen `PRACTICE_WORDS.slice(0, N)`. Popisek „Střední = jako denní
+výzva" hlídá nový test (denní výzva = přesně prvních 7300 slov poolu).
+
+→ *No new memory entries.*
+
 ### Ikona aplikace v jazyce Kostek
 Nová ikona na plochu: zelené pole, mřížka 2×2 jako sdílený výsledek, tři bílé
 klávesy s šedým retem a jedno propadlé pole — otisk použitého písmene. Navazuje

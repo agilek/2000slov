@@ -98,6 +98,12 @@ test('denní slova jsou podmnožinou poolu', () => {
     prazdne(WORDS.filter(w => !pool.has(w)), 'mimo pool');
 });
 
+test('denní výzva je přesně prvních 7300 slov poolu', () => {
+    // Na tom stojí popisek obtížnosti tréninku „Střední = stejně jako v denní výzvě".
+    const top = new Set(PRACTICE_WORDS.slice(0, WORDS.length));
+    prazdne(WORDS.filter(w => !top.has(w)), 'mimo prvních 7300');
+});
+
 test('každý den má právě jedno slovo z každého frekvenčního pásma', () => {
     // Pásma se počítají z pořadí v poolu; pool je seřazený podle frekvence.
     const rank = new Map(PRACTICE_WORDS.map((w, i) => [w, i]));

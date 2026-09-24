@@ -16,8 +16,10 @@ Obtížnost je **mezi dny vyrovnaná**: 7300 slov denní výzvy je rozděleno do
 z každého pásma. Každý den tak má stejný mix běžných a vzácných slov — žádný
 den není systematicky těžší než jiný. Délka slova nehraje roli.
 
-Denní výzva má **7300 slov (365 dní)**. Trénink navíc čerpá z celého
-podkladového **frekvenčního poolu 15 000 slov**, bez omezení na datum — běží
+Denní výzva má **7300 slov (365 dní)**. Trénink navíc čerpá z podkladového
+**frekvenčního poolu 15 000 slov**, bez omezení na datum, a hráč si volí
+obtížnost: Lehká = 3000 nejběžnějších, Střední = 7300 (slova denní výzvy),
+Těžká = všech 15 000. Běží
 nekonečně dokola a nic v něm neklikáš: po nestihnutém slově se odpočítají
 3 sekundy a další slovo naběhne samo. Ukončíš ho křížkem vpravo nahoře.
 
@@ -100,7 +102,8 @@ Zpracování:
 7. **Doplněno na 15 000** o další substantiva z téže kategorie, která
    v OpenSubtitles nemají frekvenci (a tak do kroku 5 nedošla), ale mají
    doložený výskyt v [wordfreq](https://github.com/rspeer/wordfreq) `cs`.
-   Tohle je celý pool, ze kterého čerpá trénink (`PRACTICE_WORDS`).
+   Tohle je celý pool, ze kterého čerpá trénink (`PRACTICE_WORDS`); obtížnost
+   tréninku z něj bere prvních 3000 / 7300 / 15 000 slov.
 8. **Přeřazeno podle průměru dvou pořadí** — OpenSubtitles 2018 (mluvený
    jazyk) a wordfreq `cs` (Wikipedie, zpravodajství, web, titulky). Slovo musí
    být běžné v obou, což tlumí homografy, na kterých jeden zdroj přestřelí:

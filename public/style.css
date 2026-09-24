@@ -804,6 +804,31 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     color: var(--ink);
 }
 
+/* Výběr obtížnosti tréninku (sheet) */
+.level-intro { font-size: 16px; font-weight: 600; color: var(--muted-text); text-align: center; margin: -4px 0 16px; }
+.level-list { display: flex; flex-direction: column; gap: 10px; }
+.level-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    width: 100%;
+    padding: 15px 16px;
+    text-align: left;
+    color: var(--ink);
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.level-option.current { border-color: var(--blue); }
+.level-option:focus { outline: none; }
+.level-option:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+@media (hover: hover) { .level-option:hover { border-color: var(--blue); } }
+.level-name { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 18px; }
+.level-desc { font-size: 14px; line-height: 1.4; color: var(--muted-text); }
+
 .feedback-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
 .feedback-form label { font-size: 14px; font-weight: 700; color: var(--muted-text); margin-bottom: -6px; }
 .feedback-form input,

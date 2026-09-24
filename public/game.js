@@ -54,6 +54,7 @@ function defaultPersist() {
         wins: 0,
         kbHintShown: false,
         practiceWords: 0,   // uhodnutá slova v tréninku, opakovaná se počítají znovu
+        practiceLevel: 'stredni', // obtížnost tréninku, klíč z PRACTICE_LEVELS
         nick: '',           // přezdívka u přidaných významů
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
         nudgedAt: 0,        // série, u které jsme naposled připomněli účet
@@ -1011,8 +1012,30 @@ function startGame() {
     loadWord();
 }
 
+// Obtížnost tréninku = kolik nejčastějších slov z PRACTICE_WORDS se hraje
+// (pool je seřazený podle frekvence). Střední je přesně rozsah denní výzvy.
+const PRACTICE_LEVELS = {
+    lehka:   { label: 'Lehká',   size: 3000 },
+    stredni: { label: 'Střední', size: TOTAL_WORDS },
+    tezka:   { label: 'Těžká',   size: PRACTICE_WORDS.length },
+};
+const practiceLevel = () => PRACTICE_LEVELS[persist.practiceLevel] || PRACTICE_LEVELS.stredni;
+
+function openPracticePicker() {
+    $$('#practiceModal .level-option').forEach(b =>
+        b.classList.toggle('current', b.dataset.level === persist.practiceLevel));
+    $('practiceModal').classList.add('active');
+}
+
+function pickPracticeLevel(level) {
+    persist.practiceLevel = level;
+    savePersist();
+    closeModal();
+    startPracticeGame();
+}
+
 function startPracticeGame() {
-    const pool = PRACTICE_WORDS;
+    const pool = PRACTICE_WORDS.slice(0, practiceLevel().size);
     state.gen++;
     state.mode = 'practice';
     $('closeGameBtn').style.display = 'flex';
@@ -1450,7 +1473,7 @@ function updateUI() {
     });
     const low = state.time <= 0 ? ' zero' : (state.time <= 10 ? ' low' : '');
     const label = state.mode === 'practice'
-        ? `Slovo ${state.wordIdx + 1}`
+        ? `Slovo ${state.wordIdx + 1} · ${practiceLevel().label}`
         : `Slovo ${state.wordIdx + 1}/${WORDS_PER_DAY}`;
     $('progress').innerHTML = `<div class="gp-headline">${label}</div><div class="gp-timer${low}">${state.time}<span class="gp-timer-unit">s</span></div>`;
 }

@@ -5,14 +5,14 @@
 Věrná česká adaptace hry [18words.com](https://18words.com/) — stejný vizuál
 (světlé pozadí, fonty Baloo 2 + Nunito, kulaté dlaždice, pilulková tlačítka),
 stejný herní pocit, ale s vlastním rokem **7300 českých podstatných jmen**.
-Trénink navíc čerpá z celého podkladového poolu **15 000 slov**, bez omezení
-na datum.
+Trénink navíc čerpá z podkladového poolu **15 000 slov**, bez omezení na datum;
+hráč si volí, jak velkou část (obtížnost).
 
 ## 1. Základní smyčka
 
 - **Denní výzva** má **7300 českých podstatných jmen** (Wikislovník, Kategorie:Česká
   substantiva) rozdělených do **365 dní** po 20 slovech. Jde o 7300 nejběžnějších
-  slov širšího poolu 15 000 slov — trénink čerpá z celého poolu (viz níže).
+  slov širšího poolu 15 000 slov — trénink čerpá z jeho výřezu podle obtížnosti (viz níže).
 - **Den určuje datum, ne postup hráče.** Index dne = počet dní od `EPOCH`
   (21. 9. 2026) modulo 365. Všichni hráči tak mají v daný kalendářní den
   stejných 20 slov a výsledky jsou porovnatelné (to je celý smysl „Top X %
@@ -72,8 +72,12 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 
    si ji nikdo nemůže přivlastnit. Autor smí svůj význam upravit; když už má
    hlasy, úprava je smaže (jinak by šlo vyhlasovat neškodnou větu a přepsat ji).
 
-6. **Trénink** — nekonečná volná hra ze **všech 15 000 slov** (širší pool než
-   denní výzva, bez ohledu na datum). **Nemá výsledkovou obrazovku ani žádné
+6. **Trénink** — nekonečná volná hra z poolu 15 000 slov, bez ohledu na datum.
+   Před startem si hráč vybere **obtížnost** = kolik nejčastějších slov se hraje:
+   **Lehká** 3000, **Střední** 7300 (přesně slova denní výzvy, výchozí), **Těžká**
+   všech 15 000 včetně vzácných (dřív jediná možnost — polovina slov pak byla
+   z řídkého konce poolu, třeba *douglaska*). Volba se pamatuje (`practiceLevel`)
+   a je vidět v liště („Slovo 5 · Lehká"). **Nemá výsledkovou obrazovku ani žádné
    tlačítko „pokračovat"** — nestihnuté slovo se odhalí, na místě časovače
    naskočí odpočet „Další slovo za 3 s" a další slovo naběhne samo.
    Správně složené slovo se posune hned (~0,75 s), bez odpočtu. Jediný způsob,
