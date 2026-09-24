@@ -6,6 +6,9 @@
 <title>Úspěchy — návrh (dev)</title>
 <meta name="robots" content="noindex">
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<!-- Dev stránka: service worker hry servíruje style.css cache-first, takže by tu
+     ukazoval starou CSS. Když stránku ovládá, odregistruj ho a načti znovu. -->
+<script>if (navigator.serviceWorker?.controller) navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))).then(() => location.reload());</script>
 <link rel="stylesheet" href="style.css">
 <style>
     /* ---------- chrome téhle stránky (sg-), s hrou se nemíchá ---------- */

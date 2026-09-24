@@ -2,6 +2,15 @@
 
 ## 2026-09-24
 
+### Styleguide: scrollování a stará CSS ze service workeru
+Na `dev-styleguide.html` nešlo scrollovat a pořád tam byla vidět stará podoba stránky. Přebití layoutu hry dávalo `body` `overflow-x: hidden`, čímž z něj udělalo nescrollovatelný kontejner; `overscroll-behavior: none` ze `style.css` pak spolklo kolečko i tah prstem. Navíc dev stránky ovládá service worker hry (scope `/`) a `style.css` servíruje cache-first, takže opravy CSS nebyly vidět.
+
+**Root cause / approach:** `body` musí zůstat `overflow: visible` — jakákoli jiná hodnota (i jen na jedné ose) z něj udělá scroll kontejner. Přebití rozděleno na `html` a `body.sg`; dev stránky se navíc odregistrují ze SW a jednou reloadnou, když je ovládá.
+
+Zbývá tmavá čára na hranici prvního viewportu, kterou hlásí jen headed Chrome — v Safari ani v headless Chromiu 146 (stejná verze, stejné okno, dark i light) se neobjeví a v DOMu jí neodpovídá žádný prvek ani pseudo-prvek. Vypadá na artefakt GPU compositoru; pro jistotu na dev stránce vypnutý `transition` pozadí z `style.css`.
+
+→ *Memory saved: `dev_pages_scroll_and_sw.md`*
+
 ### Refaktoring celé appky: rychlejší načtení, Safari bez zbytečné práce, jeden stylesheet
 Architektura (jeden Worker + D1, statika bez buildu, sdílené moduly hra/worker)
 zůstala. Vzhled se nezměnil, ověřeno snímky HEAD proti stromu v Chromiu
