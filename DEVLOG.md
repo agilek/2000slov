@@ -2,6 +2,26 @@
 
 ## 2026-09-24
 
+### Detail slova s kandidáty, ikony akcí, lišta času nahoře ve hře
+Klepnutí na kartu v mezihře otevře detail slova: štítky (pořadí podle častosti,
+obtížnost, počet písmen, přesmyčky), nahoře zlatý „Nejlepší význam" s korunou,
+pod ním „Další kandidáti" s hlasováním; po hlasu se pořadí přepočítá. Nahlášení
+je vlaječka s potvrzením („Nahlásit?"), úprava tužka (i na stránce Moje
+významy). Karta v mezihře má 3 řádky s výpustkou a odstín panelu, odkaz na
+významy barvu panelu. Podržení Další slovo zastaví čas (puštění na tlačítku =
+další, sjetí z něj = běží dál), pauza je klasický symbol. Nahoře ve hře je lišta
+zbývajícího času, která plynule ubývá a barví se ze zelené do červené.
+
+**Root cause / approach:** API nevracelo `voted`, takže po otevření vypadal hlas
+jako nedaný a další klepnutí ho *odebralo* — `votedSet()` dotáhne hlasy
+přihlášeného. U dotyku má prst implicitní pointer capture, takže `pointerup`
+cílí vždy na tlačítko — „sjel z Další?" se proto ptá `elementFromPoint`. Lišta
+času: `--t` (0–1) z `updateUI`, registrovaná přes `@property` s přechodem 1 s,
+takže mezi vteřinami plyne; zelená → zlatá míchaná v HSL (v oklch vyšla kalná
+oliva), zlatá → červená v oklch, prahy 18 s a 10 s.
+
+→ *No new memory entries.*
+
 ### Moje významy: oblak štítků na profilu + stránkovaná obrazovka; % slovníku
 Na profilu jsou vlastní významy jako oblak štítků (slovo + palce, 12 nejlépe
 hodnocených) s odkazem na novou obrazovku **Moje významy**: karty jako dřív,

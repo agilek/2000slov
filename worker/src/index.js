@@ -218,7 +218,7 @@ async function handleSubscribe(request, env) {
 
 const now = () => Date.now();
 
-function defRow(r, userId) {
+function defRow(r, userId, voted) {
     return {
         id: r.id,
         word: r.word,
@@ -226,8 +226,20 @@ function defRow(r, userId) {
         author: r.author,          // vždy přezdívka z účtu — anonymní autoři neexistují
         votes: r.votes,
         mine: !!userId && r.user_id === userId,
+        voted: !!voted && voted.has(r.id),
         hidden: !!r.hidden,        // veřejné seznamy skryté vynechávají; vidí je jen autor
     };
+}
+
+// Pro přihlášeného: pro které z těchto významů už hlasoval (votes.client_id =
+// id účtu). Bez toho by tlačítko po načtení ukazovalo „nehlasováno" a další
+// klepnutí by hlas nečekaně odebralo.
+async function votedSet(env, me, ids) {
+    if (!me || !ids.length) return new Set();
+    const { results } = await env.DB.prepare(
+        `SELECT definition_id FROM votes WHERE client_id = ? AND definition_id IN (${ids.map(() => '?').join(',')})`
+    ).bind(me.id, ...ids).all();
+    return new Set(results.map(r => r.definition_id));
 }
 
 // Klíč do edge cache. Staví se ručně, NIKDY z příchozího requestu — ten nese
@@ -275,9 +287,10 @@ async function handleDefsBatch(request, env, url, ctx) {
         }
     }
 
-    // `mine` je na hráče, takže se dopočítá až po cache.
+    // `mine` a `voted` jsou na hráče, takže se dopočítají až po cache.
+    const voted = await votedSet(env, me, words.map(w => rows[w] && rows[w].id).filter(Boolean));
     const defs = {};
-    for (const w of words) defs[w] = rows[w] ? defRow(rows[w], me && me.id) : null;
+    for (const w of words) defs[w] = rows[w] ? defRow(rows[w], me && me.id, voted) : null;
     return json({ defs }, 200);
 }
 
@@ -296,7 +309,8 @@ async function handleDefsForWord(request, env, url) {
     const { results } = await env.DB.prepare(
         'SELECT * FROM definitions WHERE word = ?1 AND hidden = 0 ORDER BY votes DESC, created_at ASC LIMIT 50'
     ).bind(word).all();
-    return json({ word, defs: results.map(r => defRow(r, me && me.id)) }, 200);
+    const voted = await votedSet(env, me, results.map(r => r.id));
+    return json({ word, defs: results.map(r => defRow(r, me && me.id, voted)) }, 200);
 }
 
 // Vlastní významy po stránkách: ?limit=&offset= (nejnovější první), ?sort=votes

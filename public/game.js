@@ -394,6 +394,7 @@ function showWordDone(word, gen, solved) {
     next.classList.remove('paused');
     next.classList.add('counting');
     ov.classList.add('active');
+    state.wdPaused = false;
     state.wdDeadline = Date.now() + gap * 1000;
     state.nextTimer = setTimeout(nextWord, gap * 1000);
     if (!defCache.has(word)) {
@@ -486,23 +487,25 @@ function holdWordDone() {
     if (!$('wordDoneOverlay').classList.contains('active')) return;
     clearTimeout(state.nextTimer);
     state.nextTimer = null;
+    state.wdPaused = false;
     $('wdNextBtn').classList.remove('counting', 'paused');
 }
 
-// Podržení prstu: odpočet (i vyplňování tlačítka) stojí, puštěním běží dál.
+// Podržení prstu: odpočet stojí, puštěním běží dál. Vzhled (pauza na tlačítku,
+// zastavené vyplňování) přidá až opravdové podržení — viz obsluha níž.
 function pauseCountdown() {
     if (!state.nextTimer) return false;
     clearTimeout(state.nextTimer);
     state.nextTimer = null;
     state.wdLeftMs = Math.max(0, state.wdDeadline - Date.now());
-    $('wdNextBtn').classList.add('paused');
+    state.wdPaused = true;
     return true;
 }
 
 function resumeCountdown() {
-    const next = $('wdNextBtn');
-    if (state.nextTimer || !next.classList.contains('paused')) return;
-    next.classList.remove('paused');
+    if (!state.wdPaused) return;
+    state.wdPaused = false;
+    $('wdNextBtn').classList.remove('paused');
     state.wdDeadline = Date.now() + state.wdLeftMs;
     state.nextTimer = setTimeout(nextWord, state.wdLeftMs);
 }
@@ -514,6 +517,7 @@ function hideWordDone(animated) {
     const finish = () => {
         ov.classList.remove('active', 'closing', 'holding');
         panel.style.cssText = '';
+        state.wdPaused = false;
         $('wdNextBtn').classList.remove('counting', 'paused');
     };
     if (!animated || REDUCED_MOTION.matches) return finish();
@@ -560,6 +564,8 @@ async function voteDef(def, btn) {
     def.voted = r.data.voted;
     setEmojiText(btn, `👍 ${def.votes}`);
     btn.classList.toggle('voted', !!def.voted);
+    // Hlas může změnit, kdo je nejlepší — v detailu slova přeřadit.
+    if ($('defsModal').classList.contains('active') && state.wdWord) loadDefsList(state.wdWord);
     // Hlas ze sheetu významů promítnout i do karty v mezihře pod ním.
     const top = defCache.get(state.wdWord);
     if (top && top !== def && top.id === def.id) {
@@ -608,50 +614,89 @@ function closeDefs() {
     closeSheet($('defsModal'));
 }
 
+// Detail slova: štítky s informacemi, nahoře nejlépe hodnocený význam (zlatý,
+// s korunou), pod ním ostatní jako kandidáti, pro které jde hlasovat.
 async function loadDefsList(word) {
     const list = $('defsList');
+    renderWordInfo(word);
     const data = await apiGet(`/api/defs/word?w=${encodeURIComponent(word)}`);
     if (state.wdWord !== word) return;
-    list.innerHTML = '';
     const defs = (data && data.defs) || [];
     if (!defs.length) {
-        const p = document.createElement('li');
-        p.className = 'def-empty';
-        p.textContent = data
+        list.replaceChildren(el('li', 'def-empty', data
             ? 'Zatím tu není žádný význam. Buď první!'
-            : 'Významy se teď nepodařilo načíst.';
-        list.appendChild(p);
+            : 'Významy se teď nepodařilo načíst.'));
         return;
     }
-    defs.forEach(d => list.appendChild(defItem(d)));
+    const [best, ...rest] = defs;                          // API řadí podle hlasů
+    const items = [defItem(best)];
+    if (best.votes > 0) {
+        items[0].classList.add('def-item--best');
+        items[0].prepend(el('div', 'def-best-label', 'Nejlepší význam'));
+    }
+    if (rest.length) {
+        items.push(el('li', 'def-group', `${best.votes > 0 ? 'Další kandidáti' : 'Další významy'} (${rest.length})`));
+        rest.forEach(d => items.push(defItem(d)));
+    }
+    list.replaceChildren(...items);
+}
+
+// Co o slově víme i bez sítě: pořadí podle častosti, obtížnost, délka, přesmyčky.
+function renderWordInfo(word) {
+    practiceIndex = practiceIndex || new Map(PRACTICE_WORDS.map((w, i) => [w, i]));
+    const rank = practiceIndex.get(word);
+    const n = lettersOf(word).length;
+    const chips = [];
+    if (rank !== undefined) {
+        chips.push(el('span', 'info-chip', `${fmtNum(rank + 1)}. nejčastější`));
+        const lv = rank < 3000 && n <= 5 ? 'lehka' : rank < TOTAL_WORDS ? 'stredni' : 'tezka';
+        chips.push(el('span', `info-chip info-chip--level info-chip--${lv}`, PRACTICE_LEVELS[lv].label));
+    }
+    chips.push(el('span', 'info-chip', `${n} ${plural(n, 'písmeno', 'písmena', 'písmen')}`));
+    const box = $('defsInfo');
+    box.replaceChildren(...chips);
+    const alts = (typeof ALTS !== 'undefined' && ALTS[word]) || [];
+    if (alts.length) box.appendChild(el('p', 'defs-alts', `Ze stejných písmen: ${alts.join(', ')}`));
 }
 
 function defItem(d) {
-    const li = document.createElement('li');
-    li.className = 'def-item' + (d.mine ? ' mine' : '');
-    const p = document.createElement('p');
-    p.className = 'wd-text';
-    p.textContent = d.text;
-    const meta = document.createElement('div');
-    meta.className = 'wd-meta';
-    meta.append(authorEl(d.author), voteBtn(d));
+    const li = el('li', 'def-item' + (d.mine ? ' mine' : ''));
+    const p = el('p', 'wd-text', d.text);                  // cizí text vždy přes textContent
+    const actions = el('span', 'def-actions');
+    actions.append(voteBtn(d));
+    if (d.mine) actions.append(editBtn(d, li, p, () => { loadDefsList(state.wdWord); renderWdCard(state.wdWord); }));
+    else if (auth.user) actions.append(reportBtn(d, li));
+    const meta = el('div', 'wd-meta');
+    meta.append(authorEl(d.author), actions);
     li.append(p, meta);
-    if (d.mine) {
-        const edit = document.createElement('button');
-        edit.type = 'button';
-        edit.className = 'def-report';
-        edit.textContent = 'Upravit';
-        edit.onclick = () => editDef(d, li, p, () => { loadDefsList(state.wdWord); renderWdCard(state.wdWord); });
-        li.appendChild(edit);
-    } else if (auth.user) {
-        const rep = document.createElement('button');
-        rep.type = 'button';
-        rep.className = 'def-report';
-        rep.textContent = 'Nahlásit';
-        rep.onclick = () => reportDef(d, li);
-        li.appendChild(rep);
-    }
     return li;
+}
+
+// Ikona tužky místo textu „Upravit".
+function editBtn(d, li, textEl, onSaved) {
+    const b = el('button', 'def-icon-btn def-edit');
+    b.type = 'button';
+    b.title = 'Upravit';
+    b.setAttribute('aria-label', 'Upravit význam');
+    b.onclick = () => editDef(d, li, textEl, onSaved);
+    return b;
+}
+
+// Vlaječka; první klepnutí se zeptá („Nahlásit?"), druhé nahlásí — omylem
+// ťuknutá ikona nikoho neudá. Po 3 s se vrátí zpátky.
+function reportBtn(d, li) {
+    const b = el('button', 'def-icon-btn def-flag');
+    b.type = 'button';
+    b.title = 'Nahlásit nevhodný význam';
+    b.setAttribute('aria-label', 'Nahlásit nevhodný význam');
+    b.onclick = () => {
+        clearTimeout(b.revert);
+        if (b.classList.contains('confirm')) return reportDef(d, li);
+        b.classList.add('confirm');
+        b.textContent = 'Nahlásit?';
+        b.revert = setTimeout(() => { b.classList.remove('confirm'); b.textContent = ''; }, 3000);
+    };
+    return b;
 }
 
 // Autor smí svůj význam upravit. Když už má hlasy, úprava je smaže — jinak by
@@ -1077,12 +1122,10 @@ function myDefItem(d) {
     if (d.hidden) head.appendChild(el('span', 'def-hidden', 'skrytý po nahlášení'));
     const p = el('p', 'wd-text', d.text);                  // cizí text vždy přes textContent
     const meta = el('div', 'wd-meta');
-    meta.appendChild(setEmojiText(el('span'), `👍 ${d.votes}`));
-    const edit = el('button', 'def-report', 'Upravit');
-    edit.type = 'button';
+    const votes = setEmojiText(el('span'), `👍 ${d.votes}`);
     // po uložení se počet hlasů může vynulovat — překreslit jen tuhle kartu
-    edit.onclick = () => editDef(d, li, p, () => setEmojiText(meta.firstChild, `👍 ${d.votes}`));
-    li.append(head, p, meta, edit);
+    meta.append(votes, editBtn(d, li, p, () => setEmojiText(votes, `👍 ${d.votes}`)));
+    li.append(head, p, meta);
     return li;
 }
 
@@ -1674,6 +1717,8 @@ function updateUI() {
         ? `Slovo ${state.wordIdx + 1} · ${practiceLevel().label}`
         : `Slovo ${state.wordIdx + 1}/${WORDS_PER_DAY}`;
     $('progress').innerHTML = `<div class="gp-headline">${label}</div><div class="gp-timer${low}">${state.time}<span class="gp-timer-unit">s</span></div>`;
+    // zbývající čas 0–1 pro lištu nahoře (délka i barva, viz .time-bar)
+    $('game').style.setProperty('--t', state.time / START_TIME);
 }
 
 /* ---------------- časovač ---------------- */
@@ -2279,24 +2324,36 @@ document.addEventListener('pointerdown', e => {
 // Mezihra, ovládání prstem (jako příběhy na Instagramu):
 //  - podržení kdekoli na panelu mimo tlačítka odpočet na chvíli zastaví —
 //    dlouhý význam jde dočíst; puštěním běží dál,
-//  - krátké klepnutí mimo kartu = hned další slovo, na kartu = odpočet zruší.
-// Puštění po podržení se nepočítá jako klepnutí, i kdyby z něj prohlížeč
-// udělal click.
+//  - na tlačítku Další se čas zastaví hned, ať nedoběhne pod prstem; puštěním
+//    na tlačítku se jde dál (běžné klepnutí), sjetím z něj odpočet pokračuje,
+//  - krátké klepnutí na kartu otevře detail slova, jinam = hned další slovo.
+// Puštění po podržení mimo Další se nepočítá jako klepnutí, i kdyby z něj
+// prohlížeč udělal click.
 const HOLD_MS = 250;
 let wdPress = null;
 $('wordDoneOverlay').addEventListener('pointerdown', e => {
-    if (e.target.closest('button, a') || !e.target.closest('.wd-panel')) return;
-    wdPress = { long: false, timer: setTimeout(() => {
-        wdPress.long = true;
-        if (!pauseCountdown()) return;
+    const onNext = !!e.target.closest('#wdNextBtn');
+    if (!onNext && (e.target.closest('button, a') || !e.target.closest('.wd-panel'))) return;
+    const press = wdPress = { onNext, long: false, paused: onNext && pauseCountdown() };
+    press.timer = setTimeout(() => {
+        press.long = true;
+        if (!press.paused) press.paused = pauseCountdown();
+        if (!press.paused) return;
+        $('wdNextBtn').classList.add('paused');
         $('wordDoneOverlay').classList.add('holding');
         haptic('tap');
-    }, HOLD_MS) };
+    }, HOLD_MS);
 });
-const wdRelease = () => {
+const wdRelease = (e) => {
     if (!wdPress) return;
     clearTimeout(wdPress.timer);
-    state.wdSkipClick = wdPress.long;
+    // Na Další se puštěním jde dál jen na tlačítku samém; sjetí z něj (i puštění
+    // nad hrou, kam by prohlížeč poslal click) je zrušení.
+    // Cíl pointerupu u dotyku nepomůže (prst má implicitní capture na tlačítku),
+    // proto se ptá, co je opravdu pod prstem.
+    const under = e && e.type === 'pointerup' && document.elementFromPoint(e.clientX, e.clientY);
+    const offNext = wdPress.onNext && !(under && under.closest('#wdNextBtn'));
+    state.wdSkipClick = (wdPress.long && !wdPress.onNext) || offNext;
     wdPress = null;
     $('wordDoneOverlay').classList.remove('holding');
     resumeCountdown();
@@ -2306,7 +2363,7 @@ document.addEventListener('pointercancel', wdRelease);
 $('wordDoneOverlay').addEventListener('click', e => {
     if (state.wdSkipClick) { state.wdSkipClick = false; return; }
     if (e.target.closest('button, a')) return;
-    if (e.target.closest('.wd-card')) return holdWordDone();
+    if (e.target.closest('.wd-card')) return openDefs();   // celý význam a ostatní kandidáti
     nextWord();
 });
 // Podržení nesmí otevřít kontextové menu (Android, pravé tlačítko myši).

@@ -416,6 +416,35 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     position: relative;
     justify-content: flex-start;
 }
+/* Zbývající čas jako ubývající lišta úplně nahoře. --t (0–1) nastavuje
+   updateUI jednou za vteřinu; registrovaná vlastnost s přechodem ji mezi tím
+   plynule dotáhne. Barva: zelená do 18 s, pak do zlaté (v 10 s, kdy zčervená
+   i číslo), pak do červené. Zelená → zlatá se míchá v HSL — v oklch vychází
+   kalná oliva, v HSL svěží limetka. */
+@property --t { syntax: '<number>'; inherits: true; initial-value: 1; }
+#game {
+    --t-warm: clamp(0%, (.6 - var(--t)) * 370%, 100%);
+    --t-hot: clamp(0%, (1 / 3 - var(--t)) * 300%, 100%);
+    --time-color: color-mix(in oklch, var(--red) var(--t-hot),
+                  color-mix(in hsl, var(--time-mid, var(--orange)) var(--t-warm), var(--green)));
+    transition: --t 1s linear;
+}
+.time-bar {
+    flex-shrink: 0;
+    height: 8px;
+    margin: 18px 0 -8px;          /* na výšku zarovnaná s křížkem tréninku */
+    border-radius: 999px;
+    background: var(--grid-cell);
+    overflow: hidden;
+}
+#game.practice .time-bar { margin-right: 50px; }   /* místo pro křížek */
+.time-bar-fill {
+    display: block;
+    height: 100%;
+    width: calc(var(--t) * 100%);
+    border-radius: inherit;
+    background: var(--time-color);
+}
 /* Písmena patří do palcové zóny. Dvě auto marginy rozdělí volné místo
    napůl: horní blok zůstane opticky v horní třetině, klávesnice dole. */
 .game-screen .game-grid { margin-top: auto; }
@@ -835,6 +864,38 @@ body:has(#profile.active, #myDefs.active) { overflow: visible; height: auto; min
     color: var(--ink);
 }
 
+/* Detail slova v sheetu: štítky s informacemi, nejlepší význam, kandidáti */
+.defs-info { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: -4px 0 16px; }
+.info-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted-text);
+    background: var(--chip-bg);
+}
+.defs-alts { flex-basis: 100%; margin: 4px 0 0; text-align: center; font-size: 14px; color: var(--muted-text); }
+.def-item--best { border-color: var(--orange); }
+.def-best-label { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 14px; color: var(--orange); }
+.def-group { list-style: none; margin-top: 8px; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 15px; color: var(--muted-text); }
+.def-actions { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.def-icon-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    background: var(--card) center / 20px no-repeat;
+    color: var(--muted-text);
+    font-size: 16px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.def-edit::before { content: '✎'; }
+.def-flag::before { content: '⚑'; }
+.def-flag.confirm { width: auto; padding: 0 12px; border-radius: 999px; color: var(--red); font-weight: 800; font-size: 13px; }
+.def-flag.confirm::before { content: none; }
+
 /* Moje významy: oblak štítků na profilu, stránkování na vlastní obrazovce */
 .def-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
 .def-tag {
@@ -1048,15 +1109,26 @@ body:has(#profile.active, #myDefs.active) { overflow: visible; height: auto; min
 .wd-next.paused > span::before {
     content: '';
     display: inline-block;
-    width: 11px;
+    width: 3.5px;                 /* druhý proužek je stín o 6 px vedle: mezera 2,5 px */
     height: 13px;
-    margin-right: 9px;
+    margin-right: 15px;
     vertical-align: -1px;
-    border: solid currentColor;
-    border-width: 0 3.5px;
+    border-radius: 1.5px;
+    background: currentColor;
+    box-shadow: 6px 0 0 currentColor;
 }
-/* V mezihře text významu neoznačovat — podržení prstu znamená pauzu. */
-.word-done .wd-text { -webkit-user-select: none; user-select: none; }
+/* V mezihře text významu neoznačovat — podržení prstu znamená pauzu. Karta
+   ukáže nejvýš 3 řádky, celý význam je v detailu slova (klepnutím na kartu). */
+.word-done .wd-text {
+    -webkit-user-select: none;
+    user-select: none;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+}
+.word-done .wd-card { cursor: pointer; }
 .wd-more { margin-top: -4px; }
 /* Výzva k doplnění významu, když slovo žádný nemá. */
 .wd-add {

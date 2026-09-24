@@ -275,6 +275,20 @@
 /* ---- Hra: rozvržení lekce ---- */
 .game-screen { gap: 20px; padding-top: calc(14px + env(safe-area-inset-top)); }
 
+/* Lišta času nahoře: jako lišta lekce v Duolingu, se světlým proužkem. */
+#game { --time-mid: var(--gold); }
+.time-bar { height: 10px; background: var(--ghost); }
+.time-bar-fill { position: relative; }
+.time-bar-fill::after {
+    content: '';
+    position: absolute;
+    left: 5px; top: 2px;
+    width: calc(100% - 10px);     /* na úplně krátké výplni (poslední vteřiny) zmizí */
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .35);
+}
+
 /* Postup dne = segmentová lišta nahoře, jako lekce v Duolingu. */
 #game .game-grid {
     grid-template-columns: repeat(20, 1fr);
@@ -762,7 +776,25 @@
 .wd-panel { transition: scale .18s ease; }
 .word-done.holding .wd-panel { scale: .985; }
 .word-done.missed .wd-next { background: var(--red); box-shadow: 0 4px 0 var(--red-lip); }
-.wd-more { margin-top: -6px; }
+.wd-more { margin-top: -6px; color: var(--ok-ink); }
+.word-done.missed .wd-more { color: var(--bad-ink); }
+/* Karta s významem v odstínu panelu (zelená / červená), ne obecná šedomodrá
+   karta — jinak na panelu působí jako cizí prvek. Jde otevřít: stisk o ret. */
+.word-done .wd-card {
+    background: color-mix(in srgb, var(--card) 55%, var(--ok-bg));
+    border-color: var(--ok-line);
+    box-shadow: 0 4px 0 var(--ok-line);
+    transition: translate .08s ease, box-shadow .08s ease;
+}
+.word-done.missed .wd-card {
+    background: color-mix(in srgb, var(--card) 55%, var(--bad-bg));
+    border-color: var(--bad-line);
+    box-shadow: 0 4px 0 var(--bad-line);
+}
+.word-done .wd-card:active { translate: 0 4px; box-shadow: 0 0 0 transparent; }
+.word-done .wd-card .wd-vote { background: transparent; border-color: var(--ok-line); box-shadow: 0 3px 0 var(--ok-line); }
+.word-done.missed .wd-card .wd-vote { border-color: var(--bad-line); box-shadow: 0 3px 0 var(--bad-line); }
+.word-done .wd-card .wd-vote.voted { background: var(--ok-bg); color: var(--ok-ink); }
 /* Výzva k doplnění významu: zlatavá karta s retem (ladí s tužkou i se
    zeleným/červeným panelem), tužka vlevo. Že jde klepnout, říká ret a tužka. */
 .wd-add {
@@ -821,6 +853,26 @@
 .def-item.mine { border-color: var(--blue-soft); box-shadow: 0 4px 0 var(--blue-soft); }
 .def-word { font-weight: 700; font-size: 17px; }
 .def-report { color: var(--blue-ink); font-weight: 700; opacity: 1; font-size: 13px; }
+/* Detail slova: zlatý nejlepší význam s korunou, ostatní jako kandidáti */
+.info-chip { font-family: var(--display); font-weight: 600; font-size: 14px; background: var(--card); border: 2px solid var(--line); }
+.info-chip--level { display: inline-flex; align-items: center; gap: 5px; }
+.info-chip--level::before { content: ''; width: 16px; height: 16px; background: center / contain no-repeat; }
+.info-chip--lehka::before   { background-image: url(kostky/lehka.svg); }
+.info-chip--stredni::before { background-image: url(kostky/stredni.svg); }
+.info-chip--tezka::before   { background-image: url(kostky/tezka.svg); }
+.defs-alts { font-weight: 600; }
+.def-item--best { background: var(--gold-bg); border-color: var(--gold); box-shadow: 0 4px 0 var(--gold-lip); }
+.def-best-label { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--gold-ink); }
+.def-best-label::before { content: ''; width: 22px; height: 22px; background: url(kostky/koruna.svg) center / contain no-repeat; }
+.def-item--best .wd-text { font-size: 17px; }
+.def-group { font-family: var(--display); font-weight: 700; font-size: 16px; }
+.defs-list .wd-vote { padding: 6px 13px; font-size: 15px; }
+.def-icon-btn { box-shadow: 0 3px 0 var(--lip); transition: translate .08s ease, box-shadow .08s ease; }
+.def-icon-btn:active { translate: 0 3px; box-shadow: 0 0 0 var(--lip); }
+.def-icon-btn::before { content: none; }
+.def-edit { background-image: url(kostky/tuzka.svg); }
+.def-flag { background-image: url(kostky/vlajka.svg); }
+.def-flag.confirm { background-image: none; font-family: var(--display); font-weight: 700; color: var(--bad-ink); background-color: var(--bad-bg); border-color: var(--bad-line); box-shadow: 0 3px 0 var(--bad-line); }
 
 /* ---- Ikony místo emoji ----
    game.js obalí emoji v textu do .emoji[data-emoji]. Znak zůstane v DOM
