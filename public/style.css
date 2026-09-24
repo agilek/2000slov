@@ -465,7 +465,7 @@ body:has(#result.active, #profile.active, #myDefs.active, #achievements.active, 
     height: 44px;
 }
 .icon-btn-circle--bare:active { transform: scale(.92); }
-.screen-bar-end { margin-left: auto; }   /* akce obrazovky vpravo nahoře */
+.screen-bar-end { grid-column: 3; justify-self: end; }   /* akce obrazovky vpravo nahoře */
 
 /* Profil se scrolluje — .screen je jinak zamčená na 100dvh bez scrollu. */
 html:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.active, #profileEdit.active) { overflow-y: auto; height: auto; min-height: 100dvh; }   /* viz #result výš */
@@ -492,10 +492,14 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
     top: max(10px, env(safe-area-inset-top));
     left: 16px;
     right: 16px;
-    display: flex;
+    /* zpět vlevo, nadpis uprostřed obrazovky, akce vpravo */
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 6px;
 }
+.screen-title { grid-column: 2; text-align: center; }
+.screen-bar > :first-child { justify-self: start; }
 .screen-title {
     font-family: 'Baloo 2', sans-serif;
     font-weight: 800;

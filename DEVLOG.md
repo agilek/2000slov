@@ -2,6 +2,15 @@
 
 ## 2026-09-24
 
+### Nadpisy obrazovek se zpětným tlačítkem uprostřed
+Profil, Moje významy, Úspěchy, Upravit profil a Veřejný profil mají nadpis
+uprostřed obrazovky, ne hned vedle šipky zpět. `.screen-bar` je mřížka
+`1fr auto 1fr`: zpět vlevo, nadpis ve středním sloupci, akce (`.screen-bar-end`)
+vpravo. Postranní sloupce jsou stejně široké, takže nadpis sedí na středu
+i bez akce vpravo (ověřeno ve WebKitu, střed nadpisu = polovina šířky).
+
+→ *No new memory entries.*
+
 ### „Sbírka slov“ → „Denní výzva“: cílem je nasbírat 365 dní
 Přehled dní se jmenuje Denní výzva. Tlačítko v profilu ukazuje „Odehráno
 N dní“, sheet má nahoře „N z 365 dní“ s pruhem a větu „Co propásneš, vrátí
