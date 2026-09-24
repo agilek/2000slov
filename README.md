@@ -80,8 +80,9 @@ neporušitelné vlastnosti slovníku (počty, podmnožina, frekvenční pásma),
 |---|---|
 | `wrangler.toml` | konfigurace Workeru: statika z `public/`, `/api/*` do workeru, D1, cron |
 | `public/index.html` | struktura aplikace (obrazovky, modaly) |
-| `public/style.css` | základní rozvržení a styly (Baloo 2 + Nunito) |
-| `public/designs/kostky.css` | vzhled „Kostky“ nad `style.css`: klávesy s retem, Fredoka, vlastní ikony z `designs/kostky/` místo emoji |
+| `public/style.css` | celý vzhled „Kostky“: klávesy s retem, písma Slovka One + Nunito (obě v `public/fonts/`), vlastní ikony z `designs/kostky/` místo emoji |
+| `public/squircle.js` | squircle rohy v Safari, které `corner-shape` ještě neumí |
+| `tools/stamp.mjs` | otisky `?v=` v `index.html` a `CACHE`/`SHELL` v `sw.js` — spustit po každé změně statiky |
 | `public/game.js` | herní logika, časovač, stav v localStorage, sdílení |
 | `public/words.js` | 7300 podstatných jmen denní výzvy (`PACKED`: na každý den zamíchaná pořadí jeho 20 slov v `PRACTICE_WORDS`, rozbaluje `unpackDay`) + širší pool 15 000 pro trénink (`PRACTICE_WORDS`, řazeno podle frekvence) + mapa uznávaných přesmyček |
 | `tools/` | generátor slovníku (`build_words.py`) + prověřený pool — **neservíruje se** |

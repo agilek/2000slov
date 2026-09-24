@@ -15,7 +15,7 @@ základ — menší x-výška i verzálky), ale erozí obrysu Fredoka One; postu
 a změřené konstanty jsou v hlavičce `thin_font.py`. Čeština se doplňuje až po
 zeslabení, takže háčky a apostrofy sedí na glyfy dané váhy. CSS pásma
 `font-weight` (Regular 400–900, Light 250–399, ExtraLight 100–249) jsou
-v `designs/kostky.css` — nic, co appka používá, nesmí spadnout pod 400.
+ve `public/style.css` — nic, co appka používá, nesmí spadnout pod 400.
 
 ## `build_words.py` — generátor `words.js`
 
@@ -69,6 +69,6 @@ python -m venv /tmp/fontenv && /tmp/fontenv/bin/pip install fonttools brotli
 /tmp/fontenv/bin/python tools/cz_font.py FredokaOne-Regular.otf SlovkaOne-Regular.otf public/fonts/SlovkaOne-Regular.woff2
 ```
 
-Hra používá `public/fonts/SlovkaOne-Regular.woff2` na nadpisy (`designs/kostky.css`),
+Hra používá `public/fonts/SlovkaOne-Regular.woff2` na nadpisy (`public/style.css`),
 licence je vedle v `public/fonts/OFL.txt`.
 

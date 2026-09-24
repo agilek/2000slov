@@ -5,15 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kostky — style guide (dev)</title>
 <meta name="robots" content="noindex">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="designs/kostky.css">
 <style>
     /* Chrome téhle stránky — vždy s prefixem sg-, ať se to nemíchá s hrou. */
-    /* style.css/kostky.css dělají z html,body pevnou 100dvh krabici s overflow:hidden
+    /* style.css dělá z html,body pevnou 100dvh krabici s overflow:hidden
        a barvou --bg — na téhle stránce to přebijeme, ať se dá normálně scrollovat. */
     html, body.sg { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; background: #f4f1ec !important; }
     body.sg { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; font-family: system-ui, sans-serif; color: #222 !important; }
@@ -40,7 +36,7 @@
 <p class="sg-note">Popisek pod každou ukázkou je dopočítaný z <code>getComputedStyle</code> — vždy odpovídá aktuálnímu CSS, nic tu není ručně přepsané. Barvy dolaď v system dark/light modu prohlížeče, obě témata sdílí stejné CSS proměnné.</p>
 
 <div class="sg-h1">Rohy: squircle</div>
-<p class="sg-note">Globální <code>* { corner-shape: squircle; }</code> v kostky.css (2026-09-24) — hladší, „iOSovější" křivka rohu než obyčejný kruhový oblouk border-radius, na všem, co má radius. <strong>Chrome/Edge</strong> umí nativně (ověřeno, verze 146). <strong>Safari 26/WebKit</strong> nativní podporu ještě nemá (ověřeno přes Playwright) — tam to dorovnává <code>squircle.js</code>: v prohlížečích bez nativní podpory přepočítá pro každý prvek přesnou superellipsu (podle jeho skutečné šířky/výšky/rádiusu, ne natažená univerzální maska) a nasadí ji jako <code>clip-path: path()</code>, i na obsah přidaný později do stránky (MutationObserver jen na přidané a změněné prvky + ResizeObserver). Vizuálně ověřeno v reálném WebKitu.</p>
+<p class="sg-note">Globální <code>* { corner-shape: squircle; }</code> ve style.css — hladší, „iOSovější" křivka rohu než obyčejný kruhový oblouk border-radius, na všem, co má radius. <strong>Chrome/Edge</strong> umí nativně (ověřeno, verze 146). <strong>Safari 26/WebKit</strong> nativní podporu ještě nemá (ověřeno přes Playwright) — tam to dorovnává <code>squircle.js</code>: v prohlížečích bez nativní podpory přepočítá pro každý prvek přesnou superellipsu (podle jeho skutečné šířky/výšky/rádiusu, ne natažená univerzální maska) a nasadí ji jako <code>clip-path: path()</code>, i na obsah přidaný později do stránky (MutationObserver jen na přidané a změněné prvky + ResizeObserver). Vizuálně ověřeno v reálném WebKitu.</p>
 <div class="sg-item" style="max-width:100%;">
     <div class="sg-demo" style="gap:24px;">
         <div style="text-align:center;">
@@ -57,27 +53,20 @@
 <div class="sg-h1">Písma</div>
 <div class="sg-item" style="max-width:100%;">
     <div class="sg-specimen">
-        <div class="sg-specimen-label">Slovka One (Fredoka One + české znaky, lokální woff2) — 3 řezy: Regular (400–900, jediný soubor), Light (300, eroze obrysu), ExtraLight (200, eroze obrysu) — 2026-09-24, tools/thin_font.py</div>
+        <div class="sg-specimen-label">Slovka One (Fredoka One + české znaky, lokální woff2) — 3 řezy: Regular (400–900, jediný soubor), Light (300, eroze obrysu), ExtraLight (200, eroze obrysu; appka ho zatím nepoužívá, proto bez preloadu) — tools/thin_font.py</div>
         <div class="sg-specimen-text" style="font-family: 'Slovka One'; font-weight: 400;">Příliš žluťoučký kůň 400</div>
         <div class="sg-specimen-text" style="font-family: 'Slovka One'; font-weight: 300;">Příliš žluťoučký kůň 300 (Light)</div>
         <div class="sg-specimen-text" style="font-family: 'Slovka One'; font-weight: 200;">Příliš žluťoučký kůň 200 (ExtraLight)</div>
     </div>
     <div class="sg-specimen">
-        <div class="sg-specimen-label">Baloo 2 (Google Fonts) — 500 / 600 / 700 / 800, starší vrstva style.css</div>
-        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 500;">Příliš žluťoučký kůň 500</div>
-        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 600;">Příliš žluťoučký kůň 600</div>
-        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 700;">Příliš žluťoučký kůň 700</div>
-        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 800;">Příliš žluťoučký kůň 800</div>
-    </div>
-    <div class="sg-specimen">
-        <div class="sg-specimen-label">Nunito (Google Fonts) — 400 / 600 / 700 / 800, běžný text</div>
+        <div class="sg-specimen-label">Nunito (vlastní woff2 v public/fonts/, variabilní) — 400 / 600 / 700 / 800, běžný text</div>
         <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 400;">Příliš žluťoučký kůň 400</div>
         <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 600;">Příliš žluťoučký kůň 600</div>
         <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 700;">Příliš žluťoučký kůň 700</div>
         <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 800;">Příliš žluťoučký kůň 800</div>
     </div>
 </div>
-<p class="sg-note">Pravidlo z kostky.css: <code>var(--display)</code> = <code>'Slovka One', 'Nunito', system-ui, sans-serif</code> na všechno, co je „předmět" nebo nadpis (tlačítka, dlaždice, nadpisy, čísla statistik…). Zbytek dědí <code>'Nunito'</code> z body, nebo padá do <code>'Baloo 2'</code> tam, kde ho kostky.css nepřebil.</p>
+<p class="sg-note">Pravidlo ze style.css: <code>var(--display)</code> = <code>'Slovka One', 'Nunito', system-ui, sans-serif</code> na všechno, co je „předmět" nebo nadpis (tlačítka, dlaždice, nadpisy, čísla statistik…). Zbytek má <code>'Nunito'</code> z univerzálního <code>*</code>.</p>
 
 <div class="sg-h1">Tlačítka</div>
 <div class="sg-grid">

@@ -1,7 +1,7 @@
 // Veřejný profil hráče: statistiky, rok denních výzev a jeho významy slov.
 // Renderuje se na serveru kvůli náhledu při sdílení (og:*) — SPA route by
 // poslala prázdný index.html. Markup používá třídy a styly samotné hry
-// (style.css + kostky.css), takže vypadá stejně jako aplikace. Hra si
+// (style.css), takže vypadá stejně jako aplikace. Hra si
 // ?cast=1 bere jen obsah a ukáže ho jako svou obrazovku — jeden vzhled, dvě cesty.
 
 import Avatar from '../../public/avatar.js';
@@ -269,10 +269,8 @@ function page(title, body, meta) {
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#131f24" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="preload" href="/fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/designs/kostky.css">
+<link rel="stylesheet" href="/style.css">
 </head><body><div class="screen active public-page" id="publicProfile">${body}
 <a class="btn btn-play" href="/">Zahrát si taky</a></div></body></html>`;
 }

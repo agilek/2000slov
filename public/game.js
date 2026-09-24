@@ -2371,7 +2371,7 @@ function shuffleLetters() {
 function placeGameGrid(screen) {
     const grid = $('gameGrid');
     if (screen === 'result') {
-        $('result').insertBefore(grid, $('winBanner'));
+        $('result').prepend(grid);
         grid.classList.add('result-grid');
     } else {
         $('game').insertBefore(grid, $('progress'));
@@ -2652,7 +2652,6 @@ function showResult(instant) {
 
     showScreen('result');
 
-    $('winBanner').innerHTML = '';
     $('survivedCount').textContent = perfect
         ? 'Máš všech 20 slov!'
         : `Máš ${survived} z 20 slov!`;
@@ -2702,7 +2701,6 @@ function animateResultReveal(perfect, instant) {
     revealTimeouts.forEach(clearTimeout);
     revealTimeouts = [];
     const items = [...$$('#result .reveal-item')].filter(el => {
-        if (el.id === 'winBanner') return false;
         const empty = !el.textContent.trim() && !el.querySelector('button');
         return !empty && el.style.display !== 'none';
     });

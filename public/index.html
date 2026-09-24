@@ -17,16 +17,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="20 slov">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
+<link rel="preload" href="fonts/Nunito-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Nunito-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<!-- Light: titulek po slově, „Top X %" a Slovo/obtížnost nad časovačem; bez preloadu by se první vykreslení na chvíli ukázalo Nunitem -->
+<!-- Light: „Top X %", nadpisy sheetů, podtitulek po slově; bez preloadu by se první vykreslení na chvíli ukázalo Nunitem -->
 <link rel="preload" href="fonts/SlovkaOne-Light.woff2" as="font" type="font/woff2" crossorigin>
-<!-- ExtraLight: .wd-title, na panelu po každém slově -->
-<link rel="preload" href="fonts/SlovkaOne-ExtraLight.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=ea8e5ed2">
-<link rel="stylesheet" href="designs/kostky.css?v=e95a1f33">
+<link rel="stylesheet" href="style.css?v=6acbd9a2">
 </head>
 <body>
 
@@ -187,7 +183,6 @@
 
     <!-- Result -->
     <div class="screen" id="result">
-        <div id="winBanner" class="win-banner reveal-item"></div>
         <h2 id="survivedCount" class="reveal-item"></h2>
         <p id="percentile" class="reveal-item"></p>
         <p id="progressLine" class="reveal-item"></p>
@@ -365,10 +360,10 @@
         </div>
     </div>
 
-<script src="squircle.js?v=ea1a7af3"></script>
+<script src="squircle.js?v=5e0b76b0"></script>
 <script src="words.js?v=66647f38"></script>
 <script src="avatar.js?v=5bda5401"></script>
 <script src="achievements.js?v=04a11446"></script>
-<script src="game.js?v=105a84b1"></script>
+<script src="game.js?v=702936ce"></script>
 </body>
 </html>

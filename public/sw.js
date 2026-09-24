@@ -11,26 +11,26 @@
 //
 // CACHE a SHELL skládá `node tools/stamp.mjs` z index.html — ručně je neupravuj.
 
-const CACHE = 'slov2000-ad6df2ed';
+const CACHE = 'slov2000-adf5b450';
 const SHELL = [
     '/',
     '/icons/icon.svg',
     '/icons/favicon-32.png',
     '/icons/apple-touch-icon.png',
     '/manifest.webmanifest',
+    '/fonts/Nunito-latin.woff2',
+    '/fonts/Nunito-latin-ext.woff2',
     '/fonts/SlovkaOne-Regular.woff2',
     '/fonts/SlovkaOne-Light.woff2',
-    '/fonts/SlovkaOne-ExtraLight.woff2',
-    '/style.css?v=ea8e5ed2',
-    '/designs/kostky.css?v=e95a1f33',
+    '/style.css?v=6acbd9a2',
     '/designs/kostky/profil.svg',
     '/designs/kostky/cinka.svg',
     '/designs/kostky/zpet.svg',
-    '/squircle.js?v=ea1a7af3',
+    '/squircle.js?v=5e0b76b0',
     '/words.js?v=66647f38',
     '/avatar.js?v=5bda5401',
     '/achievements.js?v=04a11446',
-    '/game.js?v=105a84b1',
+    '/game.js?v=702936ce',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
 ];
@@ -77,11 +77,9 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
         caches.match(req).then(hit => {
-            // Uloží se jen povedené odpovědi. Google Fonts chodí s CORS
-            // hlavičkami (type 'cors'), takže se uložit dají — bez toho by
-            // hra offline naskočila v systémovém fontu místo vlastního.
+            // Uloží se jen povedené odpovědi z vlastní domény.
             const cerstve = fetch(req).then(res => {
-                if (res.ok && (res.type === 'basic' || res.type === 'cors')) {
+                if (res.ok && res.type === 'basic') {
                     const copy = res.clone();
                     caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
                 }

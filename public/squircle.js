@@ -1,4 +1,4 @@
-// Fallback pro `corner-shape: squircle` (kostky.css) v prohlížečích, co ji
+// Fallback pro `corner-shape: squircle` (style.css) v prohlížečích, co ji
 // ještě neumí (Safari/WebKit, k 2026-09 ověřeno na verzi 26). Tam, kde
 // nativní CSS podporu má (Chrome/Edge), tenhle skript rovnou skončí — ať se
 // práce nedělá dvakrát.
