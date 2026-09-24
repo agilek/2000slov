@@ -3,7 +3,10 @@ with Reserved Font Name Fredoka.
 
 Slovka One is a Modified Version of Fredoka One: Czech glyphs
 (ČĎĚŇŘŤŮ čďěňřťů) were added in 2026 for the game 20 slov
-(tools/cz_font.py). It does not use the Reserved Font Name.
+(tools/cz_font.py). The Light and ExtraLight weights
+(SlovkaOne-Light.woff2, SlovkaOne-ExtraLight.woff2) were derived in 2026
+from the same Fredoka One Regular by outline erosion (tools/thin_font.py);
+no other font was used. It does not use the Reserved Font Name.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

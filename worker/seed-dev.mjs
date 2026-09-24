@@ -29,9 +29,12 @@ vm.runInContext(readFileSync(join(root, 'public/words.js'), 'utf8') + '\n;o = PR
 const LETTER = /[a-záčďéěíňóřšťúůýž]/;
 const easy = ctx.o.slice(0, 3000).filter(w => [...w].filter(c => LETTER.test(c)).length <= 5);
 
+// Avatar = kód z public/avatar.js; Ondra bez něj, ať je vidět i iniciála.
+const AVATARS = { Tester: '23-7-2-15', Terka: '29-5-2-0', Kuba: '3-2-5-1', Bára: '8-6-11-9', Míša: '9-1-3-10' };
 const USERS = ['Tester', 'Terka', 'Kuba', 'Bára', 'Ondra', 'Míša'].map(handle => ({
     id: `dev-user-${handle.toLowerCase()}`,
     handle,
+    avatar: AVATARS[handle] || null,
     email: `${handle.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}@20slov.test`,
 }));
 const uid = (h) => `dev-user-${h.toLowerCase()}`;
@@ -127,10 +130,11 @@ const sql = [
     "DELETE FROM votes WHERE definition_id LIKE 'dev-%' OR client_id LIKE 'dev-%';",
     "DELETE FROM definitions WHERE id LIKE 'dev-%' OR user_id LIKE 'dev-%';",
     "DELETE FROM profile_days WHERE user_id LIKE 'dev-%';",
+    "DELETE FROM training_days WHERE user_id LIKE 'dev-%';",
     "DELETE FROM users WHERE id LIKE 'dev-%';",
 ];
 for (const u of USERS) {
-    sql.push(`INSERT INTO users (id, email_hash, handle, handle_lc, client_id, created_at) VALUES (${q(u.id)}, ${q(emailHash(u.email))}, ${q(u.handle)}, ${q(u.handle.toLowerCase())}, NULL, ${now});`);
+    sql.push(`INSERT INTO users (id, email_hash, handle, handle_lc, client_id, created_at, avatar) VALUES (${q(u.id)}, ${q(emailHash(u.email))}, ${q(u.handle)}, ${q(u.handle.toLowerCase())}, NULL, ${now}, ${q(u.avatar)});`);
 }
 let voteCount = 0;
 defs.forEach((d, i) => {
@@ -149,6 +153,8 @@ for (let i = 1; i <= 12; i++) {
     const playedOn = new Date(now - i * 86400000).toISOString().slice(0, 10);
     const dayIdx = ((Math.floor((Date.parse(playedOn) - EPOCH) / 86400000) % 365) + 365) % 365;
     sql.push(`INSERT INTO profile_days (user_id, played_on, day_idx, score, created_at) VALUES ('dev-user-tester', ${q(playedOn)}, ${dayIdx}, ${[20, 18, 15, 20, 19, 12][i % 6]}, ${now});`);
+    // trénink jen občas a jednou přes denní strop bodů
+    if (i % 3 === 0) sql.push(`INSERT INTO training_days (user_id, played_on, words) VALUES ('dev-user-tester', ${q(playedOn)}, ${[4, 25, 8, 12][i / 3 - 1]});`);
 }
 
 const file = join(tmpdir(), 'slov2000-seed-dev.sql');

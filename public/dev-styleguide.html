@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kostky — style guide (dev)</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
+<link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="designs/kostky.css">
+<style>
+    /* Chrome téhle stránky — vždy s prefixem sg-, ať se to nemíchá s hrou. */
+    /* style.css/kostky.css dělají z html,body pevnou 100dvh krabici s overflow:hidden
+       a barvou --bg — na téhle stránce to přebijeme, ať se dá normálně scrollovat. */
+    html, body.sg { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; background: #f4f1ec !important; }
+    body.sg { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; font-family: system-ui, sans-serif; color: #222 !important; }
+    .sg-h1 { font-family: system-ui, sans-serif; font-size: 22px; font-weight: 800; margin: 48px 0 4px; border-bottom: 2px solid #ddd; padding-bottom: 8px; }
+    .sg-h1:first-of-type { margin-top: 0; }
+    .sg-note { font-size: 13px; color: #777; margin: 0 0 16px; }
+    .sg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .sg-item { background: #fff; border: 1px solid #e2ddd3; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .sg-label { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 12px; color: #a35b00; font-weight: 700; }
+    .sg-demo { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 8px; min-height: 40px; }
+    .sg-spec { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 11px; color: #666; background: #f4f1ec; border-radius: 5px; padding: 3px 7px; align-self: flex-start; }
+    .sg-specimen { padding: 10px 0; border-bottom: 1px dashed #e2ddd3; }
+    .sg-specimen:last-child { border-bottom: none; }
+    .sg-specimen-label { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 11px; color: #a35b00; margin-bottom: 4px; }
+    .sg-specimen-text { font-size: 28px; }
+    /* aby demo prvky nezdivočely přes celou šířku karty */
+    .sg-item .screen { position: static; display: block; min-height: 0; height: auto; padding: 0; }
+    .sg-item .modal-header { position: static; }
+</style>
+</head>
+<body class="sg">
+
+<h1 style="font-family: system-ui, sans-serif;">Kostky — přehled prvků a písem <span style="font-size:14px; color:#999; font-weight:400;">(dev only, neodkazuje se sem z appky)</span></h1>
+<p class="sg-note">Popisek pod každou ukázkou je dopočítaný z <code>getComputedStyle</code> — vždy odpovídá aktuálnímu CSS, nic tu není ručně přepsané. Barvy dolaď v system dark/light modu prohlížeče, obě témata sdílí stejné CSS proměnné.</p>
+
+<div class="sg-h1">Rohy: squircle</div>
+<p class="sg-note">Globální <code>* { corner-shape: squircle; }</code> v kostky.css (2026-09-24) — hladší, „iOSovější" křivka rohu než obyčejný kruhový oblouk border-radius, na všem, co má radius. <strong>Chrome/Edge</strong> umí nativně (ověřeno, verze 146). <strong>Safari 26/WebKit</strong> nativní podporu ještě nemá (ověřeno přes Playwright) — tam to dorovnává <code>squircle.js</code>: v prohlížečích bez nativní podpory přepočítá pro každý prvek přesnou superellipsu (podle jeho skutečné šířky/výšky/rádiusu, ne natažená univerzální maska) a nasadí ji jako SVG masku, i na obsah přidaný později do stránky (MutationObserver + ResizeObserver). Vizuálně ověřeno v reálném WebKitu.</p>
+<div class="sg-item" style="max-width:100%;">
+    <div class="sg-demo" style="gap:24px;">
+        <div style="text-align:center;">
+            <div style="width:96px; height:96px; background:var(--blue); border-radius:24px; corner-shape:squircle;"></div>
+            <div class="sg-specimen-label" style="margin-top:8px;">corner-shape: squircle</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="width:96px; height:96px; background:var(--muted); border-radius:24px; corner-shape:round;"></div>
+            <div class="sg-specimen-label" style="margin-top:8px;">corner-shape: round (dřívější/fallback vzhled)</div>
+        </div>
+    </div>
+</div>
+
+<div class="sg-h1">Písma</div>
+<div class="sg-item" style="max-width:100%;">
+    <div class="sg-specimen">
+        <div class="sg-specimen-label">Slovka One (Fredoka One + české znaky, lokální woff2) — 3 řezy: Regular (400–900, jediný soubor), Light (300, eroze obrysu), ExtraLight (200, eroze obrysu) — 2026-09-24, tools/thin_font.py</div>
+        <div class="sg-specimen-text" style="font-family: 'Slovka One'; font-weight: 400;">Příliš žluťoučký kůň 400</div>
+        <div class="sg-specimen-text" style="font-family: 'Slovka One'; font-weight: 300;">Příliš žluťoučký kůň 300 (Light)</div>
+        <div class="sg-specimen-text" style="font-family: 'Slovka One'; font-weight: 200;">Příliš žluťoučký kůň 200 (ExtraLight)</div>
+    </div>
+    <div class="sg-specimen">
+        <div class="sg-specimen-label">Baloo 2 (Google Fonts) — 500 / 600 / 700 / 800, starší vrstva style.css</div>
+        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 500;">Příliš žluťoučký kůň 500</div>
+        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 600;">Příliš žluťoučký kůň 600</div>
+        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 700;">Příliš žluťoučký kůň 700</div>
+        <div class="sg-specimen-text" style="font-family: 'Baloo 2'; font-weight: 800;">Příliš žluťoučký kůň 800</div>
+    </div>
+    <div class="sg-specimen">
+        <div class="sg-specimen-label">Nunito (Google Fonts) — 400 / 600 / 700 / 800, běžný text</div>
+        <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 400;">Příliš žluťoučký kůň 400</div>
+        <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 600;">Příliš žluťoučký kůň 600</div>
+        <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 700;">Příliš žluťoučký kůň 700</div>
+        <div class="sg-specimen-text" style="font-family: 'Nunito'; font-weight: 800;">Příliš žluťoučký kůň 800</div>
+    </div>
+</div>
+<p class="sg-note">Pravidlo z kostky.css: <code>var(--display)</code> = <code>'Slovka One', 'Nunito', system-ui, sans-serif</code> na všechno, co je „předmět" nebo nadpis (tlačítka, dlaždice, nadpisy, čísla statistik…). Zbytek dědí <code>'Nunito'</code> z body, nebo padá do <code>'Baloo 2'</code> tam, kde ho kostky.css nepřebil.</p>
+
+<div class="sg-h1">Tlačítka</div>
+<div class="sg-grid">
+    <div class="sg-item"><div class="sg-label">.btn.btn-primary</div><div class="sg-demo" data-tag><button class="btn btn-primary">Tlačítko</button></div></div>
+    <div class="sg-item"><div class="sg-label">.btn.btn-play</div><div class="sg-demo" data-tag><button class="btn btn-play">Hrát</button></div></div>
+    <div class="sg-item"><div class="sg-label">.btn.btn-danger</div><div class="sg-demo" data-tag><button class="btn btn-danger">Smazat</button></div></div>
+    <div class="sg-item"><div class="sg-label">.btn.btn-secondary</div><div class="sg-demo" data-tag><button class="btn btn-secondary">Zpět</button></div></div>
+    <div class="sg-item"><div class="sg-label">.btn-tertiary</div><div class="sg-demo" data-tag><button class="btn-tertiary">Ne, díky</button></div></div>
+    <div class="sg-item"><div class="sg-label">.btn.btn-share + .emoji[data-emoji=sdilet] / btn-secondary + zvonek</div><div class="sg-demo" style="flex-direction:column; align-items:stretch; gap:12px;">
+        <button class="btn btn-share" data-tag>Pochlubit se <span class="emoji" data-emoji="sdilet" aria-hidden="true"></span></button>
+        <button class="btn btn-secondary">Upozornit na další výzvu <span class="emoji" data-emoji="zvonek">🔔</span></button>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.icon-btn (horní lišta: kostky/profil.svg, cinka.svg)</div><div class="sg-demo" style="gap:24px;">
+        <button class="icon-btn" aria-label="Profil" data-tag>
+            <span class="icon-btn-circle"><img src="designs/kostky/profil.svg" alt=""></span>
+            <span class="icon-btn-label" data-tag>Profil</span>
+        </button>
+        <button class="icon-btn" aria-label="Trénink">
+            <span class="icon-btn-circle"><img src="designs/kostky/cinka.svg" alt=""></span>
+            <span class="icon-btn-label">Trénink</span>
+        </button>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.icon-btn-circle--bare (zpět: kostky/zpet.svg)</div><div class="sg-demo">
+        <button class="icon-btn-circle icon-btn-circle--bare" aria-label="Zpět"><img src="designs/kostky/zpet.svg" alt=""></button>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.close-game-btn</div><div class="sg-demo" data-tag><button class="close-game-btn"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+</div>
+
+<div class="sg-h1">Chipy, štítky, odznaky</div>
+<div class="sg-grid">
+    <div class="sg-item"><div class="sg-label">#percentile — ocenění na výsledku, každých 5 s se zaleskne (bez trofeje se neleskne)</div><div class="sg-demo"><p id="percentile" data-tag>Top 20 % hráčů dneška <span class="emoji" data-emoji="medaile">🏅</span></p></div></div>
+    <div class="sg-item"><div class="sg-label">.points-pill — body za aktivitu pod jménem v profilu (vlastní i veřejný), ikona kostky/hvezda.svg</div><div class="sg-demo" data-tag><div class="points-pill"><span class="emoji" data-emoji="hvezda">⭐</span> 1 240 bodů</div></div></div>
+    <div class="sg-item" style="grid-column: 1 / -1;"><div class="sg-label">.ach-grid + .ach-tile (.ach--common/rare/epic/legend/locked, .ach-tile--new) — úspěchy, markup z achievements.js; plná ukázka v dev-uspechy.html</div><div class="sg-demo" style="display:block;"><div class="ach-grid" id="sgAch"></div></div></div>
+    <script src="avatar.js"></script><script src="achievements.js"></script>
+    <script>{ const st = { dny: 1, serie: 7, trenink: 60, slova: 1000, perfekt: 0 }; const pick = ['prvni-kolo', 'tyden', 'tisicovka', 'stovka', 'posilovna', 'dvacitka', 'nocni-sova', 'cely-slovnik'];
+        document.getElementById('sgAch').innerHTML = pick.map(id => Achievements.LIST.find(a => a.id === id)).map((a, i) => Achievements.tile(a, { ...st, ...(a.id === 'stovka' ? { serie: 100 } : {}) }, { tag: 'span', isNew: i === 1 })).join(''); }</script>
+    <div class="sg-item"><div class="sg-label">.collection-chip</div><div class="sg-demo" data-tag><span class="collection-chip">Den 42</span></div></div>
+    <div class="sg-item"><div class="sg-label">.info-chip.info-chip--level (lehká/střední/těžká)</div><div class="sg-demo">
+        <span class="info-chip info-chip--level info-chip--lehka" data-tag>lehká</span>
+        <span class="info-chip info-chip--level info-chip--stredni" data-tag>střední</span>
+        <span class="info-chip info-chip--level info-chip--tezka" data-tag>těžká</span>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.archive-score (odehráno / nehráno)</div><div class="sg-demo">
+        <span class="archive-score" data-tag>✓ 18 slov</span>
+        <span class="archive-score not-played" data-tag>🔒</span>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.wd-streak / .wd-streak--milestone</div><div class="sg-demo">
+        <span class="wd-streak" data-tag><span class="emoji" data-emoji="plamen">🔥</span> 7</span>
+        <span class="wd-streak wd-streak--milestone" data-tag><span class="emoji" data-emoji="plamen">🔥</span> 10</span>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.kb-toast</div><div class="sg-demo" data-tag><div class="kb-toast" style="position:static; opacity:1; transform:none;">Uloženo</div></div></div>
+</div>
+
+<div class="sg-h1">Nadpisy a titulky obrazovek</div>
+<div class="sg-grid">
+    <div class="sg-item"><div class="sg-label">.screen h1</div><div class="sg-demo" data-tag><div class="screen"><h1>20 slov</h1></div></div></div>
+    <div class="sg-item"><div class="sg-label">.screen h2</div><div class="sg-demo" data-tag><div class="screen"><h2>Sbírka slov</h2></div></div></div>
+    <div class="sg-item"><div class="sg-label">.screen-title</div><div class="sg-demo" data-tag><span class="screen-title">Profil</span></div></div>
+    <div class="sg-item"><div class="sg-label">.modal-header h2</div><div class="sg-demo" data-tag><div class="modal-header"><h2>Sbírka slov</h2></div></div></div>
+    <div class="sg-item"><div class="sg-label">.pause-overlay h2</div><div class="sg-demo"><div class="pause-overlay" style="position:static; display:block; padding:0; background:none;"><h2 data-tag>Pauza</h2></div></div></div>
+    <div class="sg-item"><div class="sg-label">.profile-name</div><div class="sg-demo" data-tag><span class="profile-name">Jana</span></div></div>
+    <div class="sg-item"><div class="sg-label">.profile-section-title</div><div class="sg-demo" data-tag><div class="profile-section-title">Statistiky</div></div></div>
+</div>
+
+<div class="sg-h1">Herní mřížka, časovač, dlaždice dne</div>
+<div class="sg-grid">
+    <div class="sg-item" style="grid-column: span 2;"><div class="sg-label">skutečné pořadí z updateUI() — .gp-timer (+30 %, vycentrovaný na číslo přes margin-left, potřebuje širší okolní box jako .game-progress) nad menším .gp-headline, bez jednotky „s"</div><div class="sg-demo" style="flex-direction:column; align-items:center; gap:6px; padding:0 78px;">
+        <div class="gp-timer" data-tag><span class="gp-timer-num">18</span></div>
+        <div class="gp-headline" data-tag>Slovo 3/20</div>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.gp-timer-num — čas je vždy padStart(2,'0'), „00"–„09"–„30", ne osamocená číslice</div><div class="sg-demo" style="gap:16px;">
+        <div class="gp-timer" data-tag><span class="gp-timer-num">09</span></div>
+        <div class="gp-timer"><span class="gp-timer-num">30</span></div>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.pg-cell (nevyřešená / solved / missed)</div><div class="sg-demo game-grid" style="display:flex; gap:6px;">
+        <div class="pg-cell" data-tag></div>
+        <div class="pg-cell solved" data-tag></div>
+        <div class="pg-cell missed" data-tag></div>
+    </div></div>
+</div>
+
+<div class="sg-h1">Sloty odpovědi a písmenka</div>
+<div class="sg-grid">
+    <div class="sg-item"><div class="sg-label">.answer-slot (prázdný / filled / locked / missed)</div><div class="sg-demo" style="gap:6px;">
+        <div class="answer-slot" data-tag style="width:44px;height:52px;font-size:24px;"></div>
+        <div class="answer-slot filled" data-tag style="width:44px;height:52px;font-size:24px;">K</div>
+        <div class="answer-slot locked" data-tag style="width:44px;height:52px;font-size:24px;">O</div>
+        <div class="answer-slot missed" data-tag style="width:44px;height:52px;font-size:24px;">S</div>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">.letter (zásobník písmen)</div><div class="sg-demo" style="gap:6px;">
+        <div class="letter" data-tag style="width:52px;height:52px;font-size:26px;">T</div>
+        <div class="letter selected" data-tag style="width:52px;height:52px;font-size:26px;">Y</div>
+    </div></div>
+</div>
+
+<div class="sg-h1">Profil a statistiky</div>
+<div class="sg-grid">
+    <div class="sg-item"><div class="sg-label">.profile-avatar</div><div class="sg-demo" data-tag><div class="profile-avatar">J</div></div></div>
+    <div class="sg-item"><div class="sg-label">.avatar-btn + .edit-badge (iniciála / avatar.js)</div><div class="sg-demo" style="gap:24px;">
+        <button class="avatar-btn" aria-label="Změnit avatara"><div class="profile-avatar" aria-hidden="true">J</div><span class="edit-badge" aria-hidden="true"></span></button>
+        <button class="avatar-btn" aria-label="Změnit avatara"><div class="profile-avatar sg-avatar" aria-hidden="true"></div><span class="edit-badge" aria-hidden="true"></span></button>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">Upravit profil — .avatar-stage / .profile-edit-form / .swipe-btn (✗ jiný, ✓ uložit)</div><div class="sg-demo" style="flex-direction:column; align-items:stretch; gap:16px;">
+        <div class="avatar-stage sg-avatar-edit"></div>
+        <form class="feedback-form profile-edit-form" onsubmit="event.preventDefault()">
+            <label for="sgNick">Přezdívka</label>
+            <input id="sgNick" type="text" value="Jana" />
+            <p class="feedback-error" data-tag>Tuhle přezdívku už někdo má.</p>
+            <div class="swipe-actions">
+                <button type="button" class="swipe-btn swipe-btn--no" onclick="sgRollAvatars()" aria-label="Ukázat jiného avatara"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg></button>
+                <button type="submit" class="swipe-btn swipe-btn--yes" aria-label="Uložit profil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10" /></svg></button>
+            </div>
+        </form>
+    </div></div>
+    <div class="sg-item"><div class="sg-label">Kontrola: všechny tvary i s retem uvnitř plátna 0–100</div><div class="sg-demo" style="flex-direction:column; align-items:flex-start;"><p class="sg-note" id="sgAvatarBounds" style="margin:0;"></p></div></div>
+    <div class="sg-item"><div class="sg-label">.avatar-stage — Avatar.random(), klepni = další</div><div class="sg-demo" style="flex-wrap:wrap; gap:8px; cursor:pointer;" id="sgAvatars" onclick="sgRollAvatars()"></div></div>
+    <div class="sg-item"><div class="sg-label">.stat-tile / .stat-value / .stat-label</div><div class="sg-demo" style="flex-direction:column; align-items:stretch;">
+        <div class="stat-tile">
+            <div class="stat-value" data-tag>42</div>
+            <div class="stat-label" data-tag>dní v řadě</div>
+        </div>
+    </div></div>
+</div>
+
+<div class="sg-h1">Panel po slově (wd-*)</div>
+<p class="sg-note">Oba stavy vedle sebe, každý s hlasem odevzdaným i neodevzdaným — palec i iniciála autora jsou teď zlaté na obojím (dřív modré, bily oči na červené kartě). Autor s vybraným avatarem (<code>.wd-avatar--img</code>) má místo kolečka tvar z avatar.js.</p>
+<div class="sg-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+    <div class="sg-item">
+        <div class="sg-label">.word-done.active.solved</div>
+        <div class="word-done active" style="position:static; inset:auto; z-index:auto; background:none; justify-content:flex-start;">
+        <div class="wd-frame" style="max-width:100%;">
+        <div class="wd-panel">
+            <div class="wd-head">
+                <span class="wd-badge" aria-hidden="true"></span>
+                <div class="wd-titles">
+                    <div class="wd-title" data-tag>Správně!</div>
+                    <div class="wd-sub" data-tag>KOSTKA</div>
+                </div>
+            </div>
+            <div class="wd-tiles">
+                <span class="wd-tile" data-tag style="width:36px;height:36px;font-size:18px;">K</span>
+                <span class="wd-tile" style="width:36px;height:36px;font-size:18px;">O</span>
+                <span class="wd-tile" style="width:36px;height:36px;font-size:18px;">S</span>
+            </div>
+            <div class="wd-card">
+                <p class="wd-text" data-tag>Krychlový předmět na hraní.</p>
+                <div class="wd-meta">
+                    <button type="button" class="wd-author"><span class="wd-avatar" data-tag>J</span><span class="wd-name">Jana</span></button>
+                    <button class="wd-vote voted" data-tag data-base="2" onclick="sgToggleVote(this)"><span class="emoji" data-emoji="palec"></span> <span class="sg-vote-n">3</span></button>
+                </div>
+            </div>
+        </div>
+        </div>
+        </div>
+        <div class="sg-demo" style="margin-top:6px;">
+            <span style="font-size:11px; color:#999;">klikni, ať vidíš hlasováno ↔ nehlasováno:</span>
+            <button class="wd-vote" data-tag data-base="3" onclick="sgToggleVote(this)" style="margin-left:auto;"><span class="emoji" data-emoji="palec"></span> <span class="sg-vote-n">3</span></button>
+        </div>
+    </div>
+    <div class="sg-item">
+        <div class="sg-label">.word-done.active.missed</div>
+        <div class="word-done active missed" style="position:static; inset:auto; z-index:auto; background:none; justify-content:flex-start;">
+        <div class="wd-frame" style="max-width:100%;">
+        <div class="wd-panel">
+            <div class="wd-head">
+                <span class="wd-badge" aria-hidden="true"></span>
+                <div class="wd-titles">
+                    <div class="wd-title" data-tag>Čas vypršel</div>
+                    <div class="wd-sub" data-tag>Hledané slovo</div>
+                </div>
+            </div>
+            <div class="wd-tiles">
+                <span class="wd-tile" style="width:36px;height:36px;font-size:18px;">G</span>
+                <span class="wd-tile" style="width:36px;height:36px;font-size:18px;">R</span>
+                <span class="wd-tile" style="width:36px;height:36px;font-size:18px;">A</span>
+                <span class="wd-tile" style="width:36px;height:36px;font-size:18px;">N</span>
+                <span class="wd-tile" style="width:36px;height:36px;font-size:18px;">T</span>
+            </div>
+            <div class="wd-card">
+                <p class="wd-text">Ukázkový význam slova „grant" pro vývoj.</p>
+                <div class="wd-meta">
+                    <button type="button" class="wd-author"><span class="wd-avatar wd-avatar--img" data-avatar="29-5-2-0"></span><span class="wd-name">Terka</span></button>
+                    <button class="wd-vote voted" data-tag data-base="2" onclick="sgToggleVote(this)"><span class="emoji" data-emoji="palec"></span> <span class="sg-vote-n">3</span></button>
+                </div>
+            </div>
+        </div>
+        </div>
+        </div>
+        <div class="sg-demo" style="margin-top:6px;">
+            <span style="font-size:11px; color:#999;">klikni, ať vidíš hlasováno ↔ nehlasováno:</span>
+            <button class="wd-vote" data-tag data-base="3" onclick="sgToggleVote(this)" style="margin-left:auto;"><span class="emoji" data-emoji="palec"></span> <span class="sg-vote-n">3</span></button>
+        </div>
+    </div>
+    <div class="sg-item"><div class="sg-label">.wd-add-title / .wd-add-sub</div><div class="sg-demo" style="flex-direction:column; align-items:flex-start;">
+        <span class="wd-add-title" data-tag>Buď první!</span>
+        <span class="wd-add-sub" data-tag>Napiš význam pro ostatní hráče</span>
+    </div></div>
+</div>
+
+<div class="sg-h1">Významy slov (def-*)</div>
+<p class="sg-note"><code>.def-report</code> je mrtvé CSS — v appce (game.js) žádný takový element nevzniká. Nahlásit/upravit jsou vždycky ikonová kolečka <code>.def-icon-btn</code> (vlaječka/tužka), tady jsou obě, i stav po prvním klepnutí na vlaječku.</p>
+<div class="sg-grid">
+    <div class="sg-item" style="grid-column: span 2;">
+        <div class="sg-label">Sheet Významy (detail slova) — .def-item / .def-item--best / .def-best-label / .def-actions / .def-icon-btn / button.wd-author (autor s účtem = odkaz na veřejný profil, jméno podtržené)</div>
+        <ul style="list-style:none; display:flex; flex-direction:column; gap:8px; padding:0; margin:0;">
+            <li class="def-item def-item--best">
+                <div class="def-best-label" data-tag>Nejlepší význam</div>
+                <p class="wd-text" data-tag>Krychlový předmět na hraní.</p>
+                <div class="wd-meta">
+                    <button type="button" class="wd-author"><span class="wd-avatar">J</span><span class="wd-name">Jana</span></button>
+                    <span class="def-actions">
+                        <button class="wd-vote voted" data-tag><span class="emoji" data-emoji="palec"></span> 5</button>
+                    </span>
+                </div>
+            </li>
+            <li class="def-item">
+                <p class="wd-text">Malý kousek cukru.</p>
+                <div class="wd-meta">
+                    <button type="button" class="wd-author"><span class="wd-avatar wd-avatar--img" data-avatar="3-2-5-1"></span><span class="wd-name">Martin</span></button>
+                    <span class="def-actions">
+                        <button class="wd-vote" data-tag><span class="emoji" data-emoji="palec"></span> 1</button>
+                        <button class="def-icon-btn def-flag" data-tag title="Nahlásit nevhodný význam" aria-label="Nahlásit nevhodný význam"></button>
+                    </span>
+                </div>
+            </li>
+            <li class="def-item">
+                <p class="wd-text">Vlaječka po prvním klepnutí — druhé klepnutí nahlásí, po 3 s se vrátí.</p>
+                <div class="wd-meta">
+                    <button type="button" class="wd-author"><span class="wd-avatar wd-avatar--img" data-avatar="8-6-11-9"></span><span class="wd-name">Petr</span></button>
+                    <span class="def-actions">
+                        <button class="wd-vote" data-tag><span class="emoji" data-emoji="palec"></span> 0</button>
+                        <button class="def-icon-btn def-flag confirm" data-tag>Nahlásit?</button>
+                    </span>
+                </div>
+            </li>
+            <li class="def-item mine">
+                <p class="wd-text">Vlastní význam — jde jen upravit (tužka), ne nahlásit nebo hlasovat pro sebe.</p>
+                <div class="wd-meta">
+                    <button type="button" class="wd-author"><span class="wd-avatar">T</span><span class="wd-name">Ty</span></button>
+                    <span class="def-actions">
+                        <button class="def-icon-btn def-edit" data-tag title="Upravit" aria-label="Upravit význam"></button>
+                    </span>
+                </div>
+            </li>
+        </ul>
+    </div>
+    <div class="sg-item"><div class="sg-label">.def-group</div><div class="sg-demo" data-tag><div class="def-group">Podstatná jména</div></div></div>
+    <div class="sg-item" style="grid-column: span 2;">
+        <div class="sg-label">Profil → Moje významy (jiná obrazovka) — .def-word / .def-hidden</div>
+        <ul style="list-style:none; display:flex; flex-direction:column; gap:8px; padding:0; margin:0;">
+            <li class="def-item mine">
+                <div class="def-word" data-tag>Kostka</div>
+                <p class="wd-text">Krychlový předmět na hraní.</p>
+                <div class="wd-meta">
+                    <span><span class="emoji" data-emoji="palec"></span> 5</span>
+                    <button class="def-icon-btn def-edit" title="Upravit" aria-label="Upravit význam"></button>
+                </div>
+            </li>
+            <li class="def-item mine">
+                <div class="def-word">Grant <span class="def-hidden" data-tag>skrytý po nahlášení</span></div>
+                <p class="wd-text">Neúplný nebo nevhodný text — po nahlášení jinými hráči zmizí ze sdíleného seznamu, autor ho tu ale stále vidí a může upravit.</p>
+                <div class="wd-meta">
+                    <span><span class="emoji" data-emoji="palec"></span> 0</span>
+                    <button class="def-icon-btn def-edit" title="Upravit" aria-label="Upravit význam"></button>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script src="squircle.js"></script>
+<script src="avatar.js"></script>
+<script>
+function sgRollAvatars() {
+    document.querySelector('.sg-avatar').innerHTML = Avatar.svg(Avatar.random());
+    // Šířka přes DOM: SVG už nese vlastní style (načasování animací) a druhý atribut by se zahodil.
+    const sized = (box, w) => { box.innerHTML = Avatar.svg(Avatar.random()); box.firstChild.style.width = w; return box; };
+    sized(document.querySelector('.sg-avatar-edit'), '120px');
+    document.getElementById('sgAvatars').replaceChildren(...Array.from({ length: 12 }, () => {
+        const box = document.createElement('div');
+        box.className = 'avatar-stage';
+        box.style.flex = 'none';
+        return sized(box, '64px');
+    }));
+}
+sgRollAvatars();
+// Tvar, který i s retem (posun o 5 dolů) přeteče viewBox 0–100, SVG usekne.
+(() => {
+    const bad = [];
+    for (let s = 0; s < Avatar.counts[0]; s++) {
+        const box = document.createElement('div');
+        box.style.cssText = 'position:absolute; left:-999px; width:100px; height:100px;';
+        box.innerHTML = Avatar.svg(`${s}-0-0-0`);
+        document.body.append(box);
+        const o = box.firstChild.getBoundingClientRect(), r = box.firstChild.children[1].getBoundingClientRect();
+        if (r.left < o.left || r.top < o.top || r.right > o.right || r.bottom + 5 > o.bottom) bad.push(s);
+        box.remove();
+    }
+    const note = document.getElementById('sgAvatarBounds');
+    note.textContent = bad.length ? `Useknuté tvary (index v SHAPES): ${bad.join(', ')}` : `Všech ${Avatar.counts[0]} tvarů je uvnitř.`;
+    note.style.color = bad.length ? 'var(--red)' : 'var(--green)';
+})();
+// Autor s avatarem (.wd-avatar--img) — markup jako authorEl() v game.js.
+document.querySelectorAll('[data-avatar]').forEach(el => { el.innerHTML = Avatar.svg(el.dataset.avatar); });
+function sgToggleVote(btn) {
+    const voted = btn.classList.toggle('voted');
+    const base = parseInt(btn.dataset.base, 10) || 0;
+    btn.querySelector('.sg-vote-n').textContent = base + (voted ? 1 : 0);
+}
+document.querySelectorAll('[data-tag]').forEach(el => {
+    const cs = getComputedStyle(el);
+    const family = cs.fontFamily.split(',')[0].replace(/['"]/g, '');
+    const spacing = cs.letterSpacing !== 'normal' ? ' · ls ' + cs.letterSpacing : '';
+    const tag = document.createElement('div');
+    tag.className = 'sg-spec';
+    tag.textContent = `${family} · ${cs.fontWeight} · ${cs.fontSize}/${cs.lineHeight}${spacing}`;
+    (el.closest('.sg-item') || el.parentElement).appendChild(tag);
+});
+</script>
+</body>
+</html>

@@ -64,6 +64,10 @@ vůbec existovaly — stojí za přehodnocení, aspoň pro výsledkovou obrazovk
 
 Můžu udělat, až řekneš.
 
+- **Přepínač „Zvuky“ v profilu.** Zvuků přibývá (tap na tlačítka, převíjení
+  času, hlas, sheety) a ztlumit je jde jen hlasitostí telefonu. Na iOS je
+  ztiší i přepínač ticha, jinde nic. Stačí jedna položka v `persist` a stráž
+  v `playTone`.
 - **Text o soukromí + přepínač „skrýt profil"** — poslední kus P5. Sloupec
   `users.hide_profile` v databázi je, UI k němu ne.
 - **Oprava nepravdivých tvrzení** v `worker/README.md:185` a `worker/schema.sql:3`.
@@ -81,6 +85,25 @@ Můžu udělat, až řekneš.
 - **Úprava přezdívky v profilu:** po doběhnutí `refreshAuth()` se znovu ukáže
   tlačítko „Změnit přezdívku" vedle rozepsaného formuláře — `renderProfile()`
   mu vrací `display`.
+- **Smazání účtu nechává `profile_days`** a nepřepočítá `definitions.votes`
+  významů, kterým smazaný hráč dal hlas. Autoři tak mají v počtu hlasů
+  (a v bodech) i hlasy, které už neexistují. Oprava je v `meDelete` o dva řádky.
+- **Úspěchy (běží, 2026-09-24):** 27 odznaků, seznam v `public/achievements.js`,
+  náhled s ukázkovými hráči v `public/dev-uspechy.html`. Zvolil jsem výchozí
+  řešení, můžeš je změnit:
+  1. Seznam a prahy: přidat, škrtnout, přejmenovat?
+  2. **Série = odehrané dny v kuse** (jako Duolingo). Lokální `persist.streak`
+     („dní v řadě“ v profilu a na kartě) ale počítá jen *perfektní* dny.
+     Perfektní řadu nese odznak „Hattrick“. Hráč tak vidí dvě různé „série“.
+     Sjednotit?
+  3. Úspěchy běží i bez účtu z localStorage. Odznaky za významy a hlasy se
+     odemknou jen s účtem, protože počty zná jen server.
+  4. Oznámení odemčení je zatím jen červená tečka na Profilu a u dlaždice.
+     Oslava „Nový úspěch!“ přijde až po klepnutí. Chceš sheet rovnou po
+     výsledku dne nebo po mezihře tréninku?
+  5. „Má ho X % hráčů“ v detailu není, server by to musel počítat.
+  6. Veřejný profil ukazuje jen odznaky, které zná server. Odznaky jen
+     z klienta (sdílení, Bleskovka, tajné, …) tam chybí.
 - **Dvě mrtvé větve** `claude/button-haptic-feedback-8kgxkn` a
   `claude/czech-word-game-f2hnia` na originu, dávno zmergované.
 
@@ -103,4 +126,6 @@ Můžu udělat, až řekneš.
 | Ukládání e-mailu | jen `sha256(adresa + pepř)` | cena: hráčům nejde nic poslat mimo přihlášení |
 | Veřejný profil | HTML z workeru, ne SPA | kvůli náhledu při sdílení |
 | Název hry | **20 slov** (2026-09-21) | přejmenováno jen v textech pro hráče; identifikátory (`slov2000`, `slov2000_v2`, repo, workers.dev URL) zůstaly — změna by znamenala nový worker a ztrátu postupu všech hráčů |
+| Body za aktivitu (2026-09-24) | váhy den 10 · slovo tréninku 1 · význam 5 · získaný hlas 2 · daný hlas 1; stropy 10 slov a 10 hlasů za den | strop je tichý: hráč ho nikde nevidí, další body se jen nezapočtou. Body i úspěchy jsou vidět i na veřejném profilu |
+| Zvuk posledních sekund (2026-09-24) | **ano, tlukot srdce**: od 5 s „lub-dub“, zrychluje ze 72 na 160 tepů/min; v tréninku i v denní výzvě | vysoké tiky byly pisklavé, trojúhelníkové srdce plechové; teď sinus + tlumený šum pod 220 Hz podle fonokardiogramu, tišší než písmenka |
 | Vizuální směr | **Kostky** (2026-09-24, větev `kostky-trenink`) | ze šesti průzkumných směrů (`design/genz-directions`, `/designs.html`); ostatní na téhle větvi smazané |

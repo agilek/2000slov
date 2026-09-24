@@ -4,6 +4,9 @@
 // (style.css + kostky.css), takže vypadá stejně jako aplikace. Hra si
 // ?cast=1 bere jen obsah a ukáže ho jako svou obrazovku — jeden vzhled, dvě cesty.
 
+import Avatar from '../../public/avatar.js';
+import Achievements from '../../public/achievements.js';
+
 const PER_DAY = 20;
 const DAYS = 365;
 
@@ -49,15 +52,44 @@ function stats(rows) {
     };
 }
 
+// Body za aktivitu (jako karma na Redditu). Nemají vlastní tabulku, počítají
+// se při čtení z řádků, které už existují. Nejdou tak napočítat dvakrát,
+// odebraný hlas nebo skrytý význam je hned odečte a změna vah platí zpětně
+// pro všechny. Za den se některé věci počítají jen do stropu, ať se nevyplatí
+// farmit: odklikat hlasy všem je pro pořadí významů horší než nehlasovat.
+export const BODY = { den: 10, slovoTreninku: 1, vyznam: 5, ziskanyHlas: 2, danyHlas: 1 };
+export const ZA_DEN = { slovTreninku: 10, danychHlasu: 10 };
+
+// Počty zvlášť, ne jen součet: stejná čísla ponesou i úspěchy.
+export async function points(env, userId) {
+    const { results } = await env.DB.prepare(`SELECT
+        (SELECT COUNT(*) FROM profile_days WHERE user_id = ?1) AS dny,
+        (SELECT COALESCE(SUM(MIN(words, ?2)), 0) FROM training_days WHERE user_id = ?1) AS slovTreninku,
+        (SELECT COUNT(*) FROM definitions WHERE user_id = ?1 AND hidden = 0) AS vyznamu,
+        (SELECT COALESCE(SUM(votes), 0) FROM definitions WHERE user_id = ?1 AND hidden = 0) AS ziskanychHlasu,
+        (SELECT COALESCE(MAX(votes), 0) FROM definitions WHERE user_id = ?1 AND hidden = 0) AS maxHlasu,
+        (SELECT COUNT(*) FROM definitions d WHERE d.user_id = ?1 AND d.hidden = 0 AND EXISTS (
+            SELECT 1 FROM definitions o WHERE o.word = d.word AND o.hidden = 0 AND o.id != d.id) AND NOT EXISTS (
+            SELECT 1 FROM definitions o WHERE o.word = d.word AND o.hidden = 0 AND o.id != d.id
+            AND (o.votes > d.votes OR (o.votes = d.votes AND o.created_at < d.created_at)))) AS nejlepsi,
+        (SELECT COALESCE(SUM(MIN(n, ?3)), 0) FROM (SELECT COUNT(*) AS n FROM votes
+            WHERE client_id = ?1 GROUP BY created_at / 86400000)) AS danychHlasu`
+    ).bind(userId, ZA_DEN.slovTreninku, ZA_DEN.danychHlasu).all();
+    const c = results[0];
+    const total = c.dny * BODY.den + c.slovTreninku * BODY.slovoTreninku + c.vyznamu * BODY.vyznam
+        + c.ziskanychHlasu * BODY.ziskanyHlas + c.danychHlasu * BODY.danyHlas;
+    return { total, ...c };
+}
+
 const DEFS_SHOWN = 10;
 
 async function loadProfile(env, handle) {
     const { results: users } = await env.DB.prepare(
-        'SELECT id, handle, hide_profile FROM users WHERE handle_lc = ?1'
+        'SELECT id, handle, hide_profile, avatar FROM users WHERE handle_lc = ?1'
     ).bind(String(handle || '').toLowerCase()).all();
     const user = users[0];
     if (!user || user.hide_profile) return null;
-    const [{ results: rows }, { results: defs }, { results: cnt }] = await Promise.all([
+    const [{ results: rows }, { results: defs }, { results: cnt }, body] = await Promise.all([
         env.DB.prepare(
             'SELECT played_on, day_idx, score FROM profile_days WHERE user_id = ?1 AND played_on >= ?2 ORDER BY played_on'
         ).bind(user.id, dayBefore(iso(new Date()), DAYS)).all(),
@@ -70,8 +102,9 @@ async function loadProfile(env, handle) {
             FROM definitions d WHERE d.user_id = ?1 AND d.hidden = 0
             ORDER BY d.votes DESC, d.created_at DESC LIMIT ?2`).bind(user.id, DEFS_SHOWN).all(),
         env.DB.prepare('SELECT COUNT(*) AS n FROM definitions WHERE user_id = ?1 AND hidden = 0').bind(user.id).all(),
+        points(env, user.id),
     ]);
-    return { user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n };
+    return { user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n, points: body };
 }
 
 export async function apiProfile(request, env, url, ctx, json) {
@@ -80,11 +113,25 @@ export async function apiProfile(request, env, url, ctx, json) {
     return json({
         handle: data.user.handle,
         stats: data.stats,
+        points: data.points.total,
         days: data.rows.map(r => ({ d: r.played_on, score: r.score })),
     }, 200);
 }
 
 const num = (n) => n.toLocaleString('cs-CZ');
+
+// Úspěchy na veřejném profilu: jen získané, které zná server (odznaky jen
+// z klienta, třeba za sdílení, tu chybí). Neklikací, stránka je bez JS.
+function achievementsSection(data) {
+    const st = Achievements.publicState(data.stats, data.points, Avatar.valid(data.user.avatar));
+    const got = Achievements.LIST.filter(a => Achievements.done(a, st));
+    if (!got.length) return '';
+    const avatar = Avatar.svg(data.user.avatar);
+    return `<div class="profile-section">
+        <h3 class="profile-section-title">Úspěchy <small>${got.length}</small></h3>
+        <div class="ach-grid">${got.map(a => Achievements.tile(a, st, { avatar, tag: 'span' })).join('')}</div>
+      </div>`;
+}
 const plural = (n, one, few, many) => n === 1 ? one : n >= 2 && n <= 4 ? few : many;
 const MESICE = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
 const MESICE_KRATCE = ['led', 'úno', 'bře', 'dub', 'kvě', 'čvn', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'];
@@ -144,9 +191,10 @@ function profileBody(data) {
     const zbyva = data.defsTotal - data.defs.length;
     return `
       <div class="profile-head">
-        <div class="profile-avatar" aria-hidden="true">${esc(data.user.handle.charAt(0).toUpperCase())}</div>
+        <div class="profile-avatar" aria-hidden="true">${Avatar.svg(data.user.avatar) || esc(data.user.handle.charAt(0).toUpperCase())}</div>
         <div class="profile-name">${jmeno}</div>
         <div class="profile-sub">${data.rows.length ? `Hraje od ${esc(dlouze(data.rows[0].played_on))}` : 'Zatím bez odehraného dne'}</div>
+        <div class="points-pill"><span class="emoji" data-emoji="hvezda">⭐</span> ${num(data.points.total)} ${plural(data.points.total, 'bod', 'body', 'bodů')}</div>
       </div>
       <div class="profile-section">
         <h3 class="profile-section-title">Statistiky</h3>
@@ -157,6 +205,7 @@ function profileBody(data) {
           ${statTile(`${s.uspesnost} %`, 'úspěšnost')}
         </div>
       </div>
+      ${achievementsSection(data)}
       <!-- Záložky bez JS (rádio + :checked): fungují na sdílené stránce
            i ve hře, kam se obsah vkládá přes innerHTML. Rok může být dlouhý,
            významy by jinak odjely úplně dolů. -->

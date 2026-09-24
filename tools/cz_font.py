@@ -1,8 +1,14 @@
 """Doplní do Fredoka One (2011) chybějící české znaky a uloží kopii pod jiným jménem.
 
     python tools/cz_font.py <FredokaOne-Regular.otf> <výstup.otf> [<výstup.woff2>]
+    python tools/cz_font.py <FredokaOne-Regular.otf> <výstup.otf> <výstup.woff2> --thin 24 --style Light --weight 300
 
-Potřebuje fontTools (a brotli pro .woff2). Fredoka One má Š/Ž, čárky i háček,
+S --thin se písmo nejdřív zeslabí (thin_font.py, eroze obrysu o d jednotek na
+stranu) a teprve pak se doplní čeština — polohy znamének se tak měří z už
+zeslabených glyfů dané váhy. Řezy hry: Regular (bez --thin), Light (--thin 24,
+300), ExtraLight (--thin 40, 200).
+
+Potřebuje fontTools (a brotli pro .woff2, skia-pathops pro --thin). Fredoka One má Š/Ž, čárky i háček,
 ale chybí ů č ď ě ň ř ť a Ů Č Ď Ě Ň Ř Ť. Nové znaky jsou TrueType složeniny
 písmeno + znaménko, polohy znamének jsou změřené z hotových Š/š a å:
 
@@ -18,7 +24,6 @@ Kerning (GPOS) se převezme z původního písmene (Č jako C…), u ď/ť jen z
 Licence: OFL 1.1 s vyhrazeným jménem „Fredoka" — upravená verze ho nesmí nést,
 proto „Slovka One". Copyright autorky zůstává, doplní se licence do metadat.
 """
-import sys
 from fontTools.ttLib import TTFont
 from fontTools.ttLib.tables._g_l_y_f import Glyph, GlyphComponent
 from fontTools.ttLib.tables import otTables
@@ -177,7 +182,7 @@ def copy_kerning(font, new, right_only):
                 st.Coverage.glyphs = sorted(cov, key=font.getGlyphID)
 
 
-def rename(font):
+def rename(font, style='Regular', weight=None):
     name = font['name']
     copyright = name.getDebugName(0) + ' Czech glyphs (ČĎĚŇŘŤŮ čďěňřťů) added 2026 for the game 20 slov.'
     values = {
@@ -188,6 +193,15 @@ def rename(font):
             'Modified version of Fredoka One by Milena Brandão; the Reserved Font Name "Fredoka" is not used.',
         14: 'https://openfontlicense.org',
     }
+    if style != 'Regular':
+        # lehčí řez mimo RIBBI: rodina pro staré aplikace „Slovka One Light", typografická rodina
+        # (16/17) „Slovka One" + styl
+        values |= {
+            0: copyright[:-1] + f', {style} weight derived by outline erosion.',
+            1: f'{FAMILY} {style}', 3: f'{FAMILY} {style}; 1.001-cz', 4: f'{FAMILY} {style}',
+            5: 'Version 1.001; Czech glyphs added; lighter weight derived from Fredoka One',
+            6: f'SlovkaOne-{style}', 16: FAMILY, 17: style,
+        }
     for rec in list(name.names):
         if rec.nameID in values:
             name.removeNames(nameID=rec.nameID)
@@ -196,6 +210,9 @@ def rename(font):
         if nid in (1, 2, 4, 6):
             name.setName(text, nid, 1, 0, 0)
     os2 = font['OS/2']
+    if weight:
+        os2.usWeightClass = weight
+        os2.fsSelection &= ~(1 << 6)          # bit REGULAR jen u Regular
     os2.ulCodePageRange1 |= 1 << 1            # Latin 2 (střední Evropa)
     os2.ulUnicodeRange1 |= 1 << 2             # Latin Extended-A
     if 'DSIG' in font:
@@ -203,14 +220,23 @@ def rename(font):
 
 
 if __name__ == '__main__':
-    src, out = sys.argv[1], sys.argv[2]
-    font = TTFont(src)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('src'); ap.add_argument('out'); ap.add_argument('woff2', nargs='?')
+    ap.add_argument('--thin', type=float, help='zeslabit o d jednotek na stranu (thin_font.py)')
+    ap.add_argument('--style', default='Regular'); ap.add_argument('--weight', type=int)
+    args = ap.parse_args()
+    font = TTFont(args.src)
+    if args.thin:
+        from thin_font import thin
+        thin(font, args.thin)
     build(font)
-    rename(font)
-    font.save(out)
-    if len(sys.argv) > 3:
+    rename(font, args.style, args.weight)
+    font.save(args.out)
+    if args.woff2:
         font.flavor = 'woff2'
-        font.save(sys.argv[3])
+        font.save(args.woff2)
+    out = args.out
     cz = 'áéíóúůýčďěňřšťžÁÉÍÓÚŮÝČĎĚŇŘŠŤŽ'
     check = TTFont(out).getBestCmap()
     missing = [c for c in cz if ord(c) not in check]

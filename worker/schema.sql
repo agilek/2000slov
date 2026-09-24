@@ -64,8 +64,10 @@ CREATE TABLE IF NOT EXISTS users (
   client_id  TEXT,                   -- anonymní ID, ze kterého se účet vytvořil
   created_at INTEGER NOT NULL,
   banned     INTEGER NOT NULL DEFAULT 0,
-  hide_profile INTEGER NOT NULL DEFAULT 0
+  hide_profile INTEGER NOT NULL DEFAULT 0,
+  avatar     TEXT                    -- kód z public/avatar.js, NULL = iniciála
 );
+-- Existující D1: ALTER TABLE users ADD COLUMN avatar TEXT;
 
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,       -- sha256(cookie); únik DB != únik session
@@ -107,3 +109,16 @@ CREATE TABLE IF NOT EXISTS profile_days (
   PRIMARY KEY (user_id, played_on)
 );
 CREATE INDEX IF NOT EXISTS idx_profile_user ON profile_days(user_id, played_on DESC);
+
+-- Trénink se jinak nikam neukládá (žije v localStorage), body za něj ale
+-- potřebují server. Jeden řádek na hráče a den, words = uhodnutá slova.
+-- Strop za den se uplatní až při čtení (profile.js), ať jde zpětně změnit.
+CREATE TABLE IF NOT EXISTS training_days (
+  user_id    TEXT NOT NULL,
+  played_on  TEXT NOT NULL,          -- 'YYYY-MM-DD', lokální datum hráče
+  words      INTEGER NOT NULL,
+  PRIMARY KEY (user_id, played_on)
+);
+
+-- Body za rozdané hlasy: PK (definition_id, client_id) hledání podle hlasujícího nepokryje.
+CREATE INDEX IF NOT EXISTS idx_votes_client ON votes(client_id, created_at);

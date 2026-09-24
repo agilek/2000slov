@@ -82,6 +82,12 @@
     }
 }
 
+/* Squircle: hladší, „iOSovější" křivka rohu než klasický kruhový oblouk
+   border-radius. Nativní CSS vlastnost, žádné SVG/JS — Chrome/Edge to umí,
+   Safari 26 (WebKit) ještě ne, tam beze změny padá zpátky na normální
+   zaoblený rok border-radius (žádná regrese, jen chybí ta hladší křivka). */
+* { corner-shape: squircle; }
+
 /* Písmo: Slovka One na všechno, co je „předmět" nebo nadpis, Nunito na text. */
 .btn, .btn-tertiary, .icon-btn, .screen h1, .screen h2, .collection-chip,
 .screen-title, .profile-avatar, .profile-name, .profile-section-title, .stat-value,
@@ -244,6 +250,24 @@
     padding: 9px 18px;
     margin-bottom: 20px !important;
 }
+/* Ocenění se občas zaleskne: pruh světla přejede zleva doprava — pod textem
+   (isolation + z-index -1), ať písmo zůstane ostré. Zlaté okraje pruhu, ať je
+   vidět i na světlém --gold-bg; „bez trofeje" (srdce) se neleskne. */
+#percentile { position: relative; overflow: hidden; isolation: isolate; }
+#percentile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 30%, color-mix(in srgb, var(--gold) 40%, transparent) 42%,
+        rgba(255, 255, 255, .85) 50%, color-mix(in srgb, var(--gold) 40%, transparent) 58%, transparent 70%);
+    z-index: -1;
+    translate: -100% 0;
+    animation: badgeShine 5s ease-in-out 1.5s infinite;
+    pointer-events: none;
+}
+#percentile:has([data-emoji="srdce"])::after { content: none; }
+@keyframes badgeShine { 0% { translate: -100% 0; } 18%, 100% { translate: 100% 0; } }
+@media (prefers-reduced-motion: reduce) { #percentile::after { content: none; } }
 #progressLine {
     font-size: 16px;
     font-weight: 600;
@@ -278,7 +302,7 @@
 
 /* Lišta času nahoře: jako lišta lekce v Duolingu, se světlým proužkem. */
 #game { --time-mid: var(--gold); }
-.time-bar { height: 10px; background: var(--ghost); }
+.time-bar { height: 10px; margin-top: 13px; background: var(--ghost); }   /* výška 10px + margin 13px = střed na křížku (top 10px, 44px) */
 .time-bar-fill { position: relative; }
 .time-bar-fill::after {
     content: '';
@@ -327,10 +351,10 @@
 @keyframes segNow { 0%, 100% { background: var(--blue-soft); } 50% { background: var(--blue-tint); } }
 @keyframes segPop { 45% { scale: 1.12 1.5; } }
 
-.game-progress { margin-top: auto; gap: 4px; }
+.game-progress { margin-top: auto; gap: 6px; }
 .gp-headline {
-    font-weight: 600;
-    font-size: 15px;
+    font-weight: 300;
+    font-size: 16px;
     letter-spacing: .08em;
     color: var(--muted-text);
     opacity: 1;
@@ -339,21 +363,25 @@
     display: inline-flex;
     align-items: baseline;
     font-weight: 700;
-    font-size: 56px;
+    font-size: 120px;
     color: var(--ink);
+    margin-left: -78px;   /* ikonka group opticky přetahuje doprava; align-items:center centruje margin-box, takže posun čísla na střed = 2× tenhle margin (ověřeno getBoundingClientRect) */
 }
 .gp-timer::before {
     content: '';
     align-self: center;
-    width: 30px;
-    height: 30px;
-    margin-right: 10px;
+    width: 58px;
+    height: 58px;
+    margin-right: 20px;
     background: currentColor;
     opacity: .9;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center / contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center / contain no-repeat;
+    flex-shrink: 0;
 }
-.gp-timer-unit { font-family: inherit; font-size: 26px; color: currentColor; opacity: .55; }   /* „s" jako číslo, ne Nunito z * */
+/* Pevná šířka na 2 číslice — jinak se ikonka hodin posouvala s tím, jak se
+   celý (icon + čas) box zúžil na jednociferný čas a přecentroval. */
+.gp-timer-num { font-family: inherit; display: inline-block; min-width: 1.28em; text-align: left; font-variant-numeric: tabular-nums; }   /* jinak ho přepíše univerzální * { font-family: Nunito } */
 .gp-timer.low, .gp-timer.zero { color: var(--red); }
 
 /* Zavřít trénink: holý šedý křížek, 44 px na dotyk. */
@@ -497,8 +525,9 @@
     box-shadow: 0 4px 0 var(--lip);
     transition: translate .08s ease, box-shadow .08s ease, background .15s ease;
 }
-.top-bar .icon-btn:first-child .icon-btn-circle { color: var(--blue); }
-.top-bar .icon-btn:last-child .icon-btn-circle { color: var(--orange); }
+/* Ikony Kostek (designs/kostky/*.svg) místo obrysových: profil, trénink, zpět */
+.icon-btn-circle img { width: 32px; height: 32px; }
+.icon-btn-circle--bare img { width: 30px; height: 30px; }
 .icon-btn:active .icon-btn-circle { transform: none; translate: 0 4px; box-shadow: 0 0 0 var(--lip); }
 .icon-btn:focus-visible .icon-btn-circle { outline: 3px solid var(--blue-soft); outline-offset: 3px; }
 @media (hover: hover) { .icon-btn:hover .icon-btn-circle { background: var(--hover-tint); } }
@@ -517,9 +546,305 @@
     box-shadow: 0 5px 0 var(--blue-lip);
     margin-bottom: 6px;
 }
+/* Avatar z avatar.js má ret v sobě — kruh s iniciálou pod ním zmizí. */
+.profile-avatar:has(svg) { width: 112px; height: 112px; background: none; box-shadow: none; border-radius: 0; margin-bottom: 0; }
+.profile-avatar svg { display: block; width: 100%; height: 100%; }
+/* Jediná tužka v profilu: na avataru, otevře úpravu avatara i přezdívky */
+.avatar-btn { position: relative; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 24px; -webkit-tap-highlight-color: transparent; }
+.avatar-btn:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 4px; }
+.edit-badge {
+    position: absolute;
+    right: -6px;
+    bottom: 4px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--card) url(kostky/tuzka.svg) center / 24px no-repeat;
+    border: 2px solid var(--line);
+    box-shadow: 0 3px 0 var(--lip);
+    transition: translate .08s ease, box-shadow .08s ease;
+}
+.avatar-btn:active .edit-badge { translate: 0 3px; box-shadow: 0 0 0 var(--lip); }
+.avatar-stage svg { animation: avatarPop .45s var(--spring) both; }
+/* ✗ / ✓ na úpravě profilu: kulaté kostky s retem, stisk o ret klesne */
+.swipe-btn {
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    padding: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: translate .08s ease, box-shadow .08s ease;
+}
+.swipe-btn svg { width: 38px; height: 38px; }
+.swipe-btn--no { background: var(--card); color: var(--red); border: 2px solid var(--line); box-shadow: 0 5px 0 var(--lip); }
+.swipe-btn--yes { background: var(--green); color: #fff; border: 2px solid var(--green); box-shadow: 0 5px 0 var(--green-lip); }
+.swipe-btn:active { translate: 0 5px; box-shadow: 0 0 0 transparent; }
+.swipe-btn:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 4px; }
+.swipe-btn:disabled { opacity: .6; cursor: default; }
+@keyframes avatarPop { from { scale: .5; rotate: -12deg; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .avatar-stage svg { animation: none; } }
+
+/* ---- Avatar: mrkání a drobné pohyby (Duolingo styl), viz avatar.js eyes()/svg() ----
+   Animace jde na vnitřní <g class="av-…">, ne na skupinu okolo (oči/pusa/
+   brýle) — ta už má SVG transform atribut a CSS transform by ho přepsal.
+   transform-box: fill-box + transform-origin: center točí kolem středu
+   vlastního tvaru, ne počátku SVG. --av-bd/--av-be/--av-md/--av-me nastavuje
+   avatar.js podle kódu avatara, takže se víc avatarů na obrazovce nemrká
+   souběžně a server i klient je vykreslí stejně. */
+.av-blink, .av-mouth, .av-glasses { transform-box: fill-box; transform-origin: center; }
+.av-blink { animation: avBlink var(--av-bd, 5.5s) ease-in-out infinite; animation-delay: var(--av-be, 0s); }
+.av-mouth { animation: avMouth var(--av-md, 9s) ease-in-out infinite; animation-delay: var(--av-me, 0s); }
+.av-glasses { animation: avGlance var(--av-md, 9s) ease-in-out infinite; animation-delay: var(--av-me, 0s); }
+@keyframes avBlink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.12); } }
+@keyframes avMouth { 0%, 88%, 100% { transform: none; } 94% { transform: scaleX(1.08) scaleY(.9); } }
+@keyframes avGlance { 0%, 90%, 100% { transform: translateX(0); } 95% { transform: translateX(1.1px); } }
+@media (prefers-reduced-motion: reduce) {
+    .av-blink, .av-mouth, .av-glasses { animation: none; }
+}
 .profile-name { font-weight: 700; font-size: 26px; }
 .profile-sub { font-size: 15px; font-weight: 700; color: var(--muted-text); }
-#profile .profile-note, #myDefs .profile-note, #publicProfile .profile-note { font-size: 14px; font-weight: 600; margin: -6px 0 0; }
+/* Body za aktivitu: zlatý odznak pod jménem, jen v profilu (viz profile.js BODY) */
+.points-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 6px 14px 6px 10px;
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gold-ink);
+    background: var(--gold-bg);
+    border: 2px solid var(--gold);
+    box-shadow: 0 3px 0 var(--gold-lip);
+    border-radius: 999px;
+}
+.points-pill .emoji { width: 22px; height: 22px; vertical-align: 0; }
+.points-pill[hidden], .profile-section[hidden] { display: none; }
+/* počet vpravo v nadpisu sekce („12 z 27") */
+.profile-section-title:has(small) { display: flex; justify-content: space-between; align-items: baseline; }
+.profile-section-title small { font-family: 'Nunito', system-ui, sans-serif; font-size: 15px; font-weight: 700; color: var(--muted-text); }
+/* nový, ještě neotevřený úspěch: červená tečka na Profilu vlevo nahoře */
+.icon-btn--dot .icon-btn-circle { position: relative; }
+.icon-btn--dot .icon-btn-circle::after {
+    content: '';
+    position: absolute;
+    top: -5px; right: -5px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--red);
+    border: 3px solid var(--bg);
+}
+.ach-ok { margin-top: 22px; }
+#achGroups { display: flex; flex-direction: column; gap: 26px; }
+
+/* ---- Úspěchy (achievements.js): odznak = kostka ve vzácné barvě s retem,
+   bílý medailon, ikona z kostky/. Profil, obrazovka Úspěchy, sheet detailu. ---- */
+
+/* Vzácnost = barva kostky. Symbol uprostřed nese význam, barva hodnotu. */
+.ach--common { --r: var(--green); --r-lip: var(--green-lip); --r-ink: var(--ok-ink); }
+.ach--rare   { --r: var(--blue);  --r-lip: var(--blue-lip);  --r-ink: var(--blue-ink); }
+.ach--epic   { --r: #ce82ff;      --r-lip: #a560d8;          --r-ink: #9546cc; }
+.ach--legend { --r: var(--gold);  --r-lip: var(--gold-lip);  --r-ink: var(--gold-title); }
+.ach--locked { --r: var(--ghost); --r-lip: var(--lip);       --r-ink: var(--muted-text); }
+@media (prefers-color-scheme: dark) { .ach--epic { --r-ink: #dcaaff; } }
+
+/* Odznak: kostka ve vzácné barvě s retem, bílý medailon, ikona z kostky/ */
+.ach {
+    --s: 72px;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--s);
+    height: var(--s);
+    border-radius: 30%;
+    background: var(--r);
+    box-shadow: 0 calc(var(--s) * .07) 0 var(--r-lip);
+    flex: none;
+}
+.ach::before {                         /* světlý pruh jako na ikonách */
+    content: '';
+    position: absolute;
+    top: 9%; left: 15%;
+    width: 26%; height: 6%;
+    border-radius: 999px;
+    background: #fff;
+    opacity: .4;
+}
+.ach-medal {
+    display: grid;
+    place-items: center;
+    width: 68%;
+    height: 68%;
+    border-radius: 50%;
+    corner-shape: round;
+    background: #fff;
+    box-shadow: inset 0 calc(var(--s) * -.045) 0 rgba(0, 0, 0, .08);
+    overflow: hidden;
+}
+.ach-medal img { width: 64%; height: 64%; }
+.ach-medal svg { width: 84%; height: 84%; }
+.ach-num {
+    position: absolute;
+    bottom: -12%;
+    left: 50%;
+    translate: -50% 0;
+    padding: 0 .42em;
+    font-family: var(--display);
+    font-size: calc(var(--s) * .22);
+    line-height: 1.35;
+    color: #fff;
+    background: var(--r-lip);
+    border: calc(var(--s) * .035) solid var(--bg);
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.ach-q { font-family: var(--display); font-size: calc(var(--s) * .34); color: var(--muted); }
+
+/* legendární: zlatý odlesk přejíždí jako u trofejové řádky */
+.ach--legend::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .6) 50%, transparent 62%) 150% 0 / 250% 100% no-repeat;
+    animation: achGlint 3.2s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes achGlint { 0%, 55% { background-position: 150% 0; } 100% { background-position: -60% 0; } }
+
+/* zamčený: šedá kostka, ikona jako stín — vidět je, co tě čeká */
+.ach--locked .ach-medal { background: var(--card); box-shadow: none; }
+.ach--locked .ach-medal img, .ach--locked .ach-medal svg { filter: grayscale(1); opacity: .32; }
+.ach--locked .ach-num { background: var(--muted); }
+
+/* dlaždice v mřížce */
+.ach-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 8px; }
+.ach-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+}
+.ach-tile .ach { transition: translate .08s ease, box-shadow .08s ease; }
+.ach-tile:active .ach { translate: 0 calc(var(--s) * .07); box-shadow: 0 0 0 var(--r-lip); }
+.ach-tile:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 4px; border-radius: 16px; }
+.ach-name { font-size: 13px; font-weight: 800; line-height: 1.2; text-align: center; min-height: 2.4em; }
+.ach-tile--locked .ach-name { color: var(--muted-text); }
+.ach-mini { width: 60px; height: 6px; margin-top: -6px; border-radius: 999px; background: var(--ghost); overflow: hidden; }
+.ach-mini i { display: block; height: 100%; background: var(--orange); border-radius: inherit; }
+/* nový, ještě neotevřený: červená tečka jako u notifikace */
+.ach-tile--new::after {
+    content: '';
+    position: absolute;
+    top: 0; right: calc(50% - 40px);
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--red);
+    border: 3px solid var(--bg);
+}
+
+/* souhrn nahoře */
+.ach-sum { display: flex; align-items: center; gap: 12px; }
+.ach-sum-count { font-family: var(--display); font-size: 30px; }
+.ach-sum-count small { font-size: 18px; color: var(--muted-text); }
+.ach-bar { flex: 1; height: 16px; border-radius: 999px; background: var(--ghost); overflow: hidden; }
+.ach-bar i { display: block; height: 100%; border-radius: inherit; background: var(--r, var(--green)); position: relative; transition: width .6s var(--spring); }
+.ach-bar i::after { content: ''; position: absolute; top: 3px; left: 8px; right: 8px; height: 4px; border-radius: 999px; background: #fff; opacity: .3; }
+
+/* „Na dosah": nejbližší zamčené s postupem (efekt blízkého cíle) */
+.ach-near { display: flex; flex-direction: column; gap: 10px; }
+.ach-near-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px;
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    border-radius: 16px;
+    background: var(--card);
+    color: inherit; font: inherit; text-align: left;
+    cursor: pointer;
+    transition: translate .08s ease, box-shadow .08s ease;
+}
+.ach-near-item:active { translate: 0 4px; box-shadow: 0 0 0 var(--lip); }
+.ach-near-item .ach { --s: 48px; }
+.ach-near-body { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ach-near-name { font-family: var(--display); font-size: 17px; }
+.ach-near-left { font-size: 13px; font-weight: 700; color: var(--streak-ink); }
+.ach-near .ach-bar { flex: none; height: 12px; --r: var(--orange); }
+
+/* sheet s detailem */
+#achModal .modal-content { text-align: center; }
+.ach-stage { position: relative; display: grid; place-items: center; height: 210px; margin: -6px 0 6px; }
+.ach-stage .ach { --s: 144px; z-index: 1; }
+/* paprsky za získaným odznakem, pomalu se točí */
+.ach-stage:not(.is-locked)::before {
+    content: '';
+    position: absolute;
+    width: 250px; height: 250px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, var(--r) 0 10deg, transparent 10deg 30deg);
+    opacity: .22;
+    -webkit-mask: radial-gradient(closest-side, #000 35%, transparent);
+            mask: radial-gradient(closest-side, #000 35%, transparent);
+    animation: achRays 18s linear infinite;
+}
+@keyframes achRays { to { rotate: 1turn; } }
+.ach-stage.pop .ach { animation: achPop .8s var(--spring) both; }
+@keyframes achPop { 0% { scale: .2; rotate: -18deg; opacity: 0; } 60% { opacity: 1; } 100% { scale: 1; rotate: 0deg; } }
+/* jiskry: jeden pseudoprvek, 8 teček v box-shadow se rozletí (jako milník série) */
+.ach-stage.pop::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    color: var(--r);
+    animation: achSparks .9s ease-out .25s both;
+    z-index: 2;
+}
+@keyframes achSparks {
+    0% { box-shadow: 0 0 0 currentColor, 0 0 0 currentColor, 0 0 0 currentColor, 0 0 0 currentColor, 0 0 0 var(--gold), 0 0 0 var(--gold), 0 0 0 var(--gold), 0 0 0 var(--gold); opacity: 1; }
+    100% { box-shadow: 0 -110px 0 -2px currentColor, 110px 0 0 -2px currentColor, 0 110px 0 -2px currentColor, -110px 0 0 -2px currentColor, 78px -78px 0 -4px var(--gold), 78px 78px 0 -4px var(--gold), -78px 78px 0 -4px var(--gold), -78px -78px 0 -4px var(--gold); opacity: 0; }
+}
+/* zamčený se po otevření jen nesměle zavrtí */
+.ach-stage.is-locked.pop .ach { animation: achNope .6s ease both; }
+@keyframes achNope { 0%, 100% { rotate: 0deg; } 25% { rotate: -6deg; } 50% { rotate: 5deg; } 75% { rotate: -3deg; } }
+
+.ach-kicker { font-family: var(--display); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-title); margin: 0 0 4px; }
+.ach-rarity {
+    display: inline-block;
+    padding: 4px 14px;
+    font-family: var(--display);
+    font-size: 14px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--r);
+    box-shadow: 0 3px 0 var(--r-lip);
+    border-radius: 999px;
+}
+.ach--locked.ach-rarity { color: var(--muted-text); }
+.ach-desc { font-size: 17px; font-weight: 700; line-height: 1.4; margin: 14px 8px 0; }
+.ach-meta { font-size: 14px; font-weight: 700; color: var(--muted-text); margin: 8px 0 0; }
+.ach-progress { display: flex; flex-direction: column; gap: 8px; margin: 18px 4px 0; }
+.ach-progress .ach-bar { flex: none; --r: var(--orange); }
+.ach-progress-label { display: flex; justify-content: space-between; font-family: var(--display); font-size: 16px; }
+.ach-progress-label b { color: var(--streak-ink); font-weight: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ach--legend::after, .ach-stage::before, .ach-stage.pop .ach, .ach-stage.pop::after { animation: none; }
+}
+#profile .profile-note, #myDefs .profile-note, #achievements .profile-note, #publicProfile .profile-note { font-size: 14px; font-weight: 600; margin: -6px 0 0; }
 .profile-section { gap: 12px; }
 .profile-section-title {
     font-weight: 700;
@@ -632,7 +957,7 @@
 .level-option.current { background: var(--blue-tint); border-color: var(--blue-soft); box-shadow: 0 4px 0 var(--blue-soft); }
 .level-option:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; }
 @media (hover: hover) { .level-option:hover { border-color: var(--blue-soft); } }
-.level-name { font-family: var(--display); font-weight: 700; font-size: 19px; }
+.level-name { font-family: var(--display); font-weight: 300; font-size: 19px; }
 .level-desc { font-weight: 600; font-size: 14px; }
 .archive-score { font-weight: 700; font-size: 14px; padding: 5px 12px; background: var(--ok-bg); color: var(--ok-ink); }
 .archive-score.not-played { background: var(--ghost); color: var(--muted-text); }
@@ -651,7 +976,7 @@
 
 /* Formuláře */
 .feedback-form { gap: 14px; }
-.feedback-form label { font-family: var(--display); font-size: 15px; font-weight: 600; margin-bottom: -8px; }
+.feedback-form label { font-family: var(--display); font-size: 15px; font-weight: 300; margin-bottom: -8px; }
 .feedback-form input,
 .feedback-form textarea {
     border: 2px solid var(--line);
@@ -801,9 +1126,13 @@
     box-shadow: 0 4px 0 var(--bad-line);
 }
 .word-done .wd-card:active { translate: 0 4px; box-shadow: 0 0 0 transparent; }
-.word-done .wd-card .wd-vote { background: transparent; border-color: var(--ok-line); box-shadow: 0 3px 0 var(--ok-line); }
-.word-done.missed .wd-card .wd-vote { border-color: var(--bad-line); box-shadow: 0 3px 0 var(--bad-line); }
-.word-done .wd-card .wd-vote.voted { background: var(--ok-bg); color: var(--ok-ink); }
+/* :not(.voted), ať tu zelenou/červenou obrys nepřebije zlatou z .wd-vote.voted
+   (ta má nižší specificitu — tři třídy tady vs. dvě tam). */
+.word-done .wd-card .wd-vote:not(.voted) { background: transparent; border-color: var(--ok-line); box-shadow: 0 3px 0 var(--ok-line); }
+.word-done.missed .wd-card .wd-vote:not(.voted) { border-color: var(--bad-line); box-shadow: 0 3px 0 var(--bad-line); }
+/* Avatar autora významu: modrá na zeleném/červeném panelu bije oči —
+   zlatá (stejná jako palec u hlasování) sedí na obou. */
+.word-done .wd-card .wd-avatar { background: var(--gold-lip); }
 /* Výzva k doplnění významu: zlatavá karta s retem (ladí s tužkou i se
    zeleným/červeným panelem), tužka vlevo. Že jde klepnout, říká ret a tužka. */
 .wd-add {
@@ -838,7 +1167,15 @@
 }
 .wd-text { font-size: 17px; font-weight: 700; line-height: 1.5; }
 .wd-meta { font-size: 14px; font-weight: 700; }
+/* Autor s účtem je tlačítko na jeho veřejný profil: vypadá jako text, jméno podtržené */
+button.wd-author { padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button.wd-author .wd-name { text-decoration: underline 2px color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; }
+button.wd-author:active { translate: 0 1px; }
+button.wd-author:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; border-radius: 8px; }
 .wd-avatar { background: var(--blue); font-weight: 700; width: 26px; height: 26px; font-size: 13px; }
+/* Avatar z avatar.js má vlastní barvu i ret — kruh pod ním zmizí (i zlatý na panelu po slově). */
+.wd-avatar.wd-avatar--img, .word-done .wd-card .wd-avatar--img { width: 32px; height: 32px; background: none; border-radius: 0; }
+.wd-avatar--img svg { display: block; width: 100%; height: 100%; }
 .wd-vote {
     background: var(--card);
     border: 2px solid var(--line);
@@ -851,7 +1188,9 @@
 }
 .wd-vote:active { transform: none; translate: 0 3px; box-shadow: none; }
 .wd-vote:disabled { cursor: default; }
-.wd-vote.voted { background: var(--ok-bg); border-color: var(--ok-line); box-shadow: 0 3px 0 var(--ok-line); color: var(--ok-ink); }
+/* Zlatá, ne zelená: hlas platí stejně na červeném panelu missed slova
+   jako na zeleném solved, tak ho nebarvíme podle výsledku kola. */
+.wd-vote.voted { background: var(--gold-bg); border-color: var(--gold); box-shadow: 0 3px 0 var(--gold-lip); color: var(--gold-ink); }
 
 /* Seznam významů v sheetu */
 .def-item {
@@ -863,7 +1202,7 @@
 .def-word { font-weight: 700; font-size: 17px; }
 .def-report { color: var(--blue-ink); font-weight: 700; opacity: 1; font-size: 13px; }
 /* Detail slova: zlatý nejlepší význam s korunou, ostatní jako kandidáti */
-.info-chip { font-family: var(--display); font-weight: 600; font-size: 14px; background: var(--card); border: 2px solid var(--line); }
+.info-chip { font-family: var(--display); font-weight: 300; font-size: 14px; background: var(--card); border: 2px solid var(--line); }
 .info-chip--level { display: inline-flex; align-items: center; gap: 5px; }
 .info-chip--level::before { content: ''; width: 16px; height: 16px; background: center / contain no-repeat; }
 .info-chip--lehka::before   { background-image: url(kostky/lehka.svg); }
@@ -900,12 +1239,14 @@
 .emoji[data-emoji="trofej"]   { background-image: url(kostky/trofej.svg); }
 .emoji[data-emoji="koruna"]   { background-image: url(kostky/koruna.svg); }
 .emoji[data-emoji="medaile"]  { background-image: url(kostky/medaile.svg); }
+.emoji[data-emoji="hvezda"]   { background-image: url(kostky/hvezda.svg); }
 .emoji[data-emoji="srdce"]    { background-image: url(kostky/srdce.svg); }
 .emoji[data-emoji="palec"]    { background-image: url(kostky/palec.svg); }
 .emoji[data-emoji="zamceno"]  { background-image: url(kostky/zamceno.svg); }
 .emoji[data-emoji="odemceno"] { background-image: url(kostky/odemceno.svg); }
 .emoji[data-emoji="plamen"]   { background-image: url(kostky/plamen-zivy.svg); }
 .emoji[data-emoji="zvonek"]   { background-image: url(kostky/zvonek.svg); }
+.emoji[data-emoji="sdilet"]   { background-image: url(kostky/sdilet.svg); }   /* Pochlubit se: zlatá jako zvonek, na zeleném neutrální */
 .emoji[data-emoji="plocha"]   { background-image: url(kostky/plocha.svg); }
 #percentile .emoji { width: 1.55em; height: 1.55em; vertical-align: -.42em; margin-left: 2px; }
 /* tlačítko je flex, mezera za emoji se v něm ztratí */
@@ -934,13 +1275,32 @@
 }
 
 /* ---- Písmo Slovka One ----
-   Jediný řez (vzhledem mezi Fredoka SemiBold a Bold). Rozsah tlouštěk v
-   @font-face říká, že stejný soubor platí pro všechny — prohlížeč ho pak
-   nikde uměle neztučňuje ani nezeslabuje. */
+   Tři řezy jedné rodiny, každý pro pásmo tlouštěk, ať prohlížeč nikde uměle
+   neztučňuje ani nezeslabuje:
+   - Regular (vzhledem mezi Fredoka SemiBold a Bold) pokrývá 400–900 — tedy
+     všechno, co appka dřív měla (400 i výchozí normal, 600, 700, 800, bolder),
+     vypadá beze změny,
+   - Light (font-weight: 300) je o stupeň lehčí,
+   - ExtraLight (font-weight: 200) o dva.
+   Lehčí řezy jsou odvozené z Fredoka One erozí obrysu (tools/thin_font.py),
+   šířky znaků mají stejné jako Regular. Hodnotu pod 400 nikde nepoužívej,
+   pokud nechceš lehčí řez. */
 @font-face {
     font-family: 'Slovka One';
     src: url(../fonts/SlovkaOne-Regular.woff2) format('woff2');
-    font-weight: 100 900;
+    font-weight: 400 900;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Slovka One';
+    src: url(../fonts/SlovkaOne-Light.woff2) format('woff2');
+    font-weight: 250 399;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Slovka One';
+    src: url(../fonts/SlovkaOne-ExtraLight.woff2) format('woff2');
+    font-weight: 100 249;
     font-display: swap;
 }
 .screen h1, .screen h2, .screen-title, .profile-name, .profile-section-title,
@@ -949,6 +1309,11 @@
     font-weight: 400;
     font-synthesis: none;
 }
+/* „Top X % hráčů" a hlavní nadpis sheetu o stupeň lehčí */
+#percentile, .modal-header h2 { font-weight: 300; }
+/* Podtitulek panelu po slově o stupeň lehčí — titulek zůstává na výchozí
+   těžké kresbě (platí stejně pro solved/zelenou i missed/červenou) */
+.wd-sub { font-weight: 300; }
 
 /* ---- Omezený pohyb: pryč s vlnami, pulzy i vyjížděním ---- */
 @media (prefers-reduced-motion: reduce) {

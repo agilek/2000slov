@@ -58,7 +58,13 @@ function defaultPersist() {
         practiceWords: 0,   // uhodnutá slova v tréninku, opakovaná se počítají znovu
         practiceSeen: '',   // která různá slova už v tréninku padla (bitmapa, viz markPracticeSeen)
         practiceLevel: 'stredni', // obtížnost tréninku, klíč z PRACTICE_LEVELS
+        practiceBestRun: 0, // nejdelší „N v řadě" v tréninku (úspěch V ráži)
+        practiceHard: 0,    // uhodnutá slova na Těžkou (úspěch Těžká váha)
+        ach: {},            // příznaky úspěchů, které nejdou dopočítat: { sdileno, blesk, chlup, sova, presmycka, cisty }
+        achGot: {},         // { [id úspěchu]: datum získání } — získaný úspěch už nezmizí
+        achUnseen: [],      // získané, ale ještě neotevřené (červená tečka)
         nick: '',           // přezdívka u přidaných významů
+        avatar: '',         // kód avatara „tvar-barva-oči-pusa", viz avatar.js
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
         nudgedAt: 0,        // série, u které jsme naposled připomněli účet
         day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct }
@@ -215,48 +221,186 @@ document.addEventListener('pointerdown', e => {
 
 // Tóny generované přes Web Audio API (žádné soubory ke stažení). AudioContext
 // se vytváří líně a probouzí při prvním doteku, aby to prošlo přes autoplay
-// omezení prohlížečů.
-let audioCtx = null;
+// omezení prohlížečů. Všechny zvuky jdou přes jednu sběrnici: lowpass 6 kHz
+// pro kulatost a krátký „pokoj“ (konvoluce se šumem, který dozní za 0,4 s).
+let audioCtx = null, audioOut = null, audioRoom = null;
 function getAudioCtx() {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return null;
-    if (!audioCtx) audioCtx = new Ctx();
+    if (!audioCtx) {
+        audioCtx = new Ctx();
+        audioOut = audioCtx.createBiquadFilter();         // výchozí typ je lowpass
+        audioOut.frequency.value = 6000;
+        audioOut.connect(audioCtx.destination);
+        const len = Math.floor(audioCtx.sampleRate * 0.4);
+        const ir = audioCtx.createBuffer(2, len, audioCtx.sampleRate);
+        for (let c = 0; c < 2; c++) {
+            const d = ir.getChannelData(c);
+            for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 4;
+        }
+        const room = audioCtx.createConvolver();
+        room.buffer = ir;
+        room.connect(audioOut);
+        audioRoom = audioCtx.createGain();
+        audioRoom.gain.value = 0.2;                       // kolik z každého zvuku jde do pokoje
+        audioRoom.connect(room);
+    }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
 }
 
-function playTone(freq, dur, type, peak, delay) {
+// Úder paličkou jako na marimbu: parciály 1×, 4× a 10× [násobek, hlasitost,
+// délka doznění vůči dur], vyšší doznívají rychleji. bright 0–1 je hlasitost
+// vyšších parciálů: 0 tupé „bonk“, 1 jiskra. bend > 1 začne výš a za 40 ms
+// sklouzne na tón („pop“), bend < 1 vyjede zdola („bloop“). dry = bez pokoje.
+const PARTIALS = [[1, 1, 1], [4, 0.4, 0.25], [10, 0.15, 0.1]];
+let soundAt = 0;   // kdy naposled něco zaznělo, viz tap níž
+function playTone(freq, { dur = 0.3, peak = 0.1, delay = 0, bend = 1, bright = 0, wave = 'sine', dry = false } = {}) {
     const ctx = getAudioCtx();
     if (!ctx) return;
-    const t0 = ctx.currentTime + (delay || 0);
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type || 'sine';
-    osc.frequency.setValueAtTime(freq, t0);
-    gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(peak, t0 + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.02);
+    soundAt = performance.now();
+    const t0 = ctx.currentTime + delay;
+    PARTIALS.forEach(([mult, vol, decay], i) => {
+        if (i && !bright) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const f = freq * mult;
+        const end = t0 + Math.max(dur * decay, 0.012);   // doznění nesmí začít před náběhem
+        osc.type = i ? 'sine' : wave;
+        osc.frequency.setValueAtTime(f * bend, t0);
+        osc.frequency.exponentialRampToValueAtTime(f, t0 + 0.04);
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(peak * vol * (i ? bright : 1), t0 + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, end);
+        osc.connect(gain).connect(audioOut);
+        if (!dry) gain.connect(audioRoom);
+        osc.start(t0);
+        osc.stop(end + 0.02);
+    });
 }
 
-// Stoupající tón s každým dalším vybraným písmenem (á la Duolingo).
+// Tap na tlačítko: suché krátké „pop“, nejtišší ze všech zvuků.
+function playTapSound() { playTone(660, { dur: 0.05, peak: 0.05, bend: 1.6, bright: 0.3, dry: true }); }
+// Stoupající tón s každým dalším vybraným písmenem (á la Duolingo). Krátký
+// schválně: s 0,35 s se při rychlém klepání (80 ms) tóny slily a nový úder
+// byl jen 3,6× hlasitější než doznívání předchozích, s 0,16 s je to 17×.
 const LETTER_NOTES = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50, 1174.66, 1318.51];
+const letterNote = (count) => LETTER_NOTES[Math.min(count - 1, LETTER_NOTES.length - 1)];
 function playLetterSound(count) {
-    playTone(LETTER_NOTES[Math.min(count - 1, LETTER_NOTES.length - 1)], 0.14, 'sine', 0.16);
+    playTone(letterNote(count), { dur: 0.16, peak: 0.13, bend: 1.03, bright: 0.8 });
 }
-function playRemoveSound() { playTone(392.00, 0.10, 'sine', 0.11); }
+// Poslední sekundy: tlukot srdce, který zrychluje ze 72 na 160 tepů za
+// minutu. Podle fonokardiogramu: S1 („lub“) ~150 ms s energií 50–130 Hz,
+// S2 („dub“) ~120 ms, o něco výš (75–200 Hz) a tišší. Proto jen sinusovky
+// a tlumený šum pod lowpassem 220 Hz („přes hrudník“) s měkkým náběhem.
+// Trojúhelník s vyššími parciály zněl z telefonu plechově: basy telefon
+// nezahraje a zbyly jen ty parciály.
+// Údery mezi sekundami se plánují dopředu, proto před zahráním ověří, že
+// odpočet pořád běží. Zastavuje ho moc míst (uhodnutí, pauza, konec…).
+const URGENT_FROM = 5;
+let beatAt = 0, noiseBuf = null;
+const counting = () => !state.processing && state.time > 0 && $('game').classList.contains('active')
+    && !$('pauseOverlay').classList.contains('active') && !document.querySelector('.modal.active');
+// Jedna ozva: základ, tišší oktáva (tu telefon ještě zahraje) a krátké žuchnutí šumu.
+function heartSound(f, dur, peak, delay) {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    soundAt = performance.now();
+    const t0 = ctx.currentTime + delay;
+    const lp = ctx.createBiquadFilter();                  // výchozí typ je lowpass
+    lp.frequency.value = 220;
+    lp.connect(audioOut);
+    const env = (node, vol, len, attack) => {
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(peak * vol, t0 + attack);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+        node.connect(g).connect(lp);
+        node.start(t0);
+        node.stop(t0 + len + 0.02);
+    };
+    for (const [mult, vol, decay] of [[1, 1, 1], [2, 0.5, 0.6]]) {
+        const osc = ctx.createOscillator();
+        osc.frequency.setValueAtTime(f * mult * 1.1, t0);  // jen lehký pokles, žádné „píu“
+        osc.frequency.exponentialRampToValueAtTime(f * mult, t0 + dur);
+        env(osc, vol, dur * decay, 0.015);                // 15 ms náběh = bez klapnutí
+    }
+    if (!noiseBuf) {
+        noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.05), ctx.sampleRate);
+        noiseBuf.getChannelData(0).forEach((_, i, d) => { d[i] = Math.random() * 2 - 1; });
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    env(noise, 0.4, 0.05, 0.005);
+}
+// S2 přijde po třetině tepu, ať rytmus zůstane „lub-dub … lub-dub“ i zrychlený.
+function playHeartbeat(k, gap) {
+    const peak = 0.063 + k * 0.007;                      // pod písmenky, i v posledních sekundách
+    heartSound(55, 0.15, peak, 0);
+    heartSound(70, 0.12, peak * 0.7, gap * 0.33 / 1000);
+}
+function playUrgentSound(left) {
+    const now = performance.now();
+    const k = URGENT_FROM - left;                         // 0 … 4
+    const gap = 60000 / (72 + k * 22);
+    if (left === URGENT_FROM || beatAt < now) beatAt = now;
+    for (; beatAt < now + 1000; beatAt += gap) {
+        setTimeout(() => { if (counting()) playHeartbeat(k, gap); }, beatAt - now);
+    }
+}
+// Smazání celého slova: vybraná písmena se rychle „odťukají“ pozpátku dolů.
+function playClearSound(count) {
+    const step = Math.min(0.03, 0.24 / count);
+    for (let i = count; i >= 1; i--) {
+        playTone(letterNote(i), { dur: 0.08, peak: 0.06, delay: (count - i) * step, bend: 1.2, bright: 0.4, dry: true });
+    }
+}
+function playRemoveSound() { playTone(392.00, { dur: 0.2, peak: 0.1, bend: 1.3, bright: 0.3 }); }
+// Durový rozklad E–G–C, nad posledním tónem tichá tercie jako jiskra.
 function playSuccessSound() {
-    playTone(659.25, 0.11, 'sine', 0.2, 0);
-    playTone(783.99, 0.11, 'sine', 0.2, 0.09);
-    playTone(1046.50, 0.2, 'sine', 0.22, 0.18);
+    [659.25, 783.99, 1046.50].forEach((f, i) => playTone(f, { dur: i < 2 ? 0.3 : 0.7, peak: 0.15, delay: i * 0.08, bright: 1 }));
+    playTone(1318.51, { dur: 0.6, peak: 0.05, delay: 0.16, bright: 0.5 });
 }
-function playErrorSound() { playTone(196.00, 0.22, 'sawtooth', 0.11, 0); }
-function playMissSound() { playTone(174.61, 0.35, 'sawtooth', 0.1, 0); }
+// Chyba: měkké „bonk“ z trojúhelníku, který na začátku spadne o kvintu.
+function playErrorSound() { playTone(233.08, { dur: 0.25, peak: 0.18, bend: 1.5, bright: 0.25, wave: 'triangle' }); }
+// Vypršený čas: dvě klesající „bonk“.
+function playMissSound() {
+    playTone(261.63, { dur: 0.22, peak: 0.16, bend: 1.4, bright: 0.25, wave: 'triangle' });
+    playTone(196.00, { dur: 0.45, peak: 0.16, delay: 0.16, bend: 1.4, bright: 0.25, wave: 'triangle' });
+}
+// Rozklad C–E–G–C a na konci tichý akord E–G nahoře.
 function playWinSound() {
-    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => playTone(f, 0.2, 'sine', 0.2, i * 0.11));
+    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => playTone(f, { dur: i < 3 ? 0.3 : 0.9, peak: 0.15, delay: i * 0.1, bright: 1 }));
+    [1318.51, 1567.98].forEach(f => playTone(f, { dur: 0.8, peak: 0.05, delay: 0.3, bright: 0.5 }));
 }
+// Hlas palcem: dvě stoupající „plink“ (G–D), odebrání hlasu jedno nižší „pop“.
+function playVoteSound(on) {
+    if (!on) return playTone(587.33, { dur: 0.18, peak: 0.09, bend: 1.3, bright: 0.4 });
+    playTone(783.99, { dur: 0.2, peak: 0.11, bright: 1 });
+    playTone(1174.66, { dur: 0.35, peak: 0.11, delay: 0.07, bright: 1 });
+}
+// Sheet: bublina nahoru při otevření, dolů při zavření.
+function playSheetSound(open) { playTone(open ? 523.25 : 440, { dur: 0.14, peak: 0.07, bend: open ? 0.7 : 1.4 }); }
+// Převíjení času zpátky na 30 s: za každou přičtenou sekundu drobný tik, výš
+// a výš, naplánovaný přesně v rytmu animateTimerUp. Poslední tik dosedne silněji.
+function playRewindSound(from, to, stepMs) {
+    for (let v = from + 1; v <= to; v++) {
+        playTone(587.33 * 2 ** (v / to), { dur: 0.05, peak: v === to ? 0.07 : 0.035, delay: (v - from) * stepMs / 1000, bend: 1.25, bright: 0.4, dry: true });
+    }
+}
+
+// Tap na tlačítko (i na záložku profilu). Zazní až po obsluze kliku, a jen
+// když tlačítko nezahrálo vlastní zvuk (hlas, sheet, převíjení…), takže nic
+// nezní dvakrát. Capture, protože některé obsluhy volají stopPropagation.
+// Disabled tlačítko click nedostane, z iOS přepínače uvnitř ho najde closest.
+// Na click, ne pointerdown: začátek scrollu přes tlačítko neťukne.
+document.addEventListener('click', e => {
+    const btn = e.target.closest('button, [role="button"], .ptab-bar label');
+    if (!btn || btn.matches(':disabled')) return;
+    const t = performance.now();
+    getAudioCtx();                                        // probudit ještě v gestu
+    setTimeout(() => { if (soundAt < t) playTapSound(); });
+}, true);
 
 /* ---------------- UI helpery ---------------- */
 
@@ -459,7 +603,7 @@ function renderWdCard(word) {
     card.replaceChildren();
     if (def) {
         const meta = el('div', 'wd-meta');
-        meta.append(authorEl(def.author), voteBtn(def));
+        meta.append(authorEl(def), voteBtn(def));
         card.append(el('p', 'wd-text', def.text), meta);   // cizí text vždy přes textContent
     }
     $('wdAddBtn').hidden = !!def;
@@ -522,13 +666,21 @@ function hideWordDone(animated) {
     setTimeout(() => { if (ov.classList.contains('closing')) finish(); }, 260);
 }
 
-function authorEl(name) {
-    const wrap = document.createElement('span');
+// Autor s účtem je odkaz na svůj veřejný profil. Smazaný účet (author null) ne.
+function authorEl(def) {
+    const wrap = document.createElement(def.author ? 'button' : 'span');
     wrap.className = 'wd-author';
+    if (def.author) {
+        wrap.type = 'button';
+        wrap.setAttribute('aria-label', `Profil hráče ${def.author}`);
+        wrap.onclick = (e) => { e.stopPropagation(); openAuthorProfile(def.author); };
+    }
     const av = document.createElement('span');
     av.className = 'wd-avatar';
-    const label = (name || 'Anonym').trim();
-    av.textContent = label.charAt(0).toUpperCase() || '?';
+    const label = (def.author || 'Anonym').trim();
+    const svg = Avatar.svg(def.avatar);                 // jen z indexů kódu, viz renderProfile
+    if (svg) { av.classList.add('wd-avatar--img'); av.innerHTML = svg; }
+    else av.textContent = label.charAt(0).toUpperCase() || '?';
     const n = document.createElement('span');
     n.className = 'wd-name';
     n.textContent = label;
@@ -554,6 +706,7 @@ function voteBtn(def) {
 }
 
 async function voteDef(def, btn) {
+    playVoteSound(!def.voted);                            // hned, ne až po odpovědi serveru
     const r = await apiPost('/api/defs/vote', { id: def.id });
     if (!r.ok) return showToast((r.data && r.data.error) || 'Hlas se nepodařilo uložit.');
     def.votes = r.data.votes;
@@ -663,7 +816,7 @@ function defItem(d) {
     if (d.mine) actions.append(editBtn(d, li, p, () => { loadDefsList(state.wdWord); renderWdCard(state.wdWord); }));
     else if (auth.user) actions.append(reportBtn(d, li));
     const meta = el('div', 'wd-meta');
-    meta.append(authorEl(d.author), actions);
+    meta.append(authorEl(d), actions);
     li.append(p, meta);
     return li;
 }
@@ -786,7 +939,7 @@ function el(tag, cls, text) {
 // Emoji v textu UI obalí do <span class="emoji" data-emoji="…">, ať ho design
 // může vyměnit za vlastní ikonu (designs/kostky/); bez CSS zůstane emoji.
 // \n se převede na <br>. Staví DOM, ne HTML — text může přijít i z backendu.
-const EMOJI_NAMES = { '👍': 'palec', '🏆': 'trofej', '👑': 'koruna', '🏅': 'medaile', '💔': 'srdce', '🔓': 'odemceno', '🔒': 'zamceno', '🔥': 'plamen' };
+const EMOJI_NAMES = { '👍': 'palec', '🏆': 'trofej', '👑': 'koruna', '🏅': 'medaile', '💔': 'srdce', '🔓': 'odemceno', '🔒': 'zamceno', '🔥': 'plamen', '⭐': 'hvezda' };
 const EMOJI_RE = new RegExp(`(${Object.keys(EMOJI_NAMES).join('|')}|\n)`, 'u');
 function setEmojiText(node, text) {
     node.replaceChildren(...String(text).split(EMOJI_RE).filter(Boolean).map(part => {
@@ -914,7 +1067,7 @@ function renderSignedIn(box) {
     box.append(el('p', 'profile-note', `Přihlášen jako ${auth.user.handle}. Významy se ukládají k účtu.`));
     const show = el('button', 'btn btn-secondary', 'Můj veřejný profil');
     show.type = 'button';
-    show.onclick = showPublicProfile;
+    show.onclick = () => showPublicProfile(auth.user.handle);
     box.append(show);
     const out = el('button', 'btn btn-secondary', 'Odhlásit se');
     out.onclick = async () => {
@@ -987,8 +1140,6 @@ function stopLoginPolling() {
 /* ---------------- profil ---------------- */
 
 function showProfile() {
-    $('profileNickForm').style.display = 'none';
-    $('profileNickBtn').style.display = '';
     renderProfile();
     showScreen('profile');
     refreshAuth().then(() => {
@@ -1006,14 +1157,23 @@ function renderProfile() {
     // Účty zatím neběží, takže je profil lokální — statistiky jsou skutečné,
     // jen se počítají z localStorage tohohle zařízení.
     const nick = ((auth.user && auth.user.handle) || persist.nick || '').trim();
-    $('profileAvatar').textContent = (nick || 'Host').charAt(0).toUpperCase();
+    // Avatar vybraný před přihlášením si účet vezme, pokud žádný nemá
+    // (i když se první pokus po přihlášení nepovedl — zkusí se při dalším otevření).
+    if (auth.user && !auth.user.avatar && Avatar.valid(persist.avatar)) {
+        auth.user.avatar = persist.avatar;
+        apiPost('/api/me/avatar', { avatar: persist.avatar });
+    }
+    // SVG skládá avatar.js jen z indexů kódu, žádný text hráče se do něj nedostane.
+    const avatar = Avatar.svg((auth.user && auth.user.avatar) || persist.avatar);
+    if (avatar) $('profileAvatar').innerHTML = avatar;
+    else $('profileAvatar').textContent = (nick || 'Host').charAt(0).toUpperCase();
     $('profileName').textContent = nick || 'Host';
     $('profileSub').textContent = persist.bestStreak > 0
         ? `Nejdelší série: ${fmtNum(persist.bestStreak)}`
         : 'Zatím bez série';
-    $('profileNickBtn').textContent = nick ? 'Změnit přezdívku' : 'Nastavit přezdívku';
-    $('profileNote').textContent = nick
-        ? 'Přezdívka se ukazuje u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.'
+    $('profileNote').textContent = auth.user
+        ? 'Přezdívka se ukazuje u tvých významů a v odkazu na veřejný profil.'
+        : nick ? 'Přezdívka se ukazuje u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.'
         : 'Přezdívkou se podepíšeš u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.';
 
     const tiles = [
@@ -1043,9 +1203,145 @@ function renderProfile() {
     $('profileDeviceNote').textContent = auth.enabled
         ? 'Série i postup žijí jen v tomhle zařízení. Přihlášením o ně nepřijdeš.'
         : 'Série i postup žijí jen v tomhle zařízení — vymazáním dat prohlížeče zmizí.';
-    // Přihlášený má jméno z účtu; anonymní si ho volí sám.
-    $('profileNickBtn').style.display = auth.user ? 'none' : '';
+    renderAchievements();
     loadMyDefs();
+    loadMyPoints();
+}
+
+/* ---------------- úspěchy (seznam a markup v achievements.js) ---------------- */
+
+// Plochý stav počtů pro Achievements. Série = nejdelší řada *odehraných* dní
+// (klíče results jsou po sobě jdoucí indexy dní); persist.streak jsou jen
+// perfektní dny a nese Hattrick. Počty z významů zná jen server (účet).
+function achState() {
+    const idx = Object.keys(persist.results).map(Number).sort((a, b) => a - b);
+    let serie = 0, run = 0, fenix = 0;
+    idx.forEach((d, i) => {
+        const next = i > 0 && d === idx[i - 1] + 1;
+        run = next ? run + 1 : 1;
+        serie = Math.max(serie, run);
+        if (next && persist.results[idx[i - 1]] <= 8 && persist.results[d] >= 17) fenix = 1;
+    });
+    const p = (auth.user && state.points) || {};
+    const st = {
+        dny: idx.length, serie, fenix, slova: uncoveredCount(),
+        perfekt: Object.values(persist.results).filter(n => n === WORDS_PER_DAY).length,
+        perfektSerie: persist.bestStreak,
+        avatar: Avatar.valid((auth.user && auth.user.avatar) || persist.avatar) ? 1 : 0,
+        trenink: Math.max(persist.practiceWords, p.slovTreninku || 0),
+        treninkRada: persist.practiceBestRun, tezka: persist.practiceHard,
+        vyznamu: p.vyznamu, ziskanych: p.ziskanychHlasu, maxHlasu: p.maxHlasu, nejlepsi: p.nejlepsi, danych: p.danychHlasu,
+        ...persist.ach,
+    };
+    // Získaný zůstane, i když počet pak klesne (odebraný hlas, jiné zařízení).
+    for (const a of Achievements.LIST) if (persist.achGot[a.id]) st[a.v] = Math.max(st[a.v] || 0, a.goal);
+    return st;
+}
+
+// Zapíše nově splněné (datum + nové) a rozsvítí tečku na Profilu.
+function syncAchievements() {
+    const st = achState();
+    let fresh = false;
+    for (const a of Achievements.LIST) {
+        if (persist.achGot[a.id] || !Achievements.done(a, st)) continue;
+        persist.achGot[a.id] = todayStr();
+        persist.achUnseen.push(a.id);
+        fresh = true;
+    }
+    if (fresh) savePersist();
+    $('topBar').querySelector('.icon-btn').classList.toggle('icon-btn--dot', persist.achUnseen.length > 0);
+    return st;
+}
+
+const myAvatarSvg = () => Avatar.svg((auth.user && auth.user.avatar) || persist.avatar);
+const achTile = (a, st) => Achievements.tile(a, st, { avatar: myAvatarSvg(), isNew: persist.achUnseen.includes(a.id) });
+
+function renderAchievements() {
+    const st = syncAchievements();
+    const L = Achievements.LIST, done = a => Achievements.done(a, st);
+    const got = L.filter(done);
+    const count = `${got.length} z ${L.length}`;
+    $('achCount').textContent = count;
+    // V profilu: nové, pak nejčerstvější, pak nejbližší zamčené — ať je co dohánět.
+    const byDate = got.slice().sort((a, b) => (persist.achGot[b.id] || '').localeCompare(persist.achGot[a.id] || ''));
+    const near = achNear(st);
+    const pick = [...got.filter(a => persist.achUnseen.includes(a.id)), ...byDate, ...near, ...L.filter(a => !done(a))];
+    $('achProfileGrid').innerHTML = [...new Set(pick)].slice(0, 8).map(a => achTile(a, st)).join('');
+
+    $('achSumCount').innerHTML = `${got.length} <small>z ${L.length}</small>`;
+    $('achSumBar').style.width = got.length / L.length * 100 + '%';
+    $('achNearSection').hidden = !near.length;
+    $('achNear').innerHTML = near.slice(0, 3).map(a => {
+        const left = a.goal - Achievements.val(a, st);
+        return `<button class="ach-near-item" data-ach="${a.id}">${Achievements.badge(a, st)}<span class="ach-near-body">
+            <span class="ach-near-name">${a.name}</span><span class="ach-bar"><i style="width:${Achievements.pct(a, st) * 100}%"></i></span>
+            <span class="ach-near-left">Ještě ${fmtNum(left)} ${Achievements.unitOf(a, left)}</span></span></button>`;
+    }).join('');
+    $('achGroups').innerHTML = Achievements.GROUPS.map(([g, title]) => {
+        const list = L.filter(a => a.g === g);
+        return `<div class="profile-section"><h3 class="profile-section-title">${title} <small>${list.filter(done).length} z ${list.length}</small></h3>
+            <div class="ach-grid">${list.map(a => achTile(a, st)).join('')}</div></div>`;
+    }).join('');
+}
+
+// Zamčené s rozjetým postupem, nejbližší napřed (tajné se neprozrazují).
+function achNear(st) {
+    return Achievements.LIST.filter(a => !a.secret && !Achievements.done(a, st) && Achievements.val(a, st) > 0)
+        .sort((a, b) => Achievements.pct(b, st) - Achievements.pct(a, st));
+}
+
+function showAchievements() {
+    renderAchievements();
+    showScreen('achievements');
+    window.scrollTo(0, 0);
+}
+
+// Detail v sheetu. Poprvé otevřený nový úspěch = oslava „Nový úspěch!".
+function openAchievement(id) {
+    const A = Achievements, a = A.LIST.find(x => x.id === id);
+    if (!a) return;
+    const st = achState();
+    const locked = !A.done(a, st), secret = A.hidden(a, st);
+    const celebrate = persist.achUnseen.includes(id);
+    if (celebrate) {
+        persist.achUnseen = persist.achUnseen.filter(x => x !== id);
+        savePersist();
+        renderAchievements();
+    }
+    $('achTitle').textContent = secret ? 'Tajný úspěch' : a.name;
+    const v = A.val(a, st), rarity = locked ? 'locked' : a.r;
+    let info;
+    if (!locked) {
+        const d = persist.achGot[id];
+        info = `<p class="ach-meta">${celebrate ? 'Získáno právě teď' : d ? 'Získáno ' + d.split('-').reverse().map(Number).join('. ') : ''}</p>`;
+    } else if (a.goal > 1) {
+        info = `<div class="ach-progress"><div class="ach-progress-label"><span>${fmtNum(v)} / ${fmtNum(a.goal)} ${A.unitOf(a, a.goal)}</span>
+            <b>${v ? `Ještě ${fmtNum(a.goal - v)}!` : ''}</b></div><div class="ach-bar"><i style="width:${A.pct(a, st) * 100}%"></i></div></div>`;
+    } else {
+        info = `<p class="ach-meta">${secret ? 'Na tenhle se přichází samo, nebo náhodou.' : 'Zatím zamčeno'}</p>`;
+    }
+    $('achBody').innerHTML = `${celebrate ? '<p class="ach-kicker">Nový úspěch!</p>' : ''}
+        <div class="ach-stage ach--${rarity}${locked ? ' is-locked' : ''} pop">${A.badge(a, st, myAvatarSvg())}</div>
+        <span class="ach-rarity ach--${rarity}">${A.RARITY[a.r]}</span>
+        <p class="ach-desc">${secret ? 'Nápověda: ' + a.secret : a.desc}</p>
+        ${info}
+        ${celebrate ? '<button class="btn btn-play ach-ok" onclick="closeModal()">Paráda!</button>' : ''}`;
+    openModal('achModal');
+    if (celebrate) { playWinSound(); haptic('win'); }
+}
+
+document.addEventListener('click', e => {
+    const t = e.target.closest('[data-ach]');
+    if (t) openAchievement(t.dataset.ach);
+});
+
+// Body (viz worker/src/profile.js) má jen účet. Ve hře nikde jinde nejsou.
+async function loadMyPoints() {
+    const pill = $('profilePoints');
+    const d = auth.user && await apiGet('/api/me/points');
+    if (d && Number.isInteger(d.total)) { state.points = d; renderAchievements(); }
+    pill.hidden = !(d && Number.isInteger(d.total));
+    if (!pill.hidden) setEmojiText(pill, `⭐ ${fmtNum(d.total)} ${plural(d.total, 'bod', 'body', 'bodů')}`);
 }
 
 // Profil: oblak štítků (slovo + palce) s nejlépe hodnocenými významy a odkaz
@@ -1118,46 +1414,107 @@ function myDefItem(d) {
     return li;
 }
 
-// Veřejný profil jako obrazovka hry (zpět = profil), ne nová karta. Obsah
-// renderuje server — stejný markup jako sdílená stránka /u/<přezdívka>;
-// texty hráčů v něm escapuje worker/src/profile.js.
+// Veřejný profil jako obrazovka hry, ne nová karta. Obsah renderuje server —
+// stejný markup jako sdílená stránka /u/<přezdívka>; texty hráčů v něm
+// escapuje worker/src/profile.js. Zpět vede tam, odkud se přišlo: bez `back`
+// do vlastního profilu, od autora významu zpátky do tréninku.
 // Sdílení profilu: ikona vpravo nahoře na obrazovce veřejného profilu.
 async function sharePublicProfile() {
+    const handle = state.profileHandle;
     // Profil žije na serveru, kde je účet — ne na FALLBACK_URL pro sdílení z localhostu.
-    const link = `${location.origin}/u/${encodeURIComponent(auth.user.handle)}`;
-    if (navigator.share) { try { await navigator.share({ title: `${auth.user.handle} — 20 slov`, url: link }); } catch (e) {} return; }
+    const link = `${location.origin}/u/${encodeURIComponent(handle)}`;
+    if (navigator.share) { try { await navigator.share({ title: `${handle} — 20 slov`, url: link }); } catch (e) {} return; }
     try { await navigator.clipboard.writeText(link); showToast('Odkaz na profil zkopírován.'); }
     catch (e) { showToast(link); }
 }
 
-async function showPublicProfile() {
+async function showPublicProfile(handle, back) {
+    state.profileHandle = handle;
+    state.profileBack = back || null;
     const body = $('publicProfileBody');
     body.replaceChildren(el('p', 'profile-note', 'Načítám profil…'));
     showScreen('publicProfile');
     scrollTo(0, 0);
     try {
-        const res = await fetch(`/u/${encodeURIComponent(auth.user.handle)}?cast=1`, { cache: 'no-store' });
-        body.innerHTML = await res.text();
+        const res = await fetch(`/u/${encodeURIComponent(handle)}?cast=1`, { cache: 'no-store' });
+        const html = await res.text();
+        if (state.profileHandle === handle) body.innerHTML = html;   // mezitím se otevřel jiný
     } catch (e) {
         body.replaceChildren(el('p', 'profile-note', 'Profil se nepodařilo načíst. Zkontroluj připojení a zkus to znovu.'));
     }
 }
 
-function editNick() {
-    $('profileNickForm').style.display = 'flex';
-    $('profileNickBtn').style.display = 'none';
-    $('profileNickInput').value = persist.nick || '';
-    $('profileNickInput').focus();
+function leavePublicProfile() {
+    const back = state.profileBack;
+    state.profileBack = null;
+    state.profileHandle = null;
+    back ? back() : showProfile();
 }
 
-function saveNick(e) {
+// Z mezihry tréninku na profil autora a zpátky. Panel po slově i sheet
+// s významy zůstanou, jak byly; odpočet na Další se zruší jako u významů.
+function openAuthorProfile(handle) {
+    holdWordDone();
+    const ov = $('wordDoneOverlay');
+    const fromSheet = $('defsModal').classList.contains('active');
+    if (fromSheet) closeDefs();
+    ov.style.display = 'none';
+    showPublicProfile(handle, () => {
+        showScreen('game');
+        ov.style.display = '';
+        if (fromSheet) openDefs();
+    });
+}
+
+// Úprava profilu: současný avatar, nebo náhodný pro toho, kdo žádný nemá;
+// „Ukázat jiného" poskládá dalšího. Uloží se až „Uložit", spolu s přezdívkou.
+function showProfileEdit() {
+    const current = (auth.user && auth.user.avatar) || persist.avatar;
+    rollAvatar(Avatar.valid(current) ? current : Avatar.random());
+    $('profileNickInput').value = (auth.user && auth.user.handle) || persist.nick || '';
+    $('profileNickError').style.display = 'none';
+    showScreen('profileEdit');
+    scrollTo(0, 0);
+}
+
+function rollAvatar(code = Avatar.random()) {
+    state.avatarDraft = code;
+    $('avatarStage').innerHTML = Avatar.svg(code);
+}
+
+// Přihlášenému se obojí uloží k účtu (server přepíše přezdívku i u jeho
+// významů a hlídá, ať je volná), hostovi jen do zařízení. Posílá se jen, co se
+// změnilo; přezdívka první, protože jen ta může narazit. Na server se čeká,
+// ať ho refreshAuth v showProfile nepřepíše starým.
+async function saveProfile(e) {
     e.preventDefault();
-    persist.nick = $('profileNickInput').value.trim().slice(0, 20);
+    const nick = $('profileNickInput').value.trim().slice(0, 20);
+    const avatar = state.avatarDraft;
+    const err = $('profileNickError');
+    err.style.display = 'none';
+    if (auth.user) {
+        const steps = [];
+        if (nick !== auth.user.handle) steps.push(['/api/me/handle', { handle: nick }]);
+        if (avatar !== auth.user.avatar) steps.push(['/api/me/avatar', { avatar }]);
+        $('profileSaveBtn').disabled = true;
+        for (const [path, body] of steps) {
+            const r = await apiPost(path, body);
+            if (!r.ok) {
+                $('profileSaveBtn').disabled = false;
+                err.textContent = (r.data && r.data.error) || 'Nepodařilo se uložit. Zkus to znovu.';
+                err.style.display = 'block';
+                return;
+            }
+            auth.user = r.data.user;
+        }
+        $('profileSaveBtn').disabled = false;
+    }
+    persist.nick = nick;
+    persist.avatar = avatar;
     savePersist();
-    $('profileNickForm').style.display = 'none';
-    $('profileNickBtn').style.display = '';
-    renderProfile();
-    showToast(persist.nick ? 'Přezdívka uložená.' : 'Přezdívka zrušená.');
+    syncAchievements();
+    showProfile();
+    showToast('Profil uložený.');
 }
 
 function playToday() {
@@ -1472,6 +1829,14 @@ function handleTap(el) {
     if (!state.processing) updateUI();
 }
 
+// Klepnutí na skládané slovo ho celé smaže.
+function clearWord() {
+    if (state.processing || !state.selected.length) return;
+    haptic('tap');
+    playClearSound(state.selected.length);
+    resetSelection();
+}
+
 function resetSelection() {
     if (state.processing) return;
     clearIncorrectState();
@@ -1495,6 +1860,7 @@ function checkWord() {
     const target = state.words[state.wordIdx] || '';
 
     if (word.length !== state.letters.length || !isAcceptedWord(word, target)) {
+        if (state.mode === 'daily' && persist.day) persist.day.wrong = (persist.day.wrong || 0) + 1;   // úspěch Čistá práce
         haptic('error');
         playErrorSound();
         $('wordDisplay').classList.add('shake');
@@ -1521,11 +1887,18 @@ function checkWord() {
     state.wordIdx++;
     state.solved++;
     state.marks.push(true);
+    if (START_TIME - state.time <= 3) persist.ach.blesk = 1;
+    if (state.time <= 1) persist.ach.chlup = 1;
     if (state.mode === 'practice') {
         state.practiceCount++;
         persist.practiceWords++;   // trénink se jinak nikam neukládá
+        persist.practiceBestRun = Math.max(persist.practiceBestRun, state.practiceCount);
+        if (persist.practiceLevel === 'tezka') persist.practiceHard++;
+        if (word !== lettersOf(target)) persist.ach.presmycka = 1;
+        if (auth.user) apiPost('/api/training', { playedOn: todayStr() });   // body v profilu
         markPracticeSeen(target);
         savePersist();
+        syncAchievements();
     }
     updateGameGrid(state.marks.length - 1);
     saveDayProgress();
@@ -1818,7 +2191,8 @@ function updateUI() {
     const label = state.mode === 'practice'
         ? `Slovo ${state.wordIdx + 1} · ${practiceLevel().label}`
         : `Slovo ${state.wordIdx + 1}/${WORDS_PER_DAY}`;
-    $('progress').innerHTML = `<div class="gp-headline">${label}</div><div class="gp-timer${low}">${state.time}<span class="gp-timer-unit">s</span></div>`;
+    const timeStr = String(state.time).padStart(2, '0');
+    $('progress').innerHTML = `<div class="gp-timer${low}"><span class="gp-timer-num">${timeStr}</span></div><div class="gp-headline">${label}</div>`;
     // zbývající čas 0–1 pro lištu nahoře (délka i barva, viz .time-bar)
     $('game').style.setProperty('--t', state.time / START_TIME);
 }
@@ -1838,6 +2212,7 @@ function startTimer() {
             return;
         }
         if (state.time <= 3) haptic('tick');
+        if (state.time <= URGENT_FROM) playUrgentSound(state.time);
         updateUI();
         saveDayProgress();
     }, 1000);
@@ -1852,13 +2227,15 @@ function animateTimerUp(from, done = startTimer) {
     const steps = to - from;
     if (steps <= 0) { state.time = to; state.rewinding = false; done(); return; }
     let current = from;
+    const step = Math.max(12, Math.floor(500 / steps));   // celé převíjení ~0,5 s
+    playRewindSound(from, to, step);
     state.rewinding = true;             // převíjení je bílé, ne červené „low"
     state.rewindTimer = setInterval(() => {
         current++;
         state.time = current;
         updateUI();
         if (current >= to) { clearInterval(state.rewindTimer); state.rewinding = false; done(); }
-    }, Math.max(12, Math.floor(500 / steps)));
+    }, step);
 }
 
 function saveDayProgress() {
@@ -1957,7 +2334,10 @@ function finishDay() {
     } else {
         persist.streak = 0;
     }
+    if (perfect && !persist.day.wrong) persist.ach.cisty = 1;
+    if (new Date().getHours() < 4) persist.ach.sova = 1;
     savePersist();
+    syncAchievements();
     showResult(false);
     refreshRealPercentile(); // dozdobí % v pozadí, jakmile (a pokud) dorazí z backendu
 }
@@ -2435,6 +2815,9 @@ async function shareScore() {
 function shareCardFile() {
     const file = shareCard && shareCard.file;
     if (!file) return;
+    persist.ach.sdileno = 1;
+    savePersist();
+    syncAchievements();
     if (!canShareCard(file)) { downloadCard(file); closeModal(); return; }
     navigator.share({ files: [file], text: `${cardTier(persist.day).theme.dare} ${siteUrl()}` }).then(() => closeModal()).catch(err => {
         if (err && err.name === 'AbortError') return;   // jen zavřel share sheet — náhled zůstává
@@ -2463,8 +2846,16 @@ function updateNotifyPrompt() {
         if (!persist.a2hsPromptDismissed) banner.style.display = 'block';
         return;
     }
-    if ('Notification' in window && 'PushManager' in window && Notification.permission === 'default') {
-        notifyBtn.style.display = 'flex';
+    if (!('Notification' in window && 'PushManager' in window)) return;
+    if (Notification.permission === 'default') notifyBtn.style.display = 'flex';
+    // Povolení ještě neznamená odběr: mohl selhat nebo vypršet a připomínky by
+    // tiše nechodily. Bez odběru se tlačítko nabídne znovu — klepnutí ho obnoví
+    // bez dalšího dotazu (requestPermission rovnou vrátí 'granted').
+    else if (Notification.permission === 'granted') {
+        navigator.serviceWorker.ready
+            .then(reg => reg.pushManager.getSubscription())
+            .then(sub => { if (!sub) notifyBtn.style.display = 'flex'; })
+            .catch(() => {});
     }
 }
 
@@ -2572,6 +2963,7 @@ const SHEET_CLOSE_MS = 300;
 
 function openModal(id) {
     const modal = $(id);
+    if (!modal.classList.contains('active') || modal.classList.contains('closing')) playSheetSound(true);
     modal.classList.remove('closing');                    // otevřený během zavírání zůstane
     modal.querySelector('.modal-content').style.cssText = '';
     modal.classList.add('active');
@@ -2585,6 +2977,7 @@ function openModal(id) {
 function closeSheet(modal) {
     if (!modal.classList.contains('active') || modal.classList.contains('closing')) return;
     const sheet = modal.querySelector('.modal-content');
+    playSheetSound(false);
     modal.classList.add('closing');
     // co má sheet po zavření udělat (quitModal rozjede čas), ať se zavře jakkoli
     const onclose = modal.onclose;
@@ -2751,6 +3144,7 @@ document.onkeydown = e => {
     if (e.key === 'Backspace' && state.selected.length > 0) {
         e.preventDefault();
         const idx = state.selected.pop();
+        playRemoveSound();
         const tile = $('letterRow').querySelector(`.letter[data-index="${idx}"]`);
         if (tile) tile.classList.remove('selected');
         updateUI();
@@ -2794,4 +3188,5 @@ document.addEventListener('dblclick', e => e.preventDefault(), { passive: false 
     addHapticOverlays();
     registerServiceWorker();
     showWelcome();
+    syncAchievements();   // tečka na Profilu, i pro úspěchy z dřívějška
 })();

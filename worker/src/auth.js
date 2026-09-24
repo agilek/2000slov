@@ -11,6 +11,8 @@
 // skenery odkazy předběžně stahují a skenerový GET by tiše přihlásil cizího
 // člověka.
 
+import Avatar from '../../public/avatar.js';
+
 const SESSION_DAYS = 365;
 const REQUEST_TTL_MS = 15 * 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
@@ -69,7 +71,7 @@ async function startSession(env, userId) {
     return cookie(env, 'sid', token, SESSION_DAYS * 86400);
 }
 
-const publicUser = (u) => ({ id: u.id, handle: u.handle, needsHandle: !u.handle });
+const publicUser = (u) => ({ id: u.id, handle: u.handle, needsHandle: !u.handle, avatar: u.avatar || null });
 
 /* ---------------- e-mail ---------------- */
 
@@ -258,6 +260,17 @@ export async function meSetHandle(request, env, url, ctx, json) {
     return json({ ok: true, user: publicUser({ ...u, handle }) }, 200);
 }
 
+export async function meSetAvatar(request, env, url, ctx, json) {
+    const u = await currentUser(request, env);
+    if (!u) return json({ error: 'not logged in' }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const avatar = String((body && body.avatar) || '');
+    if (!Avatar.valid(avatar)) return json({ error: 'bad avatar' }, 400);
+    await env.DB.prepare('UPDATE users SET avatar = ?1 WHERE id = ?2').bind(avatar, u.id).run();
+    return json({ ok: true, user: publicUser({ ...u, avatar }) }, 200);
+}
+
 export async function meDelete(request, env, url, ctx, json) {
     const u = await currentUser(request, env);
     if (!u) return json({ error: 'not logged in' }, 401);
@@ -265,6 +278,7 @@ export async function meDelete(request, env, url, ctx, json) {
         // významy zůstanou komunitě, jen se z nich sundá autorství
         env.DB.prepare("UPDATE definitions SET user_id = NULL, author = NULL, client_id = 'deleted' WHERE user_id = ?1").bind(u.id),
         env.DB.prepare('DELETE FROM votes WHERE client_id = ?1').bind(u.id),
+        env.DB.prepare('DELETE FROM training_days WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM sessions WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM users WHERE id = ?1').bind(u.id),
     ]);

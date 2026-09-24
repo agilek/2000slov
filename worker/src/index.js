@@ -8,9 +8,9 @@ import { buildPushHTTPRequest } from '@pushforge/builder';
 import { clean, defTextError, validClient, VULGAR, AUTHOR_MAX } from './validate.js';
 import {
     authEnabled, authStart, authPoll, authVerify, authApprove, authLandingPage,
-    authLogout, meGet, meSetHandle, meDelete, currentUser, purgeAuth, devMode, devLogin,
+    authLogout, meGet, meSetHandle, meSetAvatar, meDelete, currentUser, purgeAuth, devMode, devLogin,
 } from './auth.js';
-import { apiProfile, profilePage, validPlayedOn } from './profile.js';
+import { apiProfile, profilePage, validPlayedOn, points } from './profile.js';
 
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
@@ -42,9 +42,12 @@ const ROUTES = {
     'GET /prihlaseni': (rq, env, url) => authLandingPage(rq, env, url),
     'GET /api/me': (rq, env, url, ctx) => meGet(rq, env, url, ctx, json),
     'POST /api/me/handle': (rq, env, url, ctx) => meSetHandle(rq, env, url, ctx, json),
+    'POST /api/me/avatar': (rq, env, url, ctx) => meSetAvatar(rq, env, url, ctx, json),
     'POST /api/me/delete': (rq, env, url, ctx) => meDelete(rq, env, url, ctx, json),
     'GET /api/profile': (rq, env, url, ctx) => apiProfile(rq, env, url, ctx, json),
     'POST /api/profile/backfill': handleBackfill,
+    'GET /api/me/points': handleMyPoints,
+    'POST /api/training': handleTraining,
     'GET /api/dev/login': (rq, env, url, ctx) => devLogin(rq, env, url, ctx, json),   // jen DEV=1, viz auth.js
 };
 
@@ -118,6 +121,28 @@ async function handleBackfill(request, env) {
          VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(user_id, played_on) DO NOTHING`
     ).bind(user.id, d.d, d.dayIdx, d.score, Date.now())));
     return json({ ok: true, added: rows.length }, 200);
+}
+
+// Body pro vlastní profil. Veřejný je má v markupu z profile.js.
+async function handleMyPoints(request, env) {
+    const user = await currentUser(request, env);
+    if (!user) return json({ error: 'not logged in' }, 401);
+    return json(await points(env, user.id), 200);
+}
+
+// Jedno uhodnuté slovo tréninku. Klient si ho tvrdí sám jako /api/result,
+// proto body za trénink mají denní strop (profile.js ZA_DEN).
+async function handleTraining(request, env) {
+    const user = await currentUser(request, env);
+    if (!user) return json({ error: 'not logged in' }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    if (!validPlayedOn(body && body.playedOn)) return json({ error: 'bad params' }, 400);
+    await env.DB.prepare(
+        `INSERT INTO training_days (user_id, played_on, words) VALUES (?1, ?2, 1)
+         ON CONFLICT(user_id, played_on) DO UPDATE SET words = words + 1`
+    ).bind(user.id, body.playedOn).run();
+    return json({ ok: true }, 200);
 }
 
 async function handleSubmit(request, env) {
@@ -224,6 +249,7 @@ function defRow(r, userId, voted) {
         word: r.word,
         text: r.text,
         author: r.author,          // vždy přezdívka z účtu — anonymní autoři neexistují
+        avatar: r.avatar || null,  // kód z public/avatar.js, null = iniciála
         votes: r.votes,
         mine: !!userId && r.user_id === userId,
         voted: !!voted && voted.has(r.id),
@@ -271,8 +297,9 @@ async function handleDefsBatch(request, env, url, ctx) {
         const marks = misses.map(() => '?').join(',');
         const { results } = await env.DB.prepare(
             `SELECT * FROM (
-               SELECT *, ROW_NUMBER() OVER (PARTITION BY word ORDER BY votes DESC, created_at ASC) AS rn
-               FROM definitions WHERE hidden = 0 AND word IN (${marks})
+               SELECT d.*, u.avatar, ROW_NUMBER() OVER (PARTITION BY d.word ORDER BY d.votes DESC, d.created_at ASC) AS rn
+               FROM definitions d LEFT JOIN users u ON u.id = d.user_id
+               WHERE d.hidden = 0 AND d.word IN (${marks})
              ) WHERE rn = 1`
         ).bind(...misses).all();
         for (const w of misses) rows[w] = null;          // i prázdno je odpověď
@@ -307,7 +334,8 @@ async function handleDefsForWord(request, env, url) {
     if (!word) return json({ error: 'bad params' }, 400);
     const me = await currentUser(request, env);
     const { results } = await env.DB.prepare(
-        'SELECT * FROM definitions WHERE word = ?1 AND hidden = 0 ORDER BY votes DESC, created_at ASC LIMIT 50'
+        `SELECT d.*, u.avatar FROM definitions d LEFT JOIN users u ON u.id = d.user_id
+         WHERE d.word = ?1 AND d.hidden = 0 ORDER BY d.votes DESC, d.created_at ASC LIMIT 50`
     ).bind(word).all();
     const voted = await votedSet(env, me, results.map(r => r.id));
     return json({ word, defs: results.map(r => defRow(r, me && me.id, voted)) }, 200);

@@ -7,6 +7,10 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { clean, defTextError, validClient, DEF_MIN, DEF_MAX } from './worker/src/validate.js';
 import { authEnabled, devLogin } from './worker/src/auth.js';
+import { points } from './worker/src/profile.js';
+import { DatabaseSync } from 'node:sqlite';
+import Avatar from './public/avatar.js';
+import Achievements from './public/achievements.js';
 
 // words.js se spouští ve vm, takže pole z něj mají prototyp z jiného realmu
 // a deepStrictEqual by je odmítl. Proto se porovnává jen obsah.
@@ -73,6 +77,66 @@ test('clientId musí mít rozumnou délku', () => {
     assert.equal(validClient('x'.repeat(7)), false);
     assert.equal(validClient('x'.repeat(65)), false);
     assert.equal(validClient(null), false);
+});
+
+/* ---------------- body za aktivitu (worker) ---------------- */
+
+// Body počítá jeden SQL dotaz, proto proti skutečnému SQLite ze schema.sql.
+// Hlídá denní stropy, skryté významy a to, že se nepočítá cizí aktivita.
+const sql = new DatabaseSync(':memory:');
+sql.exec(readFileSync(new URL('./worker/schema.sql', import.meta.url), 'utf8'));
+const run = (q, ...a) => sql.prepare(q).run(...a);
+const DEN = 86400000;
+for (const d of ['2026-09-01', '2026-09-02', '2026-09-03']) run('INSERT INTO profile_days VALUES (?, ?, 0, 0, 0)', 'ja', d);
+run('INSERT INTO profile_days VALUES (?, ?, 0, 20, 0)', 'cizi', '2026-09-01');
+run("INSERT INTO training_days VALUES ('ja', '2026-09-01', 25), ('ja', '2026-09-02', 4), ('cizi', '2026-09-01', 9)");
+run("INSERT INTO definitions (id, word, text, user_id, votes, hidden, created_at) VALUES ('v1', 'a', 't', 'ja', 3, 0, 0), ('v2', 'b', 't', 'ja', 5, 1, 0)");
+for (let i = 0; i < 14; i++) run('INSERT INTO votes VALUES (?, ?, ?)', `x${i}`, 'ja', i < 12 ? i : 2 * DEN);
+run("INSERT INTO votes VALUES ('v1', 'cizi', 0)");
+const d1 = { prepare: (q) => ({ bind: (...a) => ({ all: async () => ({ results: sql.prepare(q).all(...a) }) }) }) };
+const [mojeBody, nikdo] = await Promise.all([points({ DB: d1 }, 'ja'), points({ DB: d1 }, 'nikdo')]);
+
+test('body: denní stropy a skryté významy', () => assert.deepEqual({ ...mojeBody },
+    { total: 3 * 10 + 14 + 5 + 3 * 2 + 12, dny: 3, slovTreninku: 14, vyznamu: 1, ziskanychHlasu: 3, maxHlasu: 3, nejlepsi: 0, danychHlasu: 12 }));
+test('body: hráč bez aktivity má nulu', () => assert.equal(nikdo.total, 0));
+
+/* ---------------- úspěchy ---------------- */
+
+// Nejlepší výklad = význam nahoře u slova, a jen když porazil jiný.
+run("INSERT INTO definitions (id, word, text, user_id, votes, hidden, created_at) VALUES ('w1', 'slon', 't', 'autor', 4, 0, 0), ('w2', 'slon', 't', 'cizi', 2, 0, 0), ('w3', 'sam', 't', 'autor', 9, 0, 0)");
+const autor = await points({ DB: d1 }, 'autor');
+test('úspěchy: nejlepší výklad a nejvíc hlasů na jednom významu', () =>
+    assert.deepEqual([autor.nejlepsi, autor.maxHlasu], [1, 9]));
+test('úspěchy: prahy a veřejný stav', () => {
+    const st = Achievements.publicState({ dny: 7, nejdelsi: 7, perfektnich: 0 }, autor, true);
+    const got = Achievements.LIST.filter(a => Achievements.done(a, st)).map(a => a.id);
+    assert.deepEqual(got, ['prvni-kolo', 'nova-tvar', 'rozjezd', 'tyden', 'sto-slov', 'pisalek', 'palec', 'nejlepsi']);
+});
+test('úspěchy: unikátní id a každá ikona existuje', () => {
+    assert.equal(new Set(Achievements.LIST.map(a => a.id)).size, Achievements.LIST.length);
+    for (const a of Achievements.LIST) if (a.icon !== 'avatar') readFileSync(`public/designs/kostky/${a.icon}.svg`);
+});
+
+/* ---------------- avatar (hra i worker) ---------------- */
+
+// Kód jde z localStorage i z POST /api/me/avatar rovnou do innerHTML —
+// projít smí jen čtyři indexy v rozsahu polí.
+test('avatar: každý tvar, barva, oči i pusa se vykreslí', () => {
+    const [ns, nc, ne, nm] = Avatar.counts;
+    assert.ok(ns >= 30 && ne >= 15 && nm >= 15, `málo variant: ${Avatar.counts}`);
+    for (let i = 0; i < Math.max(ns, nc, ne, nm); i++) {
+        const svg = Avatar.svg(`${i % ns}-${i % nc}-${i % ne}-${i % nm}`);
+        assert.match(svg, /^<svg[^>]*>.*<\/svg>$/s);
+        assert.doesNotMatch(svg, /undefined|NaN/);
+    }
+});
+test('avatar: náhodný kód je vždy platný', () => {
+    for (let i = 0; i < 500; i++) assert.ok(Avatar.valid(Avatar.random()));
+});
+test('avatar: cizí kód neprojde', () => {
+    const [ns] = Avatar.counts;
+    for (const bad of [`${ns}-0-0-0`, '0-0-0', '0-0-0-0-0', '0-0-0-0"><script>', '', null, '-1-0-0-0'])
+        assert.equal(Avatar.svg(bad), '', String(bad));
 });
 
 /* ---------------- slovník ---------------- */

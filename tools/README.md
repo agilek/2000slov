@@ -1,5 +1,22 @@
 # tools
 
+## `cz_font.py` + `thin_font.py` — písmo Slovka One
+
+```bash
+python -m venv /tmp/fontenv && /tmp/fontenv/bin/pip install fonttools brotli skia-pathops
+F=FredokaOne-Regular.otf   # originál z 2011, jediný zdroj všech tří řezů
+/tmp/fontenv/bin/python tools/cz_font.py $F /tmp/r.otf public/fonts/SlovkaOne-Regular.woff2
+/tmp/fontenv/bin/python tools/cz_font.py $F /tmp/l.otf public/fonts/SlovkaOne-Light.woff2 --thin 24 --style Light --weight 300
+/tmp/fontenv/bin/python tools/cz_font.py $F /tmp/x.otf public/fonts/SlovkaOne-ExtraLight.woff2 --thin 40 --style ExtraLight --weight 200
+```
+
+Lehčí řezy nejsou z jiné rodiny (variabilní Google „Fredoka" je jiný kresebný
+základ — menší x-výška i verzálky), ale erozí obrysu Fredoka One; postup
+a změřené konstanty jsou v hlavičce `thin_font.py`. Čeština se doplňuje až po
+zeslabení, takže háčky a apostrofy sedí na glyfy dané váhy. CSS pásma
+`font-weight` (Regular 400–900, Light 250–399, ExtraLight 100–249) jsou
+v `designs/kostky.css` — nic, co appka používá, nesmí spadnout pod 400.
+
 ## `build_words.py` — generátor `words.js`
 
 ```bash

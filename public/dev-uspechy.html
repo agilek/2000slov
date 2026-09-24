@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Úspěchy — návrh (dev)</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
+<link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="designs/kostky.css?v=46">
+<style>
+    /* ---------- chrome téhle stránky (sg-), s hrou se nemíchá ---------- */
+    html, body.sg { height: auto !important; overflow-y: visible !important; overflow-x: hidden !important; background: #f4f1ec !important; }
+    body.sg { max-width: 1040px; margin: 0 auto; padding: 24px 16px 80px; font-family: system-ui, sans-serif; color: #222 !important; }
+    .sg h1 { font: 800 22px system-ui, sans-serif; margin: 0 0 4px; }
+    .sg-note { font-size: 14px; color: #666; margin: 0 0 14px; max-width: 760px; line-height: 1.45; }
+    .sg-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 24px; }
+    .sg-bar span { font: 700 12px ui-monospace, Menlo, monospace; color: #a35b00; margin-right: 4px; }
+    .sg-bar button { font: 700 14px system-ui, sans-serif; padding: 8px 14px; border-radius: 999px; border: 1px solid #d6cfc2; background: #fff; color: #222; cursor: pointer; }
+    .sg-bar button.on { background: #222; color: #fff; border-color: #222; }
+    .sg-phones { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+    .sg-cap { font: 700 12px ui-monospace, Menlo, monospace; color: #a35b00; margin: 0 0 8px; }
+    .sg-how { margin-top: 18px; padding: 10px 12px; border: 1px dashed #d6b98a; border-radius: 10px; background: #fffaf0; color: #5b4a2e; font: 13px/1.45 system-ui, sans-serif; text-align: left; }
+    .sg-how b { color: #a35b00; }
+
+    /* telefon: skutečné tokeny hry, takže funguje i tmavý režim */
+    .phone {
+        width: 390px; max-width: 100%;
+        background: var(--bg); color: var(--ink);
+        border-radius: 34px; border: 8px solid #222;
+        padding: 18px 16px 28px;
+        font-family: 'Nunito', system-ui, sans-serif;
+    }
+    .phone-title { font-family: var(--display); font-size: 22px; font-weight: 700; text-align: center; margin: 0 0 16px; }
+    .phone .profile-section { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
+    .phone .profile-section-title { margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
+    .phone .profile-section-title small { font-size: 15px; color: var(--muted-text); }
+
+</style>
+</head>
+<body class="sg">
+
+<h1>Úspěchy — návrh <span style="font-size:14px; color:#999; font-weight:400;">(dev only; seznam i markup ze sdíleného achievements.js)</span></h1>
+<p class="sg-note"><span id="sgTotal"></span> odznaků v 7 skupinách. Barva kostky = vzácnost (zelená běžná, modrá vzácná, fialová epická, zlatá legendární), symbol = za co. Zamčené jsou vidět jako šedý stín s postupem, tajné jen s nápovědou. Klepni na kterýkoli odznak. Přepínač níže mění, jak daleko hráč je; čísla stavu jdou rovnou přes prahy, takže je vidět i logika odemykání.</p>
+<div class="sg-bar">
+    <span>Hráč:</span>
+    <button data-preset="novy">Po prvním dni</button>
+    <button data-preset="tyden" class="on">Po 9 dnech</button>
+    <button data-preset="veteran">Veterán (140 dní)</button>
+    <span style="margin-left:12px;">Moment:</span>
+    <button id="demoUnlock">Ukázat odemčení nového úspěchu</button>
+</div>
+
+<div class="sg-phones">
+    <div>
+        <p class="sg-cap">V profilu (sekce Úspěchy)</p>
+        <div class="phone">
+            <div class="profile-section">
+                <h3 class="profile-section-title">Úspěchy <small id="profCount"></small></h3>
+                <div class="ach-grid" id="profGrid"></div>
+                <button class="btn btn-secondary" onclick="document.getElementById('allPhone').scrollIntoView({ behavior: 'smooth' })">Všechny úspěchy</button>
+            </div>
+        </div>
+    </div>
+    <div id="allPhone">
+        <p class="sg-cap">Obrazovka „Úspěchy" (z profilu)</p>
+        <div class="phone">
+            <p class="phone-title">Úspěchy</p>
+            <div class="profile-section">
+                <div class="ach-sum"><span class="ach-sum-count" id="sumCount"></span><div class="ach-bar"><i id="sumBar"></i></div></div>
+            </div>
+            <div class="profile-section">
+                <h3 class="profile-section-title">Na dosah</h3>
+                <div class="ach-near" id="near"></div>
+            </div>
+            <div id="groups"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="achModal">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="achTitle" tabindex="-1">
+        <div class="modal-header"><h2 id="achTitle"></h2><button class="close-modal" onclick="closeSheet()">Zavřít</button></div>
+        <div id="achBody"></div>
+    </div>
+</div>
+
+<script src="avatar.js"></script>
+<script src="achievements.js"></script>
+<script>
+// Seznam, prahy i markup jsou ze sdíleného achievements.js (stejné jako ve hře).
+// Tady jen ukázkoví hráči a sheet. Poznámka „Jak to hra pozná" je pole `how`.
+const { LIST: ACH, GROUPS, RARITY, DNY, done: isDone, val: valOf, pct: pctOf, hidden: isHidden, unitOf } = Achievements;
+const PRESETS = {
+    novy: { dny: 1, serie: 1, slova: 20, isNew: ['prvni-kolo'] },
+    tyden: { dny: 9, serie: 7, slova: 180, perfekt: 1, perfektSerie: 1, fenix: 1, trenink: 64, treninkRada: 12, tezka: 3, blesk: 1,
+             avatar: 1, sdileno: 1, vyznamu: 2, ziskanych: 4, maxHlasu: 3, danych: 11, isNew: ['tyden', 'bleskovka'] },
+    veteran: { dny: 140, serie: 100, slova: 2800, perfekt: 23, perfektSerie: 4, cisty: 1, fenix: 1, trenink: 1250, treninkRada: 41, tezka: 180,
+               blesk: 1, avatar: 1, sdileno: 1, vyznamu: 38, ziskanych: 96, maxHlasu: 14, nejlepsi: 6, danych: 210, sova: 1, chlup: 1, isNew: ['stovka'] },
+};
+let st = PRESETS.tyden;
+const AV = Avatar.svg('3-2-1-4');
+const fmt = n => n.toLocaleString('cs-CZ');
+const done = a => isDone(a, st), val = a => valOf(a, st), pct = a => pctOf(a, st), hidden = a => isHidden(a, st);
+const dateOf = a => `${14 + ACH.indexOf(a) % 12}. 9. 2026`;
+const badge = a => Achievements.badge(a, st, AV);
+const tile = a => Achievements.tile(a, st, { avatar: AV, isNew: (st.isNew || []).includes(a.id) });
+const $ = id => document.getElementById(id);
+
+function render() {
+    const got = ACH.filter(done);
+    $('sumCount').innerHTML = `${got.length} <small>z ${ACH.length}</small>`;
+    $('sumBar').style.width = got.length / ACH.length * 100 + '%';
+    $('profCount').textContent = `${got.length} z ${ACH.length}`;
+    const fresh = got.filter(a => (st.isNew || []).includes(a.id));
+    const near = ACH.filter(a => !done(a) && !a.secret && val(a)).sort((a, b) => pct(b) - pct(a));
+    $('profGrid').innerHTML = [...new Set([...fresh, ...got.slice().reverse(), ...near, ...ACH.filter(a => !done(a))])].slice(0, 8).map(tile).join('');
+    $('near').innerHTML = near.slice(0, 3).map(a => {
+        const left = a.goal - val(a);
+        return `<button class="ach-near-item" data-ach="${a.id}">${badge(a)}<span class="ach-near-body">
+            <span class="ach-near-name">${a.name}</span><span class="ach-bar"><i style="width:${pct(a) * 100}%"></i></span>
+            <span class="ach-near-left">Ještě ${fmt(left)} ${unitOf(a, left)}</span></span></button>`;
+    }).join('');
+    $('groups').innerHTML = GROUPS.map(([g, title]) => {
+        const list = ACH.filter(a => a.g === g);
+        return `<div class="profile-section"><h3 class="profile-section-title">${title} <small>${list.filter(done).length} z ${list.length}</small></h3>
+            <div class="ach-grid">${list.map(tile).join('')}</div></div>`;
+    }).join('');
+}
+
+function openAch(id, celebrate) {
+    const a = ACH.find(x => x.id === id), locked = !done(a);
+    $('achTitle').textContent = hidden(a) ? 'Tajný úspěch' : a.name;
+    let info;
+    if (!locked) info = `<p class="ach-meta">Získáno ${celebrate ? 'právě teď' : dateOf(a)}</p>`;
+    else if (a.goal > 1) info = `<div class="ach-progress"><div class="ach-progress-label"><span>${fmt(val(a))} / ${fmt(a.goal)} ${unitOf(a, a.goal)}</span>
+            <b>${val(a) ? `Ještě ${fmt(a.goal - val(a))}!` : ''}</b></div><div class="ach-bar"><i style="width:${pct(a) * 100}%"></i></div></div>`;
+    else info = `<p class="ach-meta">${hidden(a) ? 'Na tenhle se přichází samo, nebo náhodou.' : 'Zatím zamčeno'}</p>`;
+    const r = locked ? 'locked' : a.r;
+    $('achBody').innerHTML = `${celebrate ? '<p class="ach-kicker">Nový úspěch!</p>' : ''}
+        <div class="ach-stage ach--${r}${locked ? ' is-locked' : ''} pop">${badge(a)}</div>
+        <span class="ach-rarity ach--${r}">${RARITY[a.r]}</span>
+        <p class="ach-desc">${hidden(a) ? 'Nápověda: ' + a.secret : a.desc}</p>
+        ${info}
+        ${celebrate ? '<button class="btn btn-play ach-ok" onclick="closeSheet()">Paráda!</button>' : ''}
+        <div class="sg-how"><b>Jak to hra pozná:</b> ${a.how}</div>`;
+    const m = $('achModal');
+    m.classList.remove('closing');
+    m.querySelector('.modal-content').style.cssText = '';
+    m.classList.add('active');
+    m.querySelector('.modal-content').focus({ preventScroll: true });
+}
+
+// zjednodušené closeSheet z game.js: sjede dolů, pak zmizí
+function closeSheet() {
+    const m = $('achModal');
+    if (!m.classList.contains('active') || m.classList.contains('closing')) return;
+    const sheet = m.querySelector('.modal-content');
+    m.classList.add('closing');
+    sheet.style.transition = 'transform 300ms cubic-bezier(.32,.72,0,1)';
+    sheet.style.transform = 'translateY(110%)';
+    setTimeout(() => m.classList.remove('active', 'closing'), 300);
+}
+
+document.addEventListener('click', e => {
+    const t = e.target.closest('[data-ach]');
+    if (t) return openAch(t.dataset.ach);
+    const p = e.target.closest('[data-preset]');
+    if (p) {
+        st = PRESETS[p.dataset.preset];
+        document.querySelectorAll('[data-preset]').forEach(b => b.classList.toggle('on', b === p));
+        render();
+    }
+});
+$('achModal').addEventListener('click', e => { if (e.target.id === 'achModal') closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+$('demoUnlock').onclick = () => {
+    const a = ACH.find(x => !done(x) && !x.secret && val(x)) || ACH.find(x => !done(x));
+    st = { ...st, [a.v]: a.goal, isNew: [...(st.isNew || []), a.id] };   // kopie: přepínač hráče vrátí původní stav
+    render();
+    openAch(a.id, true);
+};
+$('sgTotal').textContent = ACH.length;
+render();
+</script>
+</body>
+</html>

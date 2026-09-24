@@ -121,6 +121,57 @@ Pochlubit se → sheet s náhledem karty → „Sdílet obrázek“ (mobil:
 kreslí předem při zobrazení výsledku, takže náhled naskočí hned. Když kreslení
 selže, sdílí se původní text s emoji mřížkou (`buildShareMessage`).
 
+### Body za aktivitu (karma)
+
+Za všechno, co drží hráče ve hře nebo pomáhá komunitě, sbírá body. Vidí je
+**jen v profilu** (zlatý odznak pod jménem, vlastní i veřejný `/u/`), jinde
+ve hře nejsou. Mají je jen účty, protože většina zdrojů je v D1 u `user_id`.
+
+| Za co | Bodů | Strop |
+|---|---|---|
+| odehraná denní výzva (s jakýmkoli skóre) | 10 | 1× za den z povahy věci |
+| uhodnuté slovo v tréninku | 1 | 10 slov za den |
+| přidaný význam | 5 | limit 20 významů za den už platí |
+| hlas, který tvůj význam dostal | 2 | bez stropu, to je signál kvality |
+| hlas, který jsi dal | 1 | 10 hlasů za den |
+
+Body **nemají vlastní tabulku**. `points()` ve `worker/src/profile.js` je
+spočítá jedním dotazem z `profile_days`, `training_days`, `definitions`
+a `votes`. Díky tomu nejdou napočítat dvakrát, odebraný hlas nebo význam
+skrytý po nahlášení je hned odečte a změna vah (`BODY`, `ZA_DEN`) platí
+zpětně pro všechny. Body tak můžou i ubýt, stejně jako karma na Redditu.
+Jediná nová data jsou `training_days`: trénink se jinak nikam neukládá.
+Klient po každém uhodnutém slově pošle `POST /api/training` a strop se
+uplatní až při čtení.
+
+Stropy jsou proti farmení. Klient si trénink tvrdí sám (stejně jako
+`/api/result`) a hlasování „všeho“ by kazilo pořadí významů.
+
+Stropy jsou tiché: hráč o nich nikde neví, další body se prostě nezapočtou.
+
+### Úspěchy
+
+27 odznaků v 7 skupinách (Začátky, Série, Denní výzva, Sbírka, Trénink,
+Významy, Tajné). Seznam, prahy a markup jsou v `public/achievements.js`.
+Stejný soubor používá hra, worker (veřejný profil) i `dev-uspechy.html`.
+
+- **Vzhled:** kostka s retem, bílý medailon, ikona z `designs/kostky/`,
+  u postupových odznaků číslo prahu. **Barva = vzácnost**: zelená běžný,
+  modrá vzácný, fialová epický, zlatá legendární (s odleskem).
+- **Zamčené jsou vidět dopředu:** šedý stín ikony a postup („Ještě 3 dny!“).
+  „Na dosah“ ukazuje tři nejbližší. Tajné mají jen `???` a nápovědu.
+- **Snadné hned na začátku:** první den, vlastní avatar, první slovo
+  tréninku, sdílení karty, první význam.
+- **Odemčení:** `syncAchievements()` zapíše datum do `persist.achGot`.
+  Získaný odznak už nezmizí, ani když počet klesne. Nový dostane červenou
+  tečku na Profilu a u dlaždice, první otevření je oslava „Nový úspěch!“.
+- **Data:** klient skládá stav v `achState()` z `persist` a z
+  `/api/me/points`. Server přidal `maxHlasu` a `nejlepsi`. Co jinak nejde
+  dopočítat, drží příznaky `persist.ach` (sdílení, rychlost, noc, přesmyčka,
+  čistý den) a čítače `practiceBestRun` a `practiceHard`.
+- **Série** u odznaků = nejdelší řada *odehraných* dní. `persist.streak`
+  jsou perfektní dny a nese je Hattrick.
+
 ## 4. Roadmapa
 
 1. ~~**Skutečný percentil**~~ — **hotovo a nasazeno.** Cloudflare Worker + D1

@@ -2,6 +2,24 @@
 
 ## 2026-09-24
 
+### Úspěchy ve hře: 27 odznaků v profilu, obrazovka Úspěchy, oslava v sheetu
+Místo čtyř zamčených kostek má profil skutečné úspěchy. Sekce ukazuje nové,
+čerstvé a nejbližší odznaky, obrazovka `#achievements` souhrn, „Na dosah“
+a 7 skupin, detail je v sheetu `#achModal`. Nový odznak má červenou tečku na
+Profilu, první otevření je oslava. Veřejný profil ukazuje odznaky, které zná
+server. Návrh s ukázkovými hráči je v `dev-uspechy.html`. Přibylo 7 ikon
+(blesk, raketa, hodiny, kladívko, sova, přesmyčka, celé srdce).
+
+**Root cause / approach:** Jeden `achievements.js` (IIFE + `module.exports`
+jako avatar.js) drží seznam i markup pro hru, worker a dev stránku. Odznak
+je HTML/CSS (kostka, medailon, existující ikona), ne 27 kreseb. Každý odznak
+čte jeden klíč plochého stavu. Získané se píšou do `persist.achGot` a stav
+je zdvihne na práh, takže nezmizí. Ikony nemají kresbu uprostřed plátna:
+`OFFSET` (změřeno getBBox) je v medailonu opticky vycentruje. Medailon
+potřebuje `corner-shape: round`, globální squircle z kruhu dělá čtverec.
+
+→ *Memory saved: `achievements_proposal.md`*
+
 ### Výbuch času: červená 00 praskne, bílá se převine na 30 s
 Na základě prvního výbuchu. Střepy a kostky teď létají po celém displeji
 po balistické dráze (nahoru a do stran, pak gravitace za panel mezihry).
@@ -33,6 +51,331 @@ na trojúhelník z rozházené mřížky 4×3 a animovaný přes Web Animations 
 
 → *Memory saved: `kostky_live_icons.md` (aktualizace)*
 
+### Info chipy a labely formulářů o stupeň lehčí
+`.info-chip` (pořadí slova, obtížnost, počet písmen v detailu slova) a
+`.feedback-form label` (např. „Tvůj význam" u přidávání definice) měly
+`font-weight: 600` — teď `300`, stejný krok jako u ostatních dnešních
+zlehčení.
+
+### Čas vždy dvojciferný (00, 01, … 30), ne osamocená jedna číslice
+Při 0–9 s vypadal čas jako jedna vlající číslice vedle ikony hodin —
+`padStart(2, '0')` v `updateUI()` (game.js) ho vždycky vypíše jako „00"–„09".
+`.gp-timer-num`'s `min-width`/`text-align:left` z předchozí oprava ikony
+zůstává jako pojistka, ale teď už není potřeba — obsah má vždycky stejnou
+délku.
+
+### Časovač +30 %, opticky vycentrovaný; titulek panelu po slově zpět na výchozí váhu
+`.gp-timer` (ikona + číslo) o 30 % větší (92→120px, ikona 45→58px), popisek
+pod tím („Slovo X · obtížnost") beze změny. Ikona dělala skupinu opticky
+nevyváženou doprava — `.gp-timer` má `margin-left: -78px`, aby ČÍSLO (ne celý
+box) vyšlo na střed sloupce; hodnotu jsem nedopočítal zpaměti, ale
+odzkoušel binárně přes `getBoundingClientRect()` (align-items:center centruje
+margin-box, takže posun čísla = 2× velikost záporného marginu, ne 1:1 — snadno
+se to spočítá špatně). Titulek panelu po slově (`.wd-title`, „Čas vypršel"
+apod.) se po zpětné vazbě vrátil na výchozí váhu (žádné explicitní
+`font-weight` navíc — spadá na blanketové 400, což na jediném řezu Slovka One
+vypadá stejně jako 700). `.wd-sub` zůstává Light (300).
+
+### Titulek panelu po slově ještě o stupeň lehčí (i podtitulek)
+`.wd-title` („Správně!"/„Čas vypršel") šel z Light (300) na ExtraLight (200),
+`.wd-sub` („KOSTKA"/„Hledané slovo") z Regular (600) na Light (300) — platí
+stejně pro zelenou (solved) i červenou (missed) variantu, barvu řeší
+samostatné pravidlo `.word-done.missed .wd-title, .word-done.missed .wd-sub`,
+váhu ne. Ověřeno screenshoty obou stavů.
+
+### Regrese: nový span kolem čísla času spadl do Nunita
+Při fixaci ikony hodin (viz níže) jsem číslo obalil do `<span class="gp-timer-num">`
+bez `font-family`. Univerzální `* { font-family: 'Nunito' }` ze style.css je
+PŘÍMÉ pravidlo na tom spanu, takže vyhrálo nad zděděním Slovka One z `.gp-timer`
+— číslo se najednou kreslilo Nunitem. Přesně tahle chyba se řešila kdysi u
+`.gp-timer-unit` (komentář „ne Nunito z *"), zapomněl jsem tam dát to samé
+`font-family: inherit` na nový span. Opraveno, ověřeno computed stylem.
+
+### Ikona hodin se posouvala s ubývajícími číslicemi času
+Box `.gp-timer` (ikona + číslo) se centroval jako celek, takže při přechodu
+z dvojciferného na jednociferný čas se zúžil a ikona se posunula. `.gp-timer-num`
+(nový span kolem čísla v `updateUI()`) má `min-width: 1.28em; text-align:left;
+font-variant-numeric: tabular-nums` — box má teď vždycky stejnou šířku, ikona
+stojí na místě. Ověřeno `getBoundingClientRect()`: shodné `left`/`width` pro
+„9" i „30".
+
+### Časovač nahoře, bez „s", menší popisek; obtížnost a nadpisy sheetu lehčí
+Ve hře je teď první číslo času (o něco větší, 92px), pod ním menší a lehčí
+„Slovo X · obtížnost" — dřív to bylo obráceně a čas nesl jednotku „s". `.gp-timer-unit`
+tím padlo jako mrtvé CSS (smazáno ze style.css i kostky.css). Nadpis sheetu
+obtížnosti („Jak těžká slova chceš?") a jména úrovní (Lehká/Střední/Těžká) mají
+teď taky Light řez (300) místo Regular (700).
+
+**Root cause / approach:** Pořadí je čistě pořadí uzlů v `updateUI()`
+(`$('progress').innerHTML`), žádná CSS gymnastika. `.modal-header h2` má v
+kostky.css dvě pravidla se stejnou specificitou (700 dřív, 400 blanketové
+později v souboru) — vyhrává to pozdější, takže i weight:400 dnes vykresloval
+tu samou těžkou Regular kresbu (viz níže); zlehčení musí jít do nového pravidla
+za obojím, ne přepisovat starší.
+
+### Slovka One: dva lehčí řezy (Light 300, ExtraLight 200) erozí z Fredoka One
+`.wd-title` a `#percentile` měly být o stupeň lehčí, ale Slovka One měla jediný
+řez pro `font-weight: 100 900`, takže změna tloušťky nedělala nic. Z uživatelova
+originálu FredokaOne-Regular.otf (2011) vznikly `tools/thin_font.py` dva lehčí
+řezy (eroze o 24 a 40 jednotek), `cz_font.py --thin` do nich doplní češtinu.
+V CSS tři `@font-face` jedné rodiny: Regular 400–900, Light 250–399, ExtraLight
+100–249; `.wd-title`, `#percentile`, `.modal-header h2` a `.level-name` mají
+`font-weight: 300`, `.gp-headline` taky. Ostatní obrazovky bajtově beze změny
+(ověřeno screenshoty před/po na `.btn-play` a nadpisech).
+
+**Root cause / approach:** Posouvat body obrysu (FreeType embolden) nestačí —
+u spojů oblouku s dříkem to dělá smyčky a hroty. Funguje morfologická eroze přes
+skia-pathops (odečíst tah šířky 2d s pokosem), pak zóny vrátit po částech
+lineární mapou y a šířky nechat. Hranice pásem je 400, protože `.wd-title` i
+výchozí `normal` jsou dnes 400; nic v CSS nejde pod 400. Vyrobeno subagentem
+(Opus 5.5) v izolovaném worktree, poté portováno do hlavního stromu ručně
+(sdílená pracovní složka — cílené edity přes čtení aktuálního obsahu, ne
+strojový merge/patch, viz `parallel_sessions_commits.md`).
+
+→ *Memory saved: `slovka_weights.md`*
+
+### Tlukot srdce tišší a bez plechu, podle skutečných ozev srdce
+Srdce v posledních sekundách znělo plechově a moc nahlas. `heartSound` teď
+staví každou ozvu podle fonokardiogramu: S1 („lub“) 55 Hz a 150 ms, S2
+(„dub“) 70 Hz, 120 ms a tišší, po třetině tepu. Obě ozvy jsou sinus, tišší
+oktáva a 50 ms šumu, všechno přes lowpass 220 Hz s náběhem 15 ms.
+
+**Root cause / approach:** Plech dělal trojúhelník s 4× parciálem a náběhem
+4 ms. Telefon basy nezahraje, takže zbyly jen vyšší harmonické. Nad 400 Hz
+má nová verze 0,4 % energie, stará 5,5 %. Hlasitost naplno je 0,015 → 0,021,
+pod písmenkem (0,019) až do poslední sekundy. Z telefonu (highpass 250 Hz)
+je 0,003 proti dřívějším 0,011. Rytmus 833 → 375 ms, po uhodnutí ani po pauze
+nic nedozní.
+
+→ *Memory saved: doplněno `sound_levels_offline.md`*
+
+### Poslední sekundy jako zrychlující tlukot srdce místo tiků
+Vysoké tiky (A6–C♯7) byly moc pisklavé. `playUrgentSound` teď od 5 s hraje
+„lub-dub“ (98 a 123 Hz), který zrychluje ze 72 na 160 tepů za minutu
+(rozestupy 833 → 375 ms) a mírně zesiluje.
+
+**Root cause / approach:** Údery mezi sekundami se plánují `setTimeout`em
+dopředu. Odpočet ale zastavuje deset míst `clearInterval(state.timer)`
+a `state.timer` pak nenulují, takže každý úder před zahráním ověří
+`counting()`: nic nezpracovává, čas > 0, hra je vidět, žádná pauza ani sheet.
+Po uhodnutí i po pauze pak nezazní nic. Telefon pod ~200 Hz nehraje, proto
+trojúhelník s bendem a trochou 4× parciálu. Změřeno s highpassem 250 Hz:
+srdce v 5 s 0,018 (≈ tap), v 1 s 0,026 < písmenko 0,037.
+
+→ *Memory saved: doplněno `sound_levels_offline.md`, `sound_tap_dedupe.md`*
+
+### Naléhavé tikání v posledních sekundách slova
+Od 5 s zazní každou sekundu dřevěné „tok“ (`playUrgentSound`), pokaždé
+o půltón výš a hlasitěji. Od 3 s je dvojité „ti-tik“ jako zrychlený tep.
+V nule dál hraje zvuk vypršení. Platí pro trénink i denní výzvu, při pauze
+tikání stojí spolu s odpočtem.
+
+**Root cause / approach:** Jeden řádek ve `startTimer` vedle haptiky.
+Trojúhelník s `bright: 0` a výš než písmenka (A6–C♯7 proti C5–E6) se s nimi
+nesplete. Bez vyšších parciálů navíc nehrozí, že by 10× parciál vyjel nad
+Nyquista. Offline RMS: tik v 5 s 0,016 (≈ tap), v 1 s 0,026, písmenko 0,034.
+
+→ *No new memory entries.*
+
+### Písmenka stíhají i rychlé klepání; zvuk na smazání slova
+Při rychlém klepání nebylo slyšet každé písmeno. Zvuk písmenka se zkrátil
+z 0,35 s na 0,16 s. Klepnutí na skládané slovo (`clearWord`) ho smaže se
+zvukem `playClearSound`: vybraná písmena se rychle odťukají pozpátku dolů.
+Backspace na klávesnici má nově stejný zvuk jako odebrání písmene klepnutím.
+Automatický reset po chybě dál hraje jen chybový zvuk.
+
+**Root cause / approach:** Engine stíhal, v Chromiu i WebKitu (i s dotykovou
+cestou) se každé klepnutí po 80 ms naplánovalo včas. Tóny se ale slévaly: nový
+úder byl jen 3,6× hlasitější než doznívání předchozích (při 150 ms 15×), s 0,16 s
+je to 17× i při 80 ms. Dozvuk na tom skoro nic nemění. Měřeno offline renderem,
+viz paměť.
+
+→ *Memory saved: doplněno `sound_levels_offline.md` (kontrast nástupu)*
+
+### Zvuky jako z Duolinga: tap na tlačítka, převíjení času, hlas, sheety
+Holé sinusovky a sawtooth nahradil úder paličkou (marimba: parciály 1×, 4×,
+10×, krátký pitch bend) přes jednu sběrnici s lowpassem a krátkým „pokojem“
+z ConvolverNode. Chyba je tupé „bonk“ z trojúhelníku. Nově: tichý tap na každé
+tlačítko a záložku, převíjení času jako stoupající tiky v rytmu `animateTimerUp`,
+dvojí „plink“ u hlasu, bublina při otevření a zavření sheetu.
+
+**Root cause / approach:** Tap poslouchá `click` v capture fázi (obsluhy volají
+`stopPropagation`) a hraje až v `setTimeout`, jen když `playTone` mezitím nic
+nezahrálo (`soundAt`). Tlačítko s vlastním zvukem tak nikdy nezní dvakrát, bez
+seznamu výjimek. Délka převíjení bere `step` ze stejného výpočtu jako interval.
+Hlasitosti ověřené renderem do OfflineAudioContext v Chromiu i WebKitu.
+
+→ *Memory saved: `sound_tap_dedupe.md`, `sound_levels_offline.md`*
+
+### Z významu v tréninku na veřejný profil autora; úspěchy i na veřejném profilu
+Jméno autora u významu (karta na panelu po slově i sheet Významy) je tlačítko
+na jeho veřejný profil uvnitř hry. Zpět vede tam, odkud hráč přišel: na panel,
+případně znovu do sheetu. Veřejný profil má teď i místo pro Úspěchy. Rozhodnutí
+k bodům (váhy, tichý strop, body veřejně) jsou v `OTEVRENE-OTAZKY.md` v „Rozhodnuto“.
+
+**Root cause / approach:** `#wordDoneOverlay` je fixní vrstva mimo obrazovky,
+`showScreen` ji neschová. `openAuthorProfile` ji skryje přes `style.display`
+(ne `hideWordDone`, to by panel zrušilo) a vrátí ji callbackem `back`, který si
+`showPublicProfile(handle, back)` pamatuje. `show.onclick = showPublicProfile`
+by teď jako přezdívku dostal event, proto šipka. Smazaný účet (author null)
+odkaz nemá.
+
+→ *No new memory entries.*
+
+### Body za aktivitu v profilu + místo pro úspěchy
+Hráč s účtem sbírá body (karma): 10 za odehraný den, 1 za slovo tréninku
+(max 10/den), 5 za význam, 2 za získaný a 1 za daný hlas (max 10/den). Vidí je
+jen v profilu jako zlatý odznak pod jménem (vlastní i `/u/`). Pod statistikami
+jsou „Úspěchy“ se čtyřmi zamčenými kostkami jako místo pro pozdější systém.
+Pravidla jsou v `GAME_DESIGN.md`, otevřené otázky v `OTEVRENE-OTAZKY.md` 1.6.
+
+**Root cause / approach:** Body nemají tabulku. `points()` v `profile.js` je
+spočítá jedním SQL dotazem z řádků, které už existují, takže nejdou napočítat
+dvakrát a váhy jdou měnit zpětně. Nová je jen `training_days`, protože trénink
+žil jen v localStorage. Test v `test.mjs` pouští ten SQL proti skutečnému SQLite
+ze `schema.sql` přes vestavěné `node:sqlite`. Past: `.profile-section
+{ display: flex }` přebije atribut `hidden`, proto má vlastní `[hidden]` pravidlo.
+
+→ *Memory saved: `node_sqlite_d1_tests.md`, doplněno `dev_accounts_and_seed.md`*
+
+### „Upozornit na další výzvu“ se řídí skutečným odběrem, ne jen povolením
+Tlačítko se ukazovalo jen při `Notification.permission === 'default'`.
+Když prohlížeč notifikace povolil, ale odběr se nepovedl nebo vypršel,
+tlačítko zmizelo navždy a připomínky tiše nechodily. Nově se při `granted`
+ptá `pushManager.getSubscription()`: bez odběru se tlačítko ukáže
+a klepnutí odběr obnoví bez dalšího dotazu.
+
+**Root cause / approach:** Povolení a odběr jsou dvě různé věci a obojí
+platí jen pro jeden prohlížeč a jednu adresu. Zapnuté na telefonu na
+20slov.cz neschová tlačítko na `localhost` ani v jiném prohlížeči. Ověřeno
+podvržením `Notification.permission` a `getSubscription` ve všech čtyřech
+stavech (default → ukázat, denied → ne, granted bez odběru → ukázat,
+granted s odběrem → ne).
+
+→ *No new memory entries.*
+
+### Ocenění na výsledku se občas zaleskne
+„Top X % hráčů dneška“ (`#percentile`) má každých 5 s pruh světla, který za
+0,9 s přejede zleva doprava. „Dnes bez trofeje 💔“ se neleskne
+(`:has([data-emoji="srdce"])`), při omezení pohybu také ne.
+
+**Root cause / approach:** Čistě CSS `::after` s `translate` animací.
+Bílý pruh přes text ho přebledil, proto je pod textem: `isolation: isolate`
+na odznaku a `z-index: -1` na pruhu ho kreslí nad pozadím, ale pod písmem.
+Na světlém `--gold-bg` (skoro bílá) by čistě bílý pruh nebyl vidět, proto
+má zlaté okraje. Spodní ret (`box-shadow`) `overflow: hidden` neořízne.
+
+→ *No new memory entries.*
+
+### Pochlubit se: zlatá šipka jako samolepka Kostek
+Tlačítko mělo bílou obrysovou šipku z jiné sady (Phosphor), hned pod ním
+zvoneček ve stylu Kostek. Nově `designs/kostky/sdilet.svg`: zlatá šipka
+v barvách zvonečku (výplň, stín na spodní polovině hrotu, tmavší ret,
+odlesk), zapojená jako `.emoji[data-emoji="sdilet"]`.
+
+**Root cause / approach:** První pokus, bílá šipka s tmavě zeleným retem,
+vypadal skoro stejně jako původní. Tenký ret na zeleném zanikne. Zlatá je
+na zeleném neutrální přízvuk (viz paměť `kostky_gold_neutral_accent.md`)
+a sedí ke zvonečku.
+
+→ *No new memory entries.*
+
+### Ikony Kostek v horní liště a u Zpět
+Profil, Trénink a Zpět byly tenké obrysové ikony (Tabler), zbytek aplikace má
+barevné „samolepky“ se spodním okrajem. Nově `designs/kostky/profil.svg`
+(modrá postava), pro Trénink stávající `cinka.svg` (stejná fialová činka jako
+ve statistikách) a `zpet.svg` (tlustá šedá šipka s okrajem) na všech čtyřech
+obrazovkách se zpět.
+
+**Root cause / approach:** Styl sady = 48×48, plochá barva, tmavší kopie
+o 3 níž jako ret, bílý odlesk s opacity .45. Ikony jsou `<img>` (barvy jsou
+pevné, `currentColor` netřeba), pravidla `color` pro horní lištu zmizela.
+
+→ *No new memory entries.*
+
+### Avatary: useknuté tvary, skoro černý obličej, dva tesáky, mrkání
+8 ze 40 tvarů (květ, odznak, jiskra, plus, list, ozubené kolo, jetel,
+nakřivo) přetékalo plátno. Ret je kopie tvaru o 5 níž a u nich vyjel pod
+y = 100, u listu špička i nahoru. Tvary jsou zmenšené/posunuté.
+`dev-styleguide.html` teď sám měří všechny tvary i s retem a vypíše
+useknuté červeně. Oči a pusy mají `INK #0b1215` (tmavší než tmavé pozadí),
+upírek má místo jednoho tesáku dva. Sub-agent přidal mrkání otevřených očí,
+jemný pohyb pusy a brýlí.
+
+**Root cause / approach:** Animace jsou CSS třídy (`av-blink`, `av-mouth`,
+`av-glasses`) na *vnitřních* `<g>` bez atributu transform. CSS transform
+by atribut skupiny nahradil a oko by skočilo do rohu. Načasování je
+odvozené z kódu avatara jako CSS proměnné v `style` na `<svg>`, takže server
+i klient kreslí stejně a seznam autorů nemrká unisono. Pozor: kvůli tomu
+`<svg>` už `style` má a druhý atribut vložený přes `replace('<svg ', …)`
+se tiše zahodí (spravené ve styleguidu přes `el.style.width`).
+
+→ *Memory saved (sub-agent): `avatar_idle_animations.md`*
+
+### Squircly rohy všude — nativní CSS + JS fallback pro Safari
+Všechny zaoblené kontejnery (tlačítka, dlaždice, karty, chipy...) mají teď
+squircle rohy (hladší superellipsa místo obyčejného kruhového oblouku
+border-radius), na uživatelovo přání „ne obyčejné obdélníky se zaoblenými
+rohy". `* { corner-shape: squircle; }` v kostky.css stačí na Chrome/Edge, ale
+Safari 26/WebKit tuhle CSS vlastnost ještě nemá (ověřeno reálným WebKitem
+přes Playwright, ne jen odhadem) — a appka cílí primárně na iOS.
+
+**Root cause / approach:** Uživatel po zjištění mezery na iOS chtěl i těžší
+fallback, ne jen čekat na Safari. Napsán `public/squircle.js`: feature-detect
+`CSS.supports`, a pokud chybí, pro každý prvek přepočítá superellipsu
+`|x/r|^n+|y/r|^n=1` (n≈4.5) v jeho SKUTEČNÝCH pixelech (ne jedna univerzální
+maska natažená přes celý prvek — to by na širokých tlačítkách zkreslilo
+zakřivení) a nasadí jako SVG `mask-image`. `MutationObserver`+`ResizeObserver`
+pokryje i dynamicky stavěný obsah (panel po slově, písmenka). Vizuálně
+ověřeno v reálném WebKitu — squircle i box-shadow „ret" pod tlačítky obojí
+sedí.
+
+→ *Memory saved: `squircle_corners.md`*
+
+### Upravit profil jako Tinder: ✗ jiný avatar, ✓ uložit
+Obrazovka úprav má dole dvě kulatá tlačítka s retem: bílé ✗ (poskládá jiného
+avatara) a zelené ✓ (uloží avatar i přezdívku). Nad nimi je pole Přezdívka.
+Avatar je uprostřed volného místa a o 40 % větší (`min(70vw, 280px)`).
+
+**Root cause / approach:** ✓ je `type="submit"` formuláře, takže Enter
+v poli ukládá taky a `saveProfile` zůstal beze změny. ✗ je `type="button"`
+s `rollAvatar()`. Obě tlačítka mají jen `aria-label`, text by se do kolečka
+nevešel.
+
+→ *No new memory entries.*
+
+### Jedna tužka v profilu: obrazovka „Upravit profil“ s avatarem i přezdívkou
+Dvě tužky (na avataru a u jména) se vizuálně tloukly. Zůstala jen ta na avataru.
+Otevře „Upravit profil“: avatar, „Ukázat jiného“, pole Přezdívka a „Uložit“
+dole na dosah palce. Nahradila obrazovku „Vyber si avatara“ („Tenhle chci“)
+i inline formulář přezdívky. Jméno v profilu je zase čistý text.
+
+**Root cause / approach:** Obrazovka se otevírá se *současným* avatarem,
+náhodný dostane jen ten, kdo žádný nemá. Jinak by úprava samotné přezdívky
+tiše přehodila avatar. `saveProfile` posílá jen změněné části, přezdívku
+první, protože jen ta může narazit (obsazená), a pak se neuloží nic.
+`#profileEdit` je ve skupině scrollovatelných obrazovek kvůli klávesnici.
+
+→ *Memory updated: `dev_accounts_and_seed.md` (dev login hledá podle přezdívky).*
+
+### Přezdívka jde změnit i s účtem: tužka u jména v profilu
+Přihlášený hráč přezdívku změnit nemohl, tlačítko se mu schovávalo
+a formulář ukládal jen do localStorage. Teď má jméno v profilu stejnou tužku
+jako avatar (`.edit-badge`, dřív `.avatar-edit`). Klepnutí otevře formulář.
+S účtem se ukládá přes existující `POST /api/me/handle`, který přepíše
+i autora u významů a hlídá obsazenost. Hostovi se dál ukládá jen do zařízení.
+Tlačítko „Nastavit/Změnit přezdívku“ zmizelo.
+
+**Root cause / approach:** Server změnu uměl od začátku, chybělo jen UI.
+Chyby (`Tuhle přezdívku už někdo má.`, `3–20 znaků, bez mezer.`) byly šedé
+20px, protože `.screen p` (0,2,1) přebíjel `.feedback-error`. Oprava
+`.screen p.feedback-error` spravila i chyby přihlášení v sekci Účet.
+Poznámka pod jménem už přihlášenému netvrdí „přihlášení přijde později“.
+Změna přezdívky mění i adresu `/u/<přezdívka>`, staré sdílené odkazy
+přestanou fungovat.
+
+→ *Memory updated: `ios_native_feel_gotchas.md` (bod 2).*
+
 ### Kalendář profilu přes celou šířku, měsíce otočené a celým názvem
 Kostky vyplní šířku sloupce (7 × `1fr`, na 390px telefonu 40 px místo 34).
 Měsíc je svislý popisek na podkladu přes všechny řádky svých týdnů,
@@ -46,6 +389,38 @@ posune za obsazený první sloupec. Týden patří měsíci svého čtvrtka.
 `writing-mode: vertical-rl` + `rotate(180deg)` čte zdola nahoru.
 
 → *Memory saved: `parallel_sessions_commits.md` (aktualizace: nikdy `open(p, 'w')` před kontrolou)*
+
+### Avatary i u autorů významů, produkční D1 zmigrovaná
+Karta s významem po slově i seznam významů ukazují místo zlatého/modrého
+kolečka s iniciálou avatar autora (32 px, bez kruhu pod ním). Kdo avatar
+nemá, má dál iniciálu. Produkční D1 dostala `users.avatar`
+(`ALTER TABLE` na `--remote`, ověřeno přes `pragma_table_info`).
+
+**Root cause / approach:** Význam nese jen snímek přezdívky (`author`),
+takže `/api/defs` i `/api/defs/word` dělají `LEFT JOIN users` pro `avatar`.
+Pozor, `users` má taky `created_at`, proto jsou sloupce v ORDER BY
+a v oknu `ROW_NUMBER` s prefixem `d.`. Dávka významů je v edge cache 300 s,
+změna avatara se u cizích hráčů projeví až po vypršení. `seed-dev.mjs` dává
+avatary všem kromě Ondry, aby byla vidět i iniciála.
+
+→ *No new memory entries.*
+
+### Avatary místo iniciál: náhodně poskládaný tvar s obličejem
+Tužka na avataru v profilu otevře obrazovku „Vyber si avatara“ s tlačítky
+„Tenhle chci“ a „Ukázat jiného“. Avatar se skládá z 40 tvarů, 10 barev
+(světlejší paleta Kostek s retem), 18 variant očí a 18 variant pusy.
+Ukládá se jen kód `tvar-barva-oči-pusa`: bez účtu do localStorage,
+s účtem do `users.avatar` (`POST /api/me/avatar`). Ukazuje ho i veřejný profil.
+
+**Root cause / approach:** `public/avatar.js` je jeden soubor pro hru, worker
+i test (IIFE + `module.exports`). Obličej je v pevné mřížce (oči −7, pusa +11),
+takže oči nikdy neskončí pod pusou. Každý tvar má jen `[x, y, měřítko]` místa
+pro obličej, doladěné podle náhledového archu všech tvarů v nejvyšší
+a nejširší kombinaci. Pořadí v polích je součást uložených kódů, nové
+položky proto jen na konec. Produkční D1 potřebovala
+`ALTER TABLE users ADD COLUMN avatar TEXT` (provedeno, viz výš).
+
+→ *Memory saved: `shared_browser_worker_script.md`, `agent_browser_flags.md`*
 
 ### Profil: „všech 20“ zeleně s fajfkou, záložky Denní výzvy / Významy
 Zlatá kostka za všech 20 v kalendáři mátla, působila jako jiná kategorie. Teď
@@ -78,6 +453,57 @@ význam porazil jiné kandidáty. Legenda je `<p>`, takže ji přebíjel
 `#publicProfile` v selektoru.
 
 → *Memory saved: `public_profile_shared_markup.md`*
+
+### Dohledávka: hlasovací tlačítko měnilo jen text, ne pozadí; dev-styleguide dohnán na realitu
+Po přebarvení palce/avatara na zlatou (viz níže) hlasované tlačítko v paneli
+po slově měnilo jen barvu textu a ikony — pozadí a obrys zůstaly zelené na
+solved i červené na missed. `dev-styleguide.html` navíc ukazoval smyšlenou
+třídu `.def-report` (textový „Nahlásit" link), která v `game.js` nikde
+nevzniká, a chyběl v ní stav „hlasováno vs. nehlasováno" k prokliknutí.
+
+**Root cause / approach:** `.word-done .wd-card .wd-vote` a `.word-done.missed
+.wd-card .wd-vote` (3–4 třídy) nastavovaly `background`/`border-color`/
+`box-shadow` bez ohledu na `.voted` a přebíjely méně specifické `.wd-vote.voted`
+(2 třídy) — jen `color` zůstal na `.voted` nedotčený, proto se hnulo jen
+písmo. Oprava: `:not(.voted)` na obou scoped pravidlech. `dev-styleguide.html`
+teď má oba stavy (solved/missed) klikatelné (`sgToggleVote`, přepíná
+`.voted` + počet) a sekci Významy slov přestavěnou podle skutečné markup
+struktury z `game.js` (`.def-icon-btn.def-flag`/`.def-edit`, ne `.def-report`),
+včetně odlišení dvou různých obrazovek, co `.def-item` sdílejí (sheet Významy
+vs. Profil → Moje významy).
+
+→ *Memory saved: `kostky_gold_neutral_accent.md` (aktualizace — specificita a mrtvé CSS)*
+
+### Palec a avatar v panelu po slově: zlatá místo modré; SLOVO/časovač o 50 % větší
+Avatar autora významu a ikona palce u hlasování byly natvrdo modré (i barvy
+uvnitř `palec.svg`) a na zeleném (solved) i červeném (missed) panelu po slově
+bily oči. `.wd-vote.voted` byl navíc vždycky zelený bez ohledu na to, jestli
+je panel červený. `.gp-headline`/`.gp-timer` (nadpis „Slovo X · obtížnost" a
+countdown) zvětšeny o 50 %.
+
+**Root cause / approach:** V kostky.css je pro tuhle přesnou situaci (accent,
+co musí sedět na zeleném i červeném) už zavedený vzor — `.wd-add` je zlatá
+s komentářem „ladí s tužkou i se zeleným/červeným panelem". Přebarveno
+`palec.svg` z modré na stejnou zlatou paletu jako `koruna.svg`, `.wd-avatar`
+a `.wd-vote.voted` na `--gold*` tokeny. Ověřeno v obou stavech (`solved`/
+`missed`) přes DOM injekci reálné markup struktury v běžící appce.
+
+→ *Memory saved: `kostky_gold_neutral_accent.md`*
+
+### Progress bar ve hře nebyl vertikálně zarovnaný s křížkem
+`.time-bar` v hlavičce hry seděla o 5 px níž než `#closeGameBtn` vedle ní.
+Kostky.css zvýšila výšku lišty (8→10px) a zmenšila `top`/zvětšila velikost
+křížku, ale `margin-top: 18px` z `style.css` (tuned na starou geometrii)
+nikdo nedopočítal znovu.
+
+**Root cause / approach:** Přeměřeno `getBoundingClientRect()` na obou
+prvcích v běžící hře (Trénink → `playToday()`) — středy 37px vs 32px.
+Oprava v `designs/kostky.css` hned vedle `height:10px`, kde vznikl rozjezd:
+`margin-top: 13px` (14px padding-top .game-screen + 13 + 10/2 = 32 = shodné
+se středem křížku). `style.css`s starší `margin: 18px 0 -8px` zůstal
+nedotčený — je to obecná vrstva, kostky.css ji přebíjí lokálně.
+
+→ No new memory entries.
 
 ### Tlačítka výsledku dole na dosah palce; odkaz na veřejný profil z localhostu
 Pochlubit se, Upozornit na další výzvu (zase se zvonkem), iOS banner, nudge
