@@ -2,6 +2,20 @@
 
 ## 2026-09-24
 
+### Ikona aplikace v jazyce Kostek
+Nová ikona na plochu: zelené pole, mřížka 2×2 jako sdílený výsledek, tři bílé
+klávesy s šedým retem a jedno propadlé pole — otisk použitého písmene. Navazuje
+na starou ikonu (stejná mřížka, prázdné pole vlevo dole), jen v barvách a tvarech
+Kostek. Zdroj je `public/icons/icon.svg`, PNG (512, 192, 180, 32) jsou z něj
+přes `rsvg-convert`.
+
+**Root cause / approach:** Písmena na ikoně (např. SLOV) by ve 32px faviconu
+splynula a bez fontTools nešla převést z Fredoky do křivek, proto motiv bez
+textu. PNG bez alfa kanálu — iOS průhlednost v apple-touch-icon vyplní černou.
+Už nainstalované PWA si ikonu nechají, dokud ji hráč nepřidá na plochu znovu.
+
+→ *No new memory entries.*
+
 ### Větev kostky-trenink: Kostky jako jediný vzhled
 Z průzkumu šesti směrů zůstaly Kostky. `designs/kostky.css` se načítá natrvalo
 za `style.css`; ostatních pět směrů, nástěnka `/designs.html` a přepínací
