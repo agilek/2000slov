@@ -68,9 +68,15 @@
         }).filter(function (s) { return !s.inset && (s.x || s.y); });
     }
 
-    function clear(el) {
-        el.style.clipPath = el.style.webkitClipPath = '';
+    // Zapisuje se jen změněná cesta: každý zápis clip-path znamená nový
+    // přepočet stylu a překreslení prvku.
+    function setClip(el, v) {
+        if (el.__squircle === v) return;
+        el.__squircle = v;
+        el.style.clipPath = el.style.webkitClipPath = v;
     }
+
+    function clear(el) { setClip(el, ''); }
 
     // clip-path, ne mask: maska se ve WebKitu vždy ořízne na okraj boxu
     // (mask-clip: no-clip neumí), takže by spolkla spodní ret tlačítek.
@@ -78,6 +84,7 @@
     // ostrý stín. Rozostřený stín by se usekl, takový prvek zůstane s obyčejným
     // zaoblením. Vedlejší zisk: clip-path platí i pro klepnutí.
     function apply(el) {
+        if (el.matches(SKIP)) return clear(el);
         var cs = getComputedStyle(el);
         var rTL = radiusOf(cs, 'borderTopLeftRadius');
         var rTR = radiusOf(cs, 'borderTopRightRadius');
@@ -91,7 +98,7 @@
         var d = [pathFor(w, h, rTL, rTR, rBR, rBL)].concat(shadows.map(function (s) {
             return pathFor(w, h, rTL, rTR, rBR, rBL, s.x, s.y);
         })).join(' ');
-        el.style.clipPath = el.style.webkitClipPath = "path('" + d + "')";
+        setClip(el, "path('" + d + "')");
     }
 
     var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, SVG: 1, PATH: 1, CIRCLE: 1, LINK: 1, HEAD: 1, TITLE: 1, META: 1 };
@@ -101,38 +108,63 @@
     // novou masku a Safari ji mezitím zahodí, pruh bliká. Ořízne je rodič.
     var SKIP = '.ach, .ach-medal, .avatar-btn, .time-bar-fill, .ach-bar i';   // .avatar-btn: tužka vyčnívá přes kruh
 
-    function candidates(root) {
-        var out = [];
-        var all = root.querySelectorAll('*');
-        for (var i = 0; i < all.length; i++) {
-            var el = all[i];
-            if (SKIP_TAGS[el.tagName] || el.matches(SKIP)) continue;
-            var cs = getComputedStyle(el);
-            if (radiusOf(cs, 'borderTopLeftRadius') || radiusOf(cs, 'borderTopRightRadius') ||
-                radiusOf(cs, 'borderBottomRightRadius') || radiusOf(cs, 'borderBottomLeftRadius')) {
-                out.push(el);
-            }
-        }
-        return out;
+    function rounded(el) {
+        if (SKIP_TAGS[el.tagName] || el.matches(SKIP)) return false;
+        var cs = getComputedStyle(el);
+        return radiusOf(cs, 'borderTopLeftRadius') || radiusOf(cs, 'borderTopRightRadius') ||
+            radiusOf(cs, 'borderBottomRightRadius') || radiusOf(cs, 'borderBottomLeftRadius');
     }
 
+    function each(root, fn) {
+        fn(root);
+        var all = root.querySelectorAll('*');
+        for (var i = 0; i < all.length; i++) fn(all[i]);
+    }
+
+    // Prvek se sleduje jednou; první výpočet přijde z ResizeObserveru, který
+    // hlásí velikost hned po observe. Už sledovaný (změnila se mu třída,
+    // a s ní třeba rádius nebo ret) se přepočítá hned.
+    var watched = new Set();
     function scan(root) {
-        candidates(root).forEach(function (el) {
-            apply(el);
+        each(root, function (el) {
+            if (watched.has(el)) return apply(el);
+            if (!rounded(el)) return;
+            watched.add(el);
             ro.observe(el);
         });
     }
 
-    var pending = false;
-    var mo = new MutationObserver(function () {
+    // Dřív se po každé změně DOM prošel celý dokument — časovač ji dělá
+    // každou sekundu, písmenka každým klepnutím. Teď jen to, co přibylo,
+    // zmizelo nebo změnilo třídu. Odebrané prvky se pustí, jinak by je
+    // ResizeObserver držel a procházel donekonečna (nová písmenka každé slovo).
+    var dirty = new Set(), gone = new Set(), pending = false;
+    var mo = new MutationObserver(function (records) {
+        for (var i = 0; i < records.length; i++) {
+            var r = records[i];
+            if (r.type === 'attributes') dirty.add(r.target);
+            for (var j = 0; j < r.addedNodes.length; j++) if (r.addedNodes[j].nodeType === 1) dirty.add(r.addedNodes[j]);
+            for (var k = 0; k < r.removedNodes.length; k++) if (r.removedNodes[k].nodeType === 1) gone.add(r.removedNodes[k]);
+        }
         if (pending) return;
         pending = true;
-        requestAnimationFrame(function () { pending = false; scan(document.body); });
+        requestAnimationFrame(flush);
     });
+
+    function flush() {
+        pending = false;
+        gone.forEach(function (root) {
+            if (root.isConnected) return;                 // jen přesunutý
+            each(root, function (el) { if (watched.delete(el)) ro.unobserve(el); });
+        });
+        dirty.forEach(function (root) { if (root.isConnected) scan(root); });
+        gone.clear();
+        dirty.clear();
+    }
 
     function start() {
         scan(document.body);
-        mo.observe(document.body, { childList: true, subtree: true });
+        mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     }
     if (document.body) start();
     else document.addEventListener('DOMContentLoaded', start);

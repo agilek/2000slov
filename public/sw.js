@@ -11,7 +11,7 @@
 //
 // CACHE a SHELL skládá `node tools/stamp.mjs` z index.html — ručně je neupravuj.
 
-const CACHE = 'slov2000-4120e0fd';
+const CACHE = 'slov2000-aa584e67';
 const SHELL = [
     '/',
     '/icons/icon.svg',
@@ -26,7 +26,7 @@ const SHELL = [
     '/designs/kostky/profil.svg',
     '/designs/kostky/cinka.svg',
     '/designs/kostky/zpet.svg',
-    '/squircle.js?v=847d5c4a',
+    '/squircle.js?v=ea1a7af3',
     '/words.js?v=a4b29c80',
     '/avatar.js?v=5bda5401',
     '/achievements.js?v=04a11446',
