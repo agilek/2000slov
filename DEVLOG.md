@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Výsledek: upozornění jako tlačítko pod Pochlubit se, klidnější odpočet
+- „Zapnout upozornění na další den“ (terciární odkaz se zvonkem) je teď obrysové
+  tlačítko „Upozornit na další výzvu“ hned pod Pochlubit se.
+- iOS banner „Přidej si hru na plochu“ je na stejném místě.
+- Odpočet „Další výzva za…“ je pod nimi, bez rámečku (vypadal jako tlačítko)
+  a v Nunitu místo Slovka One.
+- Na kartě ke sdílení je adresa `20slov.cz`.
+- Pochlubit se má ikonu tučné šipky (Phosphor ShareFat, zaoblenou tahem).
+
+**Root cause / approach:** Tlačítko upozornění sedí uvnitř `.share-actions`
+s `flex-basis: 100%`, takže se odhaluje spolu se sdílením. Slovka One má jen
+jednu (těžkou) řez, „méně tučně“ proto znamená přepnout na Nunito.
+
+→ *No new memory entries.*
+
 ### Náhled karty před sdílením, série na kartě, karta pro každé skóre
 Pochlubit se otevře sheet s náhledem karty a tlačítkem „Sdílet obrázek“
 (na desktopu „Stáhnout obrázek“). Perfektní den se sérií od 2 dnů má na kartě

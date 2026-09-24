@@ -254,8 +254,7 @@
 /* Odpočet je informace, ne tlačítko — bez podkladu a rámečku */
 #countdown {
     align-self: center;
-    font-family: var(--display);
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--muted-text);
     margin: 22px auto;
@@ -910,8 +909,7 @@
 .emoji[data-emoji="plocha"]   { background-image: url(kostky/plocha.svg); }
 #percentile .emoji { width: 1.55em; height: 1.55em; vertical-align: -.42em; margin-left: 2px; }
 /* tlačítko je flex, mezera za emoji se v něm ztratí */
-#notifyBtn { gap: 8px; }
-#notifyBtn .emoji { width: 1.6em; height: 1.6em; }
+#notifyBtn { flex-basis: 100%; }   /* pod Pochlubit se, přes celou šířku */
 #a2hsBanner .emoji { width: 1.5em; height: 1.5em; vertical-align: -.4em; }
 .archive-score .emoji { width: 17px; height: 17px; vertical-align: -3px; }
 /* zamčený den: jen zámek, bez pilulky — jako zamčená lekce */

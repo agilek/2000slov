@@ -9,11 +9,11 @@
 //    ručního zvýšení ?v=N se k vracejícímu se hráči nikdy nedostala.
 //  - /api/*, /u/* a /prihlaseni se necachují vůbec.
 
-const CACHE = 'slov2000-v27';
+const CACHE = 'slov2000-v30';
 const SHELL = [
     '/',
     '/style.css?v=14',
-    '/designs/kostky.css?v=17',
+    '/designs/kostky.css?v=20',
     '/fonts/SlovkaOne-Regular.woff2',
     '/words.js?v=4',
     '/game.js?v=20',
