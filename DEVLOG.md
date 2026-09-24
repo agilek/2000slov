@@ -2,6 +2,18 @@
 
 ## 2026-09-24
 
+### Pokus: tlačítka v písmu Grandstander
+Tlačítka a ovládací prvky (odkazová tlačítka, štítek data, hlasování, volby
+obtížnosti, výzva k významu, stránkování) jsou pokusně v Grandstanderu —
+Fredoka má nepovedené háčky u verzálek (ZMĚNIT, PŘEZDÍVKU). Nadpisy, čas a
+kostky zůstaly ve Fredoce.
+
+**Root cause / approach:** Jedna proměnná `--ui-font` v `designs/kostky.css`;
+návrat = `var(--display)`. Pár pozdějších pravidel nastavovalo `var(--display)`
+přímo na tytéž prvky a nové pravidlo by přebila — přepnutá na `--ui-font`.
+
+→ *No new memory entries.*
+
 ### Detail slova s kandidáty, ikony akcí, lišta času nahoře ve hře
 Klepnutí na kartu v mezihře otevře detail slova: štítky (pořadí podle častosti,
 obtížnost, počet písmen, přesmyčky), nahoře zlatý „Nejlepší význam" s korunou,

@@ -8,6 +8,9 @@
 
 :root {
     --display: 'Fredoka', 'Nunito', system-ui, sans-serif;
+    /* Pokus: tlačítka a jiné ovládací prvky v Grandstanderu (Fredoka má
+       nepovedenou háčkovanou verzálku). Zpět = var(--display). */
+    --ui-font: 'Grandstander', var(--display);
     --bg: #ffffff;
     --ink: #2b3a42;
     --muted-text: #66747c;
@@ -85,6 +88,10 @@
 .modal-header h2, .collection-count, .archive-date, .archive-score, .kb-toast,
 .pause-overlay h2, .wd-title, .wd-sub, .wd-streak, .wd-tile, .wd-avatar, .wd-vote, .def-word {
     font-family: var(--display);
+}
+.btn, .btn-tertiary, .icon-btn-label, .welcome-date, .wd-vote, .level-name, .wd-add-title,
+.def-flag.confirm, .close-modal, .pager-info {
+    font-family: var(--ui-font);
 }
 
 /* ---- Tlačítka: ret pod tlačítkem, stisk o něj klesne ---- */
@@ -569,7 +576,7 @@
 .def-tag-votes .emoji { width: 16px; height: 16px; vertical-align: -2px; }
 .def-cloud-all { justify-content: flex-start; padding-left: 2px; }
 .def-hidden { font-family: var(--display); }
-.pager-info { font-family: var(--display); font-size: 16px; }
+.pager-info { font-family: var(--ui-font); font-size: 16px; }
 .pager .btn { flex: 1; font-size: 15px; }
 .pager .btn:disabled { box-shadow: 0 4px 0 var(--lip); }
 
@@ -585,7 +592,7 @@
 .modal-header::before { background: var(--lip); opacity: 1; width: 42px; }
 .modal-header h2 { font-weight: 700; font-size: 22px; }
 .collection-count { font-weight: 600; color: var(--muted-text); }
-.close-modal { font-family: var(--display); font-weight: 600; }
+.close-modal { font-family: var(--ui-font); font-weight: 600; }
 .close-modal:focus-visible { outline: 3px solid var(--blue-soft); }
 
 .archive-item {
@@ -631,7 +638,7 @@
 .level-option.current { background: var(--blue-tint); border-color: var(--blue-soft); box-shadow: 0 4px 0 var(--blue-soft); }
 .level-option:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; }
 @media (hover: hover) { .level-option:hover { border-color: var(--blue-soft); } }
-.level-name { font-family: var(--display); font-weight: 700; font-size: 19px; }
+.level-name { font-family: var(--ui-font); font-weight: 700; font-size: 19px; }
 .level-desc { font-weight: 600; font-size: 14px; }
 .archive-score { font-weight: 700; font-size: 14px; padding: 5px 12px; background: var(--ok-bg); color: var(--ok-ink); }
 .archive-score.not-played { background: var(--ghost); color: var(--muted-text); }
@@ -819,7 +826,7 @@
 }
 .wd-add:active { translate: 0 4px; box-shadow: 0 0 0 var(--gold-lip); }
 .wd-add:focus-visible { outline: 3px solid var(--blue-soft); }
-.wd-add-title { font-family: var(--display); font-weight: 700; font-size: 17px; grid-column: 2; }
+.wd-add-title { font-family: var(--ui-font); font-weight: 700; font-size: 17px; grid-column: 2; }
 .wd-add-sub { font-weight: 600; font-size: 14px; grid-column: 2; color: var(--gold-ink); }
 .wd-card {
     border: 2px solid var(--line);
@@ -872,7 +879,7 @@
 .def-icon-btn::before { content: none; }
 .def-edit { background-image: url(kostky/tuzka.svg); }
 .def-flag { background-image: url(kostky/vlajka.svg); }
-.def-flag.confirm { background-image: none; font-family: var(--display); font-weight: 700; color: var(--bad-ink); background-color: var(--bad-bg); border-color: var(--bad-line); box-shadow: 0 3px 0 var(--bad-line); }
+.def-flag.confirm { background-image: none; font-family: var(--ui-font); font-weight: 700; color: var(--bad-ink); background-color: var(--bad-bg); border-color: var(--bad-line); box-shadow: 0 3px 0 var(--bad-line); }
 
 /* ---- Ikony místo emoji ----
    game.js obalí emoji v textu do .emoji[data-emoji]. Znak zůstane v DOM
