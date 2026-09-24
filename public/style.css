@@ -595,6 +595,10 @@ body:has(#profile.active, #myDefs.active) { overflow: visible; height: auto; min
 /* In-game progress grid: 4x5 grey squares that fill green/red as you play. */
 .game-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: clamp(5px, 1.6vw, 8px); width: fit-content; margin: 0 auto; }
 .game-grid.result-grid { margin-bottom: 30px; }
+/* Výsledek: obsah na středu nad tlačítky, tlačítka u spodního okraje na dosah
+   palce. Volné místo si dělí dvě auto mezery — nad mřížkou a nad tlačítky. */
+#result .result-grid { margin-top: auto; }
+.result-bottom { display: flex; flex-direction: column; width: 100%; max-width: 400px; margin: auto auto 0; padding-top: 12px; }
 .pg-cell { width: clamp(26px, 7.5vw, 34px); height: clamp(26px, 7.5vw, 34px); border-radius: 7px; background: var(--grid-cell); transition: background .3s ease; }
 .pg-cell.solved { background: var(--green); }
 .pg-cell.missed { background: var(--red); }

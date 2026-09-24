@@ -912,7 +912,8 @@ function renderHandlePicker(box) {
 
 function renderSignedIn(box) {
     box.append(el('p', 'profile-note', `Přihlášen jako ${auth.user.handle}. Významy se ukládají k účtu.`));
-    const link = `${siteUrl().replace(/\/$/, '')}/u/${encodeURIComponent(auth.user.handle)}`;
+    // Profil žije na serveru, kde je účet — ne na FALLBACK_URL pro sdílení z localhostu.
+    const link = `${location.origin}/u/${encodeURIComponent(auth.user.handle)}`;
     const show = el('a', 'btn btn-secondary', 'Můj veřejný profil');
     show.href = link;
     show.target = '_blank';

@@ -909,7 +909,11 @@
 .emoji[data-emoji="plocha"]   { background-image: url(kostky/plocha.svg); }
 #percentile .emoji { width: 1.55em; height: 1.55em; vertical-align: -.42em; margin-left: 2px; }
 /* tlačítko je flex, mezera za emoji se v něm ztratí */
-#notifyBtn { flex-basis: 100%; }   /* pod Pochlubit se, přes celou šířku */
+/* Pod Pochlubit se přes celou šířku. Popisek i se zvonkem se musí vejít na
+   jeden řádek i na 360px telefonu — proto menší písmo a užší okraje. */
+#notifyBtn { flex-basis: 100%; gap: 8px; padding-left: 16px; padding-right: 16px; font-size: min(17px, 4.3vw); }
+#notifyBtn .emoji { width: 1.3em; height: 1.3em; flex-shrink: 0; }
+.result-bottom #countdown { margin-bottom: 0; }
 #a2hsBanner .emoji { width: 1.5em; height: 1.5em; vertical-align: -.4em; }
 .archive-score .emoji { width: 17px; height: 17px; vertical-align: -3px; }
 /* zamčený den: jen zámek, bez pilulky — jako zamčená lekce */

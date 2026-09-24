@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Tlačítka výsledku dole na dosah palce; odkaz na veřejný profil z localhostu
+Pochlubit se, Upozornit na další výzvu (zase se zvonkem), iOS banner, nudge
+série a odpočet jsou v `.result-bottom` u spodního okraje. Skóre a mřížka jsou
+na středu nad nimi. Odkaz „Můj veřejný profil“ vedl na localhostu na produkční
+workers.dev, kde dev účet neexistuje.
+
+**Root cause / approach:** `siteUrl()` na localhostu vrací `FALLBACK_URL`.
+Je to schválně, aby sdílený odkaz na hru byl veřejný. Profil ale žije na
+serveru s účtem, proto `location.origin`. Rozložení: dvě `margin-top: auto`
+(mřížka a `.result-bottom`) si dělí volné místo, takže obsah zůstane na středu
+a tlačítka dole. Zvonek v `.btn` s `nowrap` se smrskl na 0, dokud neměl
+`flex-shrink: 0`.
+
+→ *Memory saved: `home_is_result_when_done.md` (aktualizace)*
+
 ### Výsledek: upozornění jako tlačítko pod Pochlubit se, klidnější odpočet
 - „Zapnout upozornění na další den“ (terciární odkaz se zvonkem) je teď obrysové
   tlačítko „Upozornit na další výzvu“ hned pod Pochlubit se.
