@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Náhled karty před sdílením, série na kartě, karta pro každé skóre
+Pochlubit se otevře sheet s náhledem karty a tlačítkem „Sdílet obrázek“
+(na desktopu „Stáhnout obrázek“). Perfektní den se sérií od 2 dnů má na kartě
+oranžovou nálepku „N dní v řadě“ s plamenem. Karty bez trofeje (0–8) dostaly
+vlastní nálepku „Zítra to dám!“ a výzvu „Dáš to líp?“, perfektní den výzvu
+„Dáš taky všech 20?“. Pochlubit se tak může každý.
+
+**Root cause / approach:** Sdílí se až tlačítkem v sheetu, takže
+`navigator.share` běží v čerstvém gestu. Předkreslení teď slouží hlavně
+k tomu, aby náhled naskočil hned. Výška náhledu je
+`88dvh − 186px`: sheet má max 88dvh a zbytek zabere hlavička, tlačítko
+a okraje. Bez toho tlačítko na iPhonu přetékalo.
+
+→ *Memory saved: `share_card_canvas.md` (aktualizace)*
+
 ### Pochlubit se sdílí obrázek ve stylu Spotify Wrapped
 Místo textu s emoji mřížkou se sdílí svislá karta 1080×1920 (příběh na IG/FB).
 Obsahuje „20 SLOV“ z kostek písmen, obří skóre s retem, mřížku dne na tmavé

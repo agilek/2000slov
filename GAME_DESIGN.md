@@ -104,15 +104,22 @@ Trofejová hláška je (stejně jako v originále) **statická tabulka** — ž�
 | 0–8 | Dnes bez trofeje 💔 |
 
 Sdílí se **obrázek**: svislá karta 1080×1920 (formát příběhu na Instagramu
-a Facebooku). Obsahuje nápis „20 SLOV“ z kostek písmen, den, obří skóre
-„N z 20 slov“, mřížku dne na tmavé desce, percentil jako zlatou nálepku (jen
-s trofejí), „Překonáš mě?“ a adresu hry. Barva plochy podle dne: zlatá za všech 20,
-zelená 🏆, modrá 🏅, fialová bez trofeje. Kreslí ji `drawShareCard()` do canvasu.
+a Facebooku). Kreslí ji `drawShareCard()` do canvasu a existuje pro každé skóre 0–20:
 
-Mobil → nativní share sheet se souborem (`navigator.share({ files })`),
-desktop → stažení PNG a toast. Karta se kreslí předem při zobrazení výsledku:
-iOS otevře share sheet jen v gestu klepnutí a na vykreslení nepočká. Když
-kreslení selže, sdílí se původní text s emoji mřížkou (`buildShareMessage`).
+| Skóre (dle percentilu) | Plocha | Nálepka | Výzva dole |
+|---|---|---|---|
+| 20 | zlatá | Top 1 % 👑 (+ „N dní v řadě 🔥“ od série 2) | Dáš taky všech 20? |
+| 🏆 (17–19) | zelená | Top X % 🏆 | Překonáš mě? |
+| 🏅 (9–16) | modrá | Top X % 🏅 | Překonáš mě? |
+| bez trofeje (0–8) | fialová | Zítra to dám! 👍 | Dáš to líp? |
+
+Vždy je tam nápis „20 SLOV“ z kostek písmen, den, obří skóre „N z 20 slov“,
+mřížka dne na tmavé desce a adresa hry.
+
+Pochlubit se → sheet s náhledem karty → „Sdílet obrázek“ (mobil:
+`navigator.share({ files })`) nebo „Stáhnout obrázek“ (desktop). Karta se
+kreslí předem při zobrazení výsledku, takže náhled naskočí hned. Když kreslení
+selže, sdílí se původní text s emoji mřížkou (`buildShareMessage`).
 
 ## 4. Roadmapa
 

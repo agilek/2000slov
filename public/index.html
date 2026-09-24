@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 <link rel="stylesheet" href="designs/kostky.css?v=16">
 </head>
 <body>
@@ -250,6 +250,15 @@
         </div>
     </div>
 
+    <!-- Náhled karty ke sdílení -->
+    <div class="modal" id="shareModal">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="shareTitle" tabindex="-1">
+            <div class="modal-header"><h2 id="shareTitle">Karta dne</h2><button class="close-modal" onclick="closeModal()">Zavřít</button></div>
+            <img class="share-preview" id="sharePreview" alt="">
+            <button class="btn btn-play share-card-btn" id="shareCardBtn" onclick="shareCardFile()">Sdílet obrázek</button>
+        </div>
+    </div>
+
     <!-- Feedback Modal -->
     <div class="modal" id="feedbackModal">
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle" tabindex="-1">
@@ -278,6 +287,6 @@
     </div>
 
 <script src="words.js?v=4"></script>
-<script src="game.js?v=17"></script>
+<script src="game.js?v=18"></script>
 </body>
 </html>

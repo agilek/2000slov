@@ -2139,12 +2139,18 @@ function shareText(msg) {
 /* Obrázek ke sdílení: svislá karta 1080×1920 (příběh na Instagramu
    i Facebooku) v řeči Kostek — kostky s retem, Slovka One, sytá plocha
    jako ve Spotify Wrapped. Barva plochy podle dne: zlatá za všech 20,
-   zelená za trofej, modrá za medaili, fialová bez trofeje. */
+   zelená za trofej, modrá za medaili, fialová bez trofeje. Pochlubit se
+   musí jít s každým skóre — i bez trofeje má karta nálepku a výzvu. */
 const CARD_THEMES = {
-    perfect: { bg: '#ffc21a', shape: '#ffac00', ink: '#4a3200', lip: '#d98f00' },
-    top:     { bg: '#4cb82b', shape: '#42a723', ink: '#ffffff', lip: '#2f7d14' },
-    medal:   { bg: '#1b93e6', shape: '#1584d2', ink: '#ffffff', lip: '#0f62a0' },
-    none:    { bg: '#9b5de5', shape: '#8d4dd9', ink: '#ffffff', lip: '#6c35b0' },
+    perfect: { bg: '#ffc21a', shape: '#ffac00', ink: '#4a3200', lip: '#d98f00', dare: 'Dáš taky všech 20?' },
+    top:     { bg: '#4cb82b', shape: '#42a723', ink: '#ffffff', lip: '#2f7d14', dare: 'Překonáš mě?' },
+    medal:   { bg: '#1b93e6', shape: '#1584d2', ink: '#ffffff', lip: '#0f62a0', dare: 'Překonáš mě?' },
+    none:    { bg: '#9b5de5', shape: '#8d4dd9', ink: '#ffffff', lip: '#6c35b0', dare: 'Dáš to líp?' },
+};
+const STICKERS = {
+    gold:   { edge: '#e09a00', face: '#fff4d1', ink: '#8a5a00' },
+    streak: { edge: '#ff9600', face: '#fff1dc', ink: '#b85400' },
+    plain:  { edge: '#d3dce0', face: '#ffffff', ink: '#2b3a42' },
 };
 const CARD_DISPLAY = '"Slovka One", Nunito, sans-serif';
 
@@ -2162,15 +2168,41 @@ function turned(g, cx, cy, deg, draw) {
     g.save(); g.translate(cx, cy); g.rotate(deg * Math.PI / 180); draw(); g.restore();
 }
 
-async function drawShareCard() {
-    const day = persist.day;
+// Nálepka zarovnaná pravým okrajem k `right`: text + ikona z Kostek, nakřivo.
+function cardSticker(g, right, cy, deg, size, label, icon, c) {
+    g.font = `${size}px ${CARD_DISPLAY}`;
+    const IS = icon ? size * 1.3 : 0, pad = size * .75;
+    const pw = g.measureText(label).width + 2 * pad + (icon ? IS + size * .3 : 0), ph = size * 2.07;
+    turned(g, right - pw / 2, cy, deg, () => {
+        cardTile(g, -pw / 2, -ph / 2, pw, ph, ph * .26, c.edge, c.edge, 10);
+        g.fillStyle = c.face; g.beginPath(); g.roundRect(-pw / 2 + 6, -ph / 2 + 6, pw - 12, ph - 12, ph * .26 - 5); g.fill();
+        g.fillStyle = c.ink; g.textBaseline = 'middle';
+        g.fillText(label, -pw / 2 + pad, size * .07);
+        if (icon) g.drawImage(icon, pw / 2 - pad - IS, -IS / 2, IS, IS);
+    });
+    g.textBaseline = 'alphabetic';
+}
+
+function cardStreak(day) { return day.perfect ? persist.streak : 0; }
+
+function cardTier(day) {
     const survived = day.marks.filter(Boolean).length;
     const pct = percentileDisplayText(survived, day.realTopPct);
     const badge = Object.keys(EMOJI_NAMES).find(e => pct.endsWith(e));
     const trophy = !pct.includes('bez trofeje');
-    const t = CARD_THEMES[survived === WORDS_PER_DAY ? 'perfect' : !trophy ? 'none' : badge === '🏅' ? 'medal' : 'top'];
-    await Promise.all([document.fonts.load(`100px ${CARD_DISPLAY}`), document.fonts.load('800 40px Nunito')]);
-    const icon = trophy && badge ? await loadImage(`designs/kostky/${EMOJI_NAMES[badge]}.svg`).catch(() => null) : null;
+    const theme = CARD_THEMES[survived === WORDS_PER_DAY ? 'perfect' : !trophy ? 'none' : badge === '🏅' ? 'medal' : 'top'];
+    return { survived, pct, badge, trophy, theme };
+}
+
+async function drawShareCard() {
+    const day = persist.day;
+    const { survived, pct, badge, trophy, theme: t } = cardTier(day);
+    const streak = cardStreak(day);
+    const icon = name => loadImage(`designs/kostky/${name}.svg`).catch(() => null);
+    const [, , badgeIcon, flame] = await Promise.all([
+        document.fonts.load(`100px ${CARD_DISPLAY}`), document.fonts.load('800 40px Nunito'),
+        icon(trophy && badge ? EMOJI_NAMES[badge] : 'palec'), streak >= 2 ? icon('plamen') : null,
+    ]);
 
     const W = 1080, H = 1920, X = 90;
     const c = document.createElement('canvas');
@@ -2198,6 +2230,8 @@ async function drawShareCard() {
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     g.fillStyle = t.ink; g.font = `56px ${CARD_DISPLAY}`;
     g.fillText(`Den ${day.dayIdx + 1}`, X, 392);
+    // série jen za perfektní den — tehdy je čím se chlubit
+    if (streak >= 2) cardSticker(g, W - X, 372, 4, 50, `${fmtNum(streak)} ${plural(streak, 'den', 'dny', 'dní')} v řadě`, flame, STICKERS.streak);
 
     // skóre: obří číslo s retem, vedle „z 20 / slov"
     const num = String(survived);
@@ -2224,23 +2258,13 @@ async function drawShareCard() {
         });
     });
 
-    // percentil jako zlatá nálepka přes roh desky
-    if (trophy) {
-        const label = pct.replace(/[\s\p{Extended_Pictographic}️]+$/u, '');
-        g.font = `56px ${CARD_DISPLAY}`;
-        const IS = icon ? 72 : 0, pw = g.measureText(label).width + 84 + (icon ? IS + 18 : 0), ph = 116;
-        turned(g, W - X - pw / 2 + 10, 1450, 4, () => {
-            cardTile(g, -pw / 2, -ph / 2, pw, ph, 30, '#e09a00', '#e09a00', 10);
-            g.fillStyle = '#fff4d1'; g.beginPath(); g.roundRect(-pw / 2 + 6, -ph / 2 + 6, pw - 12, ph - 12, 25); g.fill();
-            g.fillStyle = '#8a5a00'; g.textBaseline = 'middle';
-            g.fillText(label, -pw / 2 + 42, 4);
-            if (icon) g.drawImage(icon, pw / 2 - 42 - IS, -IS / 2, IS, IS);
-        });
-        g.textBaseline = 'alphabetic';
-    }
+    // percentil jako zlatá nálepka přes roh desky; bez trofeje hlavu vzhůru
+    const label = trophy ? pct.replace(/[\s\p{Extended_Pictographic}️]+$/u, '') : 'Zítra to dám!';
+    cardSticker(g, W - X + 10, 1450, 4, 56, label, badgeIcon, trophy ? STICKERS.gold : STICKERS.plain);
 
     g.fillStyle = t.ink; g.font = `104px ${CARD_DISPLAY}`;
-    g.fillText('Překonáš mě?', X, 1650);
+    g.font = `${Math.min(104, 104 * (W - 2 * X) / g.measureText(t.dare).width)}px ${CARD_DISPLAY}`;
+    g.fillText(t.dare, X, 1650);
     g.font = '800 44px Nunito, sans-serif';
     g.globalAlpha = .85;
     g.fillText(siteUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), X, 1726);
@@ -2254,13 +2278,22 @@ let shareCard = null;   // { key, ready: Promise<File>, file }
 function prepareShareCard() {
     const day = persist.day;
     if (!day || !day.done) return null;
-    const key = JSON.stringify([day.dayIdx, day.marks, day.realTopPct]);
+    const key = JSON.stringify([day.dayIdx, day.marks, day.realTopPct, cardStreak(day)]);
     if (shareCard && shareCard.key === key) return shareCard.ready;
-    const card = { key, file: null };
-    card.ready = drawShareCard().then(blob => (card.file = new File([blob], `20-slov-den-${day.dayIdx + 1}.png`, { type: 'image/png' })));
+    if (shareCard && shareCard.url) URL.revokeObjectURL(shareCard.url);
+    const card = { key, file: null, url: null };
+    card.ready = drawShareCard().then(blob => {
+        card.file = new File([blob], `20-slov-den-${day.dayIdx + 1}.png`, { type: 'image/png' });
+        card.url = URL.createObjectURL(blob);
+        return card.file;
+    });
     card.ready.catch(() => { if (shareCard === card) shareCard = null; });
     shareCard = card;
     return card.ready;
+}
+
+function canShareCard(file) {
+    return isMobileShare() && !!navigator.canShare && navigator.canShare({ files: [file || new File([], 'x.png', { type: 'image/png' })] });
 }
 
 function downloadCard(file) {
@@ -2272,18 +2305,32 @@ function downloadCard(file) {
     showToast('Obrázek uložený — přidej ho na Instagram nebo Facebook.');
 }
 
+// Pochlubit se → náhled karty v sheetu; sdílí se až tlačítkem pod ním,
+// takže navigator.share běží v čerstvém gestu a karta je dávno hotová.
 async function shareScore() {
     const ready = prepareShareCard();
-    const file = (shareCard && shareCard.file) || await (ready && ready.catch(() => null));
-    if (!file) return shareText(buildShareMessage());   // kreslení selhalo — aspoň text
-    if (isMobileShare() && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], text: `Překonáš mě? ${siteUrl()}` }).catch(err => {
-            if (err && err.name === 'AbortError') return;
-            downloadCard(file);   // gesto vypršelo nebo sdílení souborů blokované
-        });
-    } else {
-        downloadCard(file);
-    }
+    const day = persist.day;
+    const img = $('sharePreview'), btn = $('shareCardBtn');
+    $('shareTitle').textContent = `Karta dne ${day.dayIdx + 1}`;
+    img.alt = `Karta ke sdílení: ${day.marks.filter(Boolean).length} z 20 slov, den ${day.dayIdx + 1}`;
+    img.removeAttribute('src');
+    btn.textContent = canShareCard() ? 'Sdílet obrázek' : 'Stáhnout obrázek';
+    btn.disabled = true;
+    openModal('shareModal');
+    const file = await (ready && ready.catch(() => null));
+    if (!file) { closeModal(); return shareText(buildShareMessage()); }   // kreslení selhalo — aspoň text
+    img.src = shareCard.url;
+    btn.disabled = false;
+}
+
+function shareCardFile() {
+    const file = shareCard && shareCard.file;
+    if (!file) return;
+    if (!canShareCard(file)) { downloadCard(file); closeModal(); return; }
+    navigator.share({ files: [file], text: `${cardTier(persist.day).theme.dare} ${siteUrl()}` }).then(() => closeModal()).catch(err => {
+        if (err && err.name === 'AbortError') return;   // jen zavřel share sheet — náhled zůstává
+        downloadCard(file);   // sdílení souborů blokované
+    });
 }
 
 /* ---------------- web push: připomínka dalšího dne ---------------- */

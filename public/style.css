@@ -919,6 +919,20 @@ body:has(#profile.active, #myDefs.active) { overflow: visible; height: auto; min
 .quit-text { margin: -2px 0 20px; text-align: center; font-size: 16px; line-height: 1.5; color: var(--muted-text); }
 .quit-actions { display: flex; flex-direction: column; gap: 12px; }
 .quit-actions .btn { width: 100%; max-width: 400px; margin: 0 auto; }
+/* Náhled karty: celý obrázek 9:16 se musí vejít i s tlačítkem —
+   sheet má nejvýš 88dvh, hlavička + tlačítko + okraje zaberou ~180 px */
+.share-preview {
+    display: block;
+    height: min(calc(88dvh - 186px - env(safe-area-inset-bottom)), 560px);
+    aspect-ratio: 9 / 16;
+    margin: 0 auto 22px;
+    border-radius: 18px;
+    background: var(--ghost);
+    box-shadow: 0 6px 0 var(--lip);
+    object-fit: cover;
+}
+.share-card-btn { width: 100%; max-width: 400px; margin: 0 auto; }
+.share-card-btn:disabled { opacity: .5; }
 
 /* Výběr obtížnosti tréninku (sheet) */
 .level-list { display: flex; flex-direction: column; gap: 10px; }
