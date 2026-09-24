@@ -103,24 +103,16 @@ Trofejová hláška je (stejně jako v originále) **statická tabulka** — ž�
 | 9–12 | Top 50 % hráčů dneška 🏅 |
 | 0–8 | Dnes bez trofeje 💔 |
 
-Text sdílení (formát originálu, mřížka 4×5):
+Sdílí se **obrázek**: svislá karta 1080×1920 (formát příběhu na Instagramu
+a Facebooku). Obsahuje nápis „20 SLOV“ z kostek písmen, den, obří skóre
+„N z 20 slov“, mřížku dne na tmavé desce, percentil jako zlatou nálepku (jen
+s trofejí), „Překonáš mě?“ a adresu hry. Barva plochy podle dne: zlatá za všech 20,
+zelená 🏆, modrá 🏅, fialová bez trofeje. Kreslí ji `drawShareCard()` do canvasu.
 
-```
-⏳ 20 slov — den #12
-
-🔥 Získáno 18/20 slov
-
-🟩🟩🟩🟥🟩
-🟩🟩🟩🟩🟩
-🟩🟩🟩🟩🟩
-🟩🟥🟩🟩🟩
-
-🏆 Top 10 % hráčů dneška      | 🫵 Překonáš mě?  (varianta Vyzvat kamaráda)
-
-https://…
-```
-
-Mobil → nativní share sheet (`navigator.share`), desktop → schránka + toast.
+Mobil → nativní share sheet se souborem (`navigator.share({ files })`),
+desktop → stažení PNG a toast. Karta se kreslí předem při zobrazení výsledku:
+iOS otevře share sheet jen v gestu klepnutí a na vykreslení nepočká. Když
+kreslení selže, sdílí se původní text s emoji mřížkou (`buildShareMessage`).
 
 ## 4. Roadmapa
 

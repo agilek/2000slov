@@ -2,6 +2,20 @@
 
 ## 2026-09-24
 
+### Pochlubit se sdílí obrázek ve stylu Spotify Wrapped
+Místo textu s emoji mřížkou se sdílí svislá karta 1080×1920 (příběh na IG/FB).
+Obsahuje „20 SLOV“ z kostek písmen, obří skóre s retem, mřížku dne na tmavé
+desce nakřivo, zlatou nálepku percentilu s ikonou z Kostek a „Překonáš mě?“ s adresou.
+Plocha je zlatá, zelená, modrá nebo fialová podle výsledku. Na desktopu se PNG stáhne.
+
+**Root cause / approach:** `navigator.share` se souborem musí běžet
+v přechodné aktivaci klepnutí. Kreslení (čekání na fonty, načtení SVG, `toBlob`)
+je asynchronní, takže karta se kreslí předem v `showResult`
+(`prepareShareCard`, klíč den+marks+percentil). Klepnutí pak sdílí synchronně.
+Canvas kreslí Slovka One až po `document.fonts.load`, jinak spadne na záložní písmo.
+
+→ *Memory saved: `share_card_canvas.md`*
+
 ### Po dohrání dne je domovem rovnou výsledek
 Když je dnešní výzva hotová, úvodní obrazovka (název a pravidla) se nezobrazuje.
 Domovem je výsledková obrazovka: kostky, skóre, percentil, Pochlubit se, odpočet

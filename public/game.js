@@ -1889,6 +1889,7 @@ async function refreshRealPercentile() {
     if ($('result').classList.contains('active')) {
         setEmojiText($('percentile'), formatRealPercentileText(real.topPct));
     }
+    prepareShareCard();   // percentil je i na obrázku
 }
 
 function restoreFinishedDay() {
@@ -1949,6 +1950,7 @@ function showResult(instant) {
         : `Den ${dayNum} ti utekl — zítra čeká den ${nextNum}, nová slova!`);
     updateNotifyPrompt();
     renderStreakNudge();
+    prepareShareCard();
 
     startCountdown();
     animateResultReveal(perfect, instant);
@@ -2116,10 +2118,13 @@ function copyFallback(msg, blocked) {
     navigator.clipboard?.writeText(msg).then(() => showToast(note)).catch(() => alert(msg));
 }
 
-function shareText(msg) {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+function isMobileShare() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
         ('ontouchstart' in window && window.innerWidth < 768);
-    if (isMobile && navigator.share) {
+}
+
+function shareText(msg) {
+    if (isMobileShare() && navigator.share) {
         // Musí běžet přímo v gestu uživatele, jinak iOS sheet neotevře.
         navigator.share({ text: msg }).catch(err => {
             if (err && err.name === 'AbortError') return; // uživatel jen zavřel sheet
@@ -2131,7 +2136,155 @@ function shareText(msg) {
     }
 }
 
-function shareScore() { shareText(buildShareMessage()); }
+/* Obrázek ke sdílení: svislá karta 1080×1920 (příběh na Instagramu
+   i Facebooku) v řeči Kostek — kostky s retem, Slovka One, sytá plocha
+   jako ve Spotify Wrapped. Barva plochy podle dne: zlatá za všech 20,
+   zelená za trofej, modrá za medaili, fialová bez trofeje. */
+const CARD_THEMES = {
+    perfect: { bg: '#ffc21a', shape: '#ffac00', ink: '#4a3200', lip: '#d98f00' },
+    top:     { bg: '#4cb82b', shape: '#42a723', ink: '#ffffff', lip: '#2f7d14' },
+    medal:   { bg: '#1b93e6', shape: '#1584d2', ink: '#ffffff', lip: '#0f62a0' },
+    none:    { bg: '#9b5de5', shape: '#8d4dd9', ink: '#ffffff', lip: '#6c35b0' },
+};
+const CARD_DISPLAY = '"Slovka One", Nunito, sans-serif';
+
+function loadImage(src) {
+    return new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
+}
+
+// Kostka s retem: spodní „ret" je tentýž tvar posunutý dolů v tmavším odstínu.
+function cardTile(g, x, y, w, h, r, face, lip, lipH) {
+    g.fillStyle = lip; g.beginPath(); g.roundRect(x, y + lipH, w, h, r); g.fill();
+    g.fillStyle = face; g.beginPath(); g.roundRect(x, y, w, h, r); g.fill();
+}
+
+function turned(g, cx, cy, deg, draw) {
+    g.save(); g.translate(cx, cy); g.rotate(deg * Math.PI / 180); draw(); g.restore();
+}
+
+async function drawShareCard() {
+    const day = persist.day;
+    const survived = day.marks.filter(Boolean).length;
+    const pct = percentileDisplayText(survived, day.realTopPct);
+    const badge = Object.keys(EMOJI_NAMES).find(e => pct.endsWith(e));
+    const trophy = !pct.includes('bez trofeje');
+    const t = CARD_THEMES[survived === WORDS_PER_DAY ? 'perfect' : !trophy ? 'none' : badge === '🏅' ? 'medal' : 'top'];
+    await Promise.all([document.fonts.load(`100px ${CARD_DISPLAY}`), document.fonts.load('800 40px Nunito')]);
+    const icon = trophy && badge ? await loadImage(`designs/kostky/${EMOJI_NAMES[badge]}.svg`).catch(() => null) : null;
+
+    const W = 1080, H = 1920, X = 90;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = t.bg; g.fillRect(0, 0, W, H);
+    // dvě obří kostky v pozadí, uříznuté okrajem
+    turned(g, 960, 560, 16, () => { g.fillStyle = t.shape; g.beginPath(); g.roundRect(-260, -260, 520, 520, 110); g.fill(); });
+    turned(g, 40, 1560, -12, () => { g.fillStyle = t.shape; g.beginPath(); g.roundRect(-240, -240, 480, 480, 100); g.fill(); });
+
+    // „20 SLOV" z kostek písmen jako na klávesnici hry, každá trochu nakřivo
+    const TS = 112, tilt = [-7, 4, -4, 6, -3, 5];
+    let x = X, k = 0;
+    for (const ch of '20 SLOV') {
+        if (ch === ' ') { x += 34; continue; }
+        const d = tilt[k++];
+        turned(g, x + TS / 2, 170 + TS / 2, d, () => {
+            cardTile(g, -TS / 2, -TS / 2, TS, TS, 26, '#ffffff', '#d3dce0', 10);
+            g.fillStyle = '#2b3a42'; g.font = `74px ${CARD_DISPLAY}`;
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(ch, 0, 4);
+        });
+        x += TS + 12;
+    }
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillStyle = t.ink; g.font = `56px ${CARD_DISPLAY}`;
+    g.fillText(`Den ${day.dayIdx + 1}`, X, 392);
+
+    // skóre: obří číslo s retem, vedle „z 20 / slov"
+    const num = String(survived);
+    g.font = `120px ${CARD_DISPLAY}`;
+    const colW = Math.max(g.measureText('z 20').width, g.measureText('slov').width);
+    g.font = `440px ${CARD_DISPLAY}`;
+    const size = Math.min(440, 440 * (W - 2 * X - 40 - colW) / g.measureText(num).width);
+    g.font = `${size}px ${CARD_DISPLAY}`;
+    const numW = g.measureText(num).width;
+    g.fillStyle = t.lip; g.fillText(num, X, 800 + 16);
+    g.fillStyle = '#ffffff'; g.fillText(num, X, 800);
+    g.fillStyle = t.ink; g.font = `120px ${CARD_DISPLAY}`;
+    g.fillText('z 20', X + numW + 40, 680);
+    g.fillText('slov', X + numW + 40, 800);
+
+    // mřížka dne na tmavé desce, nakřivo jako nalepená
+    const CS = 96, GAP = 18, PAD = 40;
+    const bw = 5 * CS + 4 * GAP + 2 * PAD, bh = 4 * CS + 3 * GAP + 2 * PAD;
+    turned(g, W / 2, 1160, -3, () => {
+        cardTile(g, -bw / 2, -bh / 2, bw, bh, 50, '#131f24', '#0a1418', 18);
+        day.marks.forEach((ok, i) => {
+            const cx = -bw / 2 + PAD + (i % 5) * (CS + GAP), cy = -bh / 2 + PAD + Math.floor(i / 5) * (CS + GAP);
+            cardTile(g, cx, cy, CS, CS, 24, ok ? '#4cb82b' : '#ff5a5a', ok ? '#38931a' : '#c93636', 10);
+        });
+    });
+
+    // percentil jako zlatá nálepka přes roh desky
+    if (trophy) {
+        const label = pct.replace(/[\s\p{Extended_Pictographic}️]+$/u, '');
+        g.font = `56px ${CARD_DISPLAY}`;
+        const IS = icon ? 72 : 0, pw = g.measureText(label).width + 84 + (icon ? IS + 18 : 0), ph = 116;
+        turned(g, W - X - pw / 2 + 10, 1450, 4, () => {
+            cardTile(g, -pw / 2, -ph / 2, pw, ph, 30, '#e09a00', '#e09a00', 10);
+            g.fillStyle = '#fff4d1'; g.beginPath(); g.roundRect(-pw / 2 + 6, -ph / 2 + 6, pw - 12, ph - 12, 25); g.fill();
+            g.fillStyle = '#8a5a00'; g.textBaseline = 'middle';
+            g.fillText(label, -pw / 2 + 42, 4);
+            if (icon) g.drawImage(icon, pw / 2 - 42 - IS, -IS / 2, IS, IS);
+        });
+        g.textBaseline = 'alphabetic';
+    }
+
+    g.fillStyle = t.ink; g.font = `104px ${CARD_DISPLAY}`;
+    g.fillText('Překonáš mě?', X, 1650);
+    g.font = '800 44px Nunito, sans-serif';
+    g.globalAlpha = .85;
+    g.fillText(siteUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), X, 1726);
+    g.globalAlpha = 1;
+    return new Promise((ok, fail) => c.toBlob(b => b ? ok(b) : fail(), 'image/png'));
+}
+
+// navigator.share musí běžet ještě v gestu klepnutí a iOS čekání na
+// vykreslení nepočká — karta se proto kreslí, jakmile je výsledek vidět.
+let shareCard = null;   // { key, ready: Promise<File>, file }
+function prepareShareCard() {
+    const day = persist.day;
+    if (!day || !day.done) return null;
+    const key = JSON.stringify([day.dayIdx, day.marks, day.realTopPct]);
+    if (shareCard && shareCard.key === key) return shareCard.ready;
+    const card = { key, file: null };
+    card.ready = drawShareCard().then(blob => (card.file = new File([blob], `20-slov-den-${day.dayIdx + 1}.png`, { type: 'image/png' })));
+    card.ready.catch(() => { if (shareCard === card) shareCard = null; });
+    shareCard = card;
+    return card.ready;
+}
+
+function downloadCard(file) {
+    const a = el('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast('Obrázek uložený — přidej ho na Instagram nebo Facebook.');
+}
+
+async function shareScore() {
+    const ready = prepareShareCard();
+    const file = (shareCard && shareCard.file) || await (ready && ready.catch(() => null));
+    if (!file) return shareText(buildShareMessage());   // kreslení selhalo — aspoň text
+    if (isMobileShare() && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], text: `Překonáš mě? ${siteUrl()}` }).catch(err => {
+            if (err && err.name === 'AbortError') return;
+            downloadCard(file);   // gesto vypršelo nebo sdílení souborů blokované
+        });
+    } else {
+        downloadCard(file);
+    }
+}
 
 /* ---------------- web push: připomínka dalšího dne ---------------- */
 
