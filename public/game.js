@@ -2262,13 +2262,16 @@ async function drawShareCard() {
     const label = trophy ? pct.replace(/[\s\p{Extended_Pictographic}️]+$/u, '') : 'Zítra to dám!';
     cardSticker(g, W - X + 10, 1450, 4, 56, label, badgeIcon, trophy ? STICKERS.gold : STICKERS.plain);
 
-    g.fillStyle = t.ink; g.font = `104px ${CARD_DISPLAY}`;
-    g.font = `${Math.min(104, 104 * (W - 2 * X) / g.measureText(t.dare).width)}px ${CARD_DISPLAY}`;
-    g.fillText(t.dare, X, 1650);
-    g.font = '800 44px Nunito, sans-serif';
-    g.globalAlpha = .85;
-    g.fillText(siteUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), X, 1726);
-    g.globalAlpha = 1;
+    // výzva a adresa na střed, spolu nakřivo jako nálepky
+    turned(g, W / 2, 1705, -5, () => {
+        g.fillStyle = t.ink; g.textAlign = 'center';
+        g.font = `104px ${CARD_DISPLAY}`;
+        g.font = `${Math.min(104, 104 * (W - 2 * X) / g.measureText(t.dare).width)}px ${CARD_DISPLAY}`;
+        g.fillText(t.dare, 0, -40);
+        g.font = '800 44px Nunito, sans-serif';
+        g.globalAlpha = .85;
+        g.fillText(siteUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), 0, 36);
+    });
     return new Promise((ok, fail) => c.toBlob(b => b ? ok(b) : fail(), 'image/png'));
 }
 
