@@ -427,7 +427,7 @@ function voteBtn(def) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'wd-vote' + (def.voted ? ' voted' : '');
-    b.textContent = `👍 ${def.votes}`;
+    setEmojiText(b, `👍 ${def.votes}`);
     if (def.mine) {
         b.disabled = true;
         b.title = 'Svůj vlastní význam hodnotit nejde';
@@ -445,7 +445,7 @@ async function voteDef(def, btn) {
     if (!r.ok) return showToast((r.data && r.data.error) || 'Hlas se nepodařilo uložit.');
     def.votes = r.data.votes;
     def.voted = r.data.voted;
-    btn.textContent = `👍 ${def.votes}`;
+    setEmojiText(btn, `👍 ${def.votes}`);
     btn.classList.toggle('voted', !!def.voted);
 }
 
@@ -629,6 +629,22 @@ function el(tag, cls, text) {
     if (cls) e.className = cls;
     if (text !== undefined) e.textContent = text;
     return e;
+}
+
+// Emoji v textu UI obalí do <span class="emoji" data-emoji="…">, ať ho design
+// může vyměnit za vlastní ikonu (designs/kostky); bez designu zůstane emoji.
+// \n se převede na <br>. Staví DOM, ne HTML — text může přijít i z backendu.
+const EMOJI_NAMES = { '👍': 'palec', '🏆': 'trofej', '👑': 'koruna', '🏅': 'medaile', '💔': 'srdce', '🔓': 'odemceno', '🔒': 'zamceno', '🔥': 'plamen' };
+const EMOJI_RE = new RegExp(`(${Object.keys(EMOJI_NAMES).join('|')}|\n)`, 'u');
+function setEmojiText(node, text) {
+    node.replaceChildren(...String(text).split(EMOJI_RE).filter(Boolean).map(part => {
+        if (part === '\n') return document.createElement('br');
+        if (!EMOJI_NAMES[part]) return part;
+        const s = el('span', 'emoji', part);
+        s.dataset.emoji = EMOJI_NAMES[part];
+        return s;
+    }));
+    return node;
 }
 
 function renderAccount() {
@@ -912,7 +928,7 @@ async function loadMyDefs() {
         const meta = document.createElement('div');
         meta.className = 'wd-meta';
         const v = document.createElement('span');
-        v.textContent = `👍 ${d.votes}`;
+        setEmojiText(v, `👍 ${d.votes}`);
         meta.appendChild(v);
         li.append(w, p, meta);
         list.appendChild(li);
@@ -1571,7 +1587,7 @@ async function refreshRealPercentile() {
     persist.day.realTopPct = real.topPct;
     savePersist();
     if ($('result').classList.contains('active')) {
-        $('percentile').textContent = formatRealPercentileText(real.topPct);
+        setEmojiText($('percentile'), formatRealPercentileText(real.topPct));
     }
 }
 
@@ -1625,12 +1641,12 @@ function showResult(instant) {
     $('survivedCount').textContent = perfect
         ? 'Máš všech 20 slov!'
         : `Máš ${survived} z 20 slov!`;
-    $('percentile').textContent = percentileDisplayText(survived, persist.day.realTopPct);
+    setEmojiText($('percentile'), percentileDisplayText(survived, persist.day.realTopPct));
     const dayNum = persist.day.dayIdx + 1;
     const nextNum = (persist.day.dayIdx + 1) % TOTAL_LEVELS + 1;
-    $('progressLine').innerHTML = perfect
-        ? `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.<br>Zítra tě čeká den ${nextNum}!`
-        : `Den ${dayNum} ti utekl — zítra čeká den ${nextNum}, nová slova!`;
+    setEmojiText($('progressLine'), perfect
+        ? `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.\nZítra tě čeká den ${nextNum}!`
+        : `Den ${dayNum} ti utekl — zítra čeká den ${nextNum}, nová slova!`);
     updateNotifyPrompt();
     renderStreakNudge();
 
@@ -1650,7 +1666,7 @@ function renderStreakNudge() {
     if (!auth.enabled || auth.user || !NUDGE_AT.includes(s) || persist.nudgedAt === s) return;
     persist.nudgedAt = s;
     savePersist();
-    box.appendChild(el('p', null, `🔥 ${fmtNum(s)} dní v řadě — a celá série žije jen v tomhle zařízení.`));
+    box.appendChild(setEmojiText(el('p'), `🔥 ${fmtNum(s)} dní v řadě — a celá série žije jen v tomhle zařízení.`));
     const b = el('button', 'btn btn-primary', 'Uložit sérii k účtu');
     b.type = 'button';
     b.onclick = () => showProfile();
@@ -1908,7 +1924,7 @@ function showCollection() {
             li.onclick = () => li.classList.toggle('open');
         } else {
             badge.classList.add('not-played');
-            badge.textContent = current ? 'dnes' : '🔒';
+            setEmojiText(badge, current ? 'dnes' : '🔒');
             li.classList.toggle('locked', !current);
             li.append(label, badge);
             // Dny se drží kalendáře: minulé už nedohraješ, budoucí ještě nepřišly.

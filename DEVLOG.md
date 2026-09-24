@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Kostky: vlastní ikony místo systémových emoji
+Čtrnáct SVG v `public/designs/kostky/` ve stylu směru (ploché barvy z palety,
+spodní ret, světlý pruh, žádné obrysy): statistiky v profilu, trofej / koruna /
+medaile / zlomené srdce u umístění, palec u hlasů, zámky ve sbírce a u
+odkrytých slov, plamen v pobídce k sérii, zvonek, telefon „na plochu"
+a odškrtnutí po odeslání zpětné vazby. Ostatní směry ukazují emoji jako dřív.
+
+**Root cause / approach:** Emoji, která píše JS do textu, CSS nepřebije.
+`setEmojiText()` v `game.js` je proto obalí do `<span class="emoji"
+data-emoji="…">` (staví DOM, ne HTML — percentil může přijít z backendu)
+a kůže znak odsune `text-indent`em mimo box a ukáže ikonu. `color:
+transparent` barevné emoji neschová. Text do sdílení zůstává emoji.
+
+→ *No new memory entries.*
+
 ### Šest vizuálních směrů pro Gen Z (větev design/genz-directions)
 Průzkum vzhledu bez změny funkcí: šest vrstev CSS v `public/designs/` nad
 `style.css`, zapínaných `?design=<název>` (pamatuje se, `?design=off` vypne).

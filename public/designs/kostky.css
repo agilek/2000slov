@@ -522,12 +522,20 @@
     border-radius: 16px;
     padding: 13px 14px;
 }
-.stat-tile::before { grid-row: span 2; font-size: 26px; line-height: 1; }
-.stat-tile:nth-child(1)::before { content: '🔥'; }
-.stat-tile:nth-child(2)::before { content: '📅'; }
-.stat-tile:nth-child(3)::before { content: '📚'; }
-.stat-tile:nth-child(4)::before { content: '🎯'; }
-.stat-tile:nth-child(5)::before { content: '💪'; }
+/* Ikony statistik: vlastní sada v kostky/ (ploché barvy, spodní ret,
+   světlý pruh) místo systémových emoji. Pořadí dlaždic dává renderProfile. */
+.stat-tile::before {
+    content: '';
+    grid-row: span 2;
+    width: 36px;
+    height: 36px;
+    background: center / contain no-repeat;
+}
+.stat-tile:nth-child(1)::before { background-image: url(kostky/plamen.svg); }
+.stat-tile:nth-child(2)::before { background-image: url(kostky/kalendar.svg); }
+.stat-tile:nth-child(3)::before { background-image: url(kostky/kostka.svg); }
+.stat-tile:nth-child(4)::before { background-image: url(kostky/terc.svg); }
+.stat-tile:nth-child(5)::before { background-image: url(kostky/cinka.svg); }
 .stat-value { font-weight: 700; font-size: 24px; }
 .stat-label { font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--muted-text); }
 .empty-card {
@@ -647,6 +655,44 @@
 .def-item.mine { border-color: var(--blue-soft); box-shadow: 0 4px 0 var(--blue-soft); }
 .def-word { font-weight: 700; font-size: 17px; }
 .def-report { color: var(--blue-ink); font-weight: 700; opacity: 1; font-size: 13px; }
+
+/* ---- Ikony místo emoji ----
+   game.js obalí emoji v textu do .emoji[data-emoji]. Znak zůstane v DOM
+   (čtečky, kopírování), jen se odsune mimo box a místo něj je ikona
+   ze sady kostky/ — stejný styl jako ikony statistik. */
+.emoji {
+    display: inline-block;
+    width: 1.3em;
+    height: 1.3em;
+    vertical-align: -.3em;
+    overflow: hidden;
+    text-indent: 200%;
+    white-space: nowrap;
+    background: center / contain no-repeat;
+}
+.emoji[data-emoji="trofej"]   { background-image: url(kostky/trofej.svg); }
+.emoji[data-emoji="koruna"]   { background-image: url(kostky/koruna.svg); }
+.emoji[data-emoji="medaile"]  { background-image: url(kostky/medaile.svg); }
+.emoji[data-emoji="srdce"]    { background-image: url(kostky/srdce.svg); }
+.emoji[data-emoji="palec"]    { background-image: url(kostky/palec.svg); }
+.emoji[data-emoji="zamceno"]  { background-image: url(kostky/zamceno.svg); }
+.emoji[data-emoji="odemceno"] { background-image: url(kostky/odemceno.svg); }
+.emoji[data-emoji="plamen"]   { background-image: url(kostky/plamen.svg); }
+.emoji[data-emoji="zvonek"]   { background-image: url(kostky/zvonek.svg); }
+.emoji[data-emoji="plocha"]   { background-image: url(kostky/plocha.svg); }
+#percentile .emoji { width: 1.55em; height: 1.55em; vertical-align: -.42em; margin-left: 2px; }
+/* tlačítko je flex, mezera za emoji se v něm ztratí */
+#notifyBtn { gap: 8px; }
+#notifyBtn .emoji { width: 1.6em; height: 1.6em; }
+#a2hsBanner .emoji { width: 1.5em; height: 1.5em; vertical-align: -.4em; }
+.archive-score .emoji { width: 17px; height: 17px; vertical-align: -3px; }
+/* zamčený den: jen zámek, bez pilulky — jako zamčená lekce */
+.archive-item.locked .archive-score { background: none; padding: 0 4px; }
+.archive-item.locked .archive-score .emoji { width: 24px; height: 24px; }
+.feedback-success-icon {
+    color: transparent;
+    background: var(--green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5.5 12.5l4.3 4.3L18.5 8' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 36px no-repeat;
+}
 
 /* ---- Toast ---- */
 .kb-toast {
