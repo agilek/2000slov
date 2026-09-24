@@ -1564,10 +1564,12 @@ function checkWord() {
     }, 750);
 }
 
-// Čas vypršel: budík se chvilku otřese, jako když zvoní, a pak se rozletí
-// na střepy. Střepy jsou klony skutečného časovače oříznuté clip-pathem na
-// trojúhelníky, k nim pár kostek a tlaková vlna. Vrstva leží pod panelem
-// mezihry (z-index 1000), takže exploze doběhne na pozadí přechodové obrazovky.
+// Čas vypršel: červený budík se chvilku otřese, jako když zvoní, a pak
+// praskne — střepy (klony časovače oříznuté clip-pathem na trojúhelníky),
+// pár kostek a tlaková vlna se rozletí po displeji po balistické dráze a
+// spadnou za panel mezihry (vrstva z-index 999, panel 1000). Původní časovač
+// zůstává: hned na jeho místě naskočí bílá 00 a klasicky se převine na 30 s.
+// Další slovo pak začne rovnou odpočítávat (loadWord vidí plný čas).
 function explodeTimer(gen) {
     const src = document.querySelector('#progress .gp-timer');
     if (!src || !src.animate || REDUCED_MOTION.matches) return;
@@ -1577,18 +1579,25 @@ function explodeTimer(gen) {
         { transform: 'rotate(5deg) scale(1.12)' }, { transform: 'rotate(0) scale(1.14)' },
     ], { duration: 320, easing: 'ease-in-out' });
     setTimeout(() => {
-        if (state.gen !== gen || !src.isConnected) return;
+        if (state.gen !== gen || !state.processing || !src.isConnected) return;   // mezitím už další slovo?
         const r = src.getBoundingClientRect();
         const layer = el('div');
         layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden';
         document.body.appendChild(layer);
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const W = innerWidth, H = innerHeight;
         const rnd = (a, b) => a + Math.random() * (b - a);
-        const fly = (node, dx, dy, rot, ms, extra = '') => node.animate([
-            { transform: 'translate(0,0) rotate(0)', opacity: 1 },
-            { transform: `translate(${dx * .6}px, ${dy * .6 - 24}px) rotate(${rot * .6}deg)`, opacity: 1, offset: .45 },
-            { transform: `translate(${dx}px, ${dy + rnd(90, 200)}px) rotate(${rot}deg) ${extra}`, opacity: 0 },
-        ], { duration: ms, easing: 'cubic-bezier(.12,.7,.35,1)', fill: 'forwards' });
+        // šikmý vrh: x = vx·t, y = vy·t + g·t² — nahoru a do stran, pak dolů za panel
+        const fly = (node, ux, uy, power, ms, spin) => {
+            const vx = ux * power * W * .55 + rnd(-.08, .08) * W;
+            const vy = (uy - .9) * power * H * .45;
+            const g = rnd(.9, 1.3) * H;
+            node.animate([0, .2, .4, .6, .8, 1].map(t => ({
+                offset: t,
+                transform: `translate(${vx * t}px, ${vy * t + g * t * t}px) rotate(${spin * t}deg) scale(${1 - .25 * t})`,
+                opacity: t < .7 ? 1 : 1 - (t - .7) / .3,
+            })), { duration: ms, easing: 'linear', fill: 'forwards' });
+        };
 
         // střepy: mřížka 4×3 s rozházenými vnitřními vrcholy, každé pole = 2 trojúhelníky
         const C = 4, R = 3, pts = [];
@@ -1607,29 +1616,36 @@ function explodeTimer(gen) {
                     + `margin:0;box-sizing:border-box;transform-origin:${mx}% ${my}%;`
                     + `clip-path:polygon(${t.map(([x, y]) => `${x}% ${y}%`).join(',')})`;
                 layer.appendChild(shard);
-                const ux = (mx - 50) / 50, uy = (my - 50) / 50;   // směr od středu
-                fly(shard, ux * rnd(110, 240) + rnd(-30, 30), uy * rnd(90, 200) - rnd(20, 80), rnd(-320, 320), rnd(800, 1100), 'scale(.75)');
+                fly(shard, (mx - 50) / 50, (my - 50) / 50, rnd(.55, 1), rnd(1300, 1800), rnd(-540, 540));
             }
         }
-        // pár kostek jako úlomky a tlaková vlna
+        // kostky jako úlomky a tlaková vlna
         const colors = ['var(--red)', 'var(--orange)', 'var(--gold)', 'var(--red-lip)'];
-        for (let k = 0; k < 12; k++) {
-            const s = rnd(9, 17), ang = rnd(0, Math.PI * 2), dist = rnd(120, 260);
+        for (let k = 0; k < 14; k++) {
+            const s = rnd(10, 18), ang = rnd(0, Math.PI * 2);
             const bit = el('div');
             bit.style.cssText = `position:absolute;left:${cx - s / 2}px;top:${cy - s / 2}px;width:${s}px;height:${s}px;`
                 + `border-radius:${s / 3.5}px;background:${colors[k % colors.length]}`;
             layer.appendChild(bit);
-            fly(bit, Math.cos(ang) * dist, Math.sin(ang) * dist * .8, rnd(-400, 400), rnd(700, 1000));
+            fly(bit, Math.cos(ang), Math.sin(ang), rnd(.6, 1.2), rnd(1100, 1600), rnd(-600, 600));
         }
         const ring = el('div'), d = Math.max(r.width, r.height);
         ring.style.cssText = `position:absolute;left:${cx - d / 2}px;top:${cy - d / 2}px;width:${d}px;height:${d}px;`
             + 'border-radius:50%;border:8px solid var(--orange)';
         layer.appendChild(ring);
-        ring.animate([{ transform: 'scale(.3)', opacity: .9 }, { transform: 'scale(1.7)', opacity: 0 }],
-            { duration: 480, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
-        src.style.visibility = 'hidden';   // další slovo časovač vykreslí znovu (updateUI)
+        ring.animate([{ transform: 'scale(.3)', opacity: .9 }, { transform: 'scale(1.8)', opacity: 0 }],
+            { duration: 500, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' });
         haptic('miss');
-        setTimeout(() => layer.remove(), 1300);
+        setTimeout(() => layer.remove(), 1900);
+
+        // Původní časovač: na místě červeného naskočí bílá 00 a převine se na 30 s.
+        state.time = 0;
+        state.rewinding = true;           // updateUI ji nebarví na červeno
+        updateUI();
+        const fresh = document.querySelector('#progress .gp-timer');
+        if (fresh) fresh.animate([{ transform: 'scale(.4)', opacity: 0 }, { transform: 'scale(1.08)', opacity: 1, offset: .7 },
+            { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'ease-out' });
+        setTimeout(() => { if (state.gen === gen && state.processing) animateTimerUp(0, () => {}); }, 380);
     }, 320);
 }
 
@@ -1798,7 +1814,7 @@ function updateUI() {
         }
         li++;
     });
-    const low = state.time <= 0 ? ' zero' : (state.time <= 10 ? ' low' : '');
+    const low = state.rewinding ? '' : state.time <= 0 ? ' zero' : (state.time <= 10 ? ' low' : '');
     const label = state.mode === 'practice'
         ? `Slovo ${state.wordIdx + 1} · ${practiceLevel().label}`
         : `Slovo ${state.wordIdx + 1}/${WORDS_PER_DAY}`;
@@ -1827,18 +1843,21 @@ function startTimer() {
     }, 1000);
 }
 
-function animateTimerUp(from) {
+// done: co po převinutí — ve hře rozběhnout čas, po explozi jen počkat na další slovo.
+function animateTimerUp(from, done = startTimer) {
     clearInterval(state.timer);
+    clearInterval(state.rewindTimer);   // nikdy dvě převíjení naráz
     const to = START_TIME;
     state.time = from;
     const steps = to - from;
-    if (steps <= 0) { state.time = to; startTimer(); return; }
+    if (steps <= 0) { state.time = to; state.rewinding = false; done(); return; }
     let current = from;
-    const iv = setInterval(() => {
+    state.rewinding = true;             // převíjení je bílé, ne červené „low"
+    state.rewindTimer = setInterval(() => {
         current++;
         state.time = current;
         updateUI();
-        if (current >= to) { clearInterval(iv); startTimer(); }
+        if (current >= to) { clearInterval(state.rewindTimer); state.rewinding = false; done(); }
     }, Math.max(12, Math.floor(500 / steps)));
 }
 

@@ -2,6 +2,22 @@
 
 ## 2026-09-24
 
+### Výbuch času: červená 00 praskne, bílá se převine na 30 s
+Na základě prvního výbuchu. Střepy a kostky teď létají po celém displeji
+po balistické dráze (nahoru a do stran, pak gravitace za panel mezihry).
+Na místě červené 00 naskočí bílá a klasicky se převine na 30 s
+(stejné převíjení i zvuk jako mezi slovy). Pak čeká, další slovo rovnou
+odpočítává. Převíjení je nově vždy bílé, dřív bylo 1–10 s krátce červené „low“.
+
+**Root cause / approach:** Původní časovač zůstává, explodují jen klony.
+`animateTimerUp(from, done)` dostala `done`: po explozi se nerozbíhá čas,
+jen se počká. Interval je ve `state.rewindTimer` a nové převíjení staré zruší.
+Zpožděné kroky kontrolují `state.processing`, protože rychlé „Další slovo“
+by jinak starou dohrávkou přebilo časovač nového slova.
+`state.rewinding` v `updateUI` vypíná červené třídy.
+
+→ *No new memory entries.*
+
 ### Vypršený čas: budík se otřese a rozletí na střepy
 Po vypršení času (trénink i denní výzva) se časovač ~0,3 s třese jako
 zvonící budík. Pak se rozpadne na 24 trojúhelníkových střepů, rozletí se pár
