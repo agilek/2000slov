@@ -31,7 +31,6 @@ const FALLBACK_URL = 'https://slov2000.slov2000.workers.dev/';
 
 // Backend běží na stejné doméně jako hra (jeden Worker servíruje statiku
 // i /api/*, viz wrangler.toml), takže stačí relativní cesty — žádné CORS.
-const API_BASE = '';
 const API_TIMEOUT_MS = 1500;
 
 // VAPID veřejný klíč pro Web Push denní připomínku (worker/README.md → sekce
@@ -253,18 +252,21 @@ document.addEventListener('click', e => {
     e.stopImmediatePropagation();
 }, true);
 
+const NEEDS_SWITCH = !('vibrate' in navigator) && COARSE_POINTER;
+function hapticSwitch(el, css = '') {
+    const sw = document.createElement('input');
+    sw.type = 'checkbox';
+    sw.setAttribute('switch', '');
+    sw.setAttribute('aria-hidden', 'true');
+    sw.tabIndex = -1;
+    sw.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;' + css;
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    el.appendChild(sw);
+    return sw;
+}
+
 function addHapticOverlays() {
-    if ('vibrate' in navigator || !COARSE_POINTER) return;
-    $$('button:not([type="submit"])').forEach(el => {
-        const sw = document.createElement('input');
-        sw.type = 'checkbox';
-        sw.setAttribute('switch', '');
-        sw.setAttribute('aria-hidden', 'true');
-        sw.tabIndex = -1;
-        sw.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
-        if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-        el.appendChild(sw);
-    });
+    if (NEEDS_SWITCH) $$('button:not([type="submit"])').forEach(el => hapticSwitch(el));
 }
 
 // Lehké ťuknutí při kliku na tlačítko. Na iOS mají skutečná tlačítka
@@ -612,22 +614,20 @@ function navAnimate(from, to, kind) {
 
 /* ---------------- welcome ---------------- */
 
-function renderWelcomeGrid() {
-    const grid = $('welcomeGrid');
-    grid.innerHTML = '';
-    for (let i = 0; i < WORDS_PER_DAY; i++) grid.appendChild(el('div', 'pg-cell'));
-}
+const dayCells = () => Array.from({ length: WORDS_PER_DAY }, () => el('div', 'pg-cell'));
+
+const todayDone = () => !!(persist.day && persist.day.done && persist.day.date === todayStr());
 
 function showWelcome() {
     stopConfetti();
     // Dohraný den: domovem je rovnou výsledek (kostky, skóre, odpočet).
-    if (persist.day && persist.day.done && persist.day.date === todayStr()) {
+    if (todayDone()) {
         restoreFinishedDay();
         showResult(true);
         return;
     }
     placeGameGrid('game');
-    renderWelcomeGrid();
+    $('welcomeGrid').replaceChildren(...dayCells());
     $('welcomeRules').innerHTML = persist.attempts > 0
         ? 'Dohraj dnešek a série poběží dál. Dnešních 20 slov hraje dnes každý stejných.'
         : `Dnešních 20 slov z ${fmtNum(TOTAL_WORDS)} nejčastějších českých hraje dnes každý stejných. Zvládneš všechna?`;
@@ -641,27 +641,32 @@ const defInflight = new Map();
 
 async function apiGet(path) {
     try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
-        const res = await fetch(path, { signal: ctrl.signal });
-        clearTimeout(t);
+        const res = await fetch(path, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
         return res.ok ? await res.json() : null;
     } catch (e) {
         return null; // offline nebo timeout — hra jede dál, jen bez významu
     }
 }
 
-async function apiPost(path, body) {
+// timeoutMs jen tam, kde hráč na odpověď nečeká (percentil); zápisy čekají.
+async function apiPost(path, body, timeoutMs) {
     try {
         const res = await fetch(path, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(Object.assign({ clientId: persist.clientId }, body)),
+            signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
         });
         return { ok: res.ok, data: await res.json().catch(() => null) };
     } catch (e) {
         return { ok: false, data: null };
     }
+}
+
+// Chybová hláška pod formulářem; bez textu ji schová.
+function formError(node, msg) {
+    node.textContent = msg || '';
+    node.style.display = msg ? 'block' : 'none';
 }
 
 const defsUrl = (words) => `/api/defs?w=${encodeURIComponent(words)}`;
@@ -922,7 +927,7 @@ function openDefs(e) {
     holdWordDone();                                       // kdo čte významy, pokračuje sám
     const word = state.wdWord;
     $('defsTitle').textContent = word || 'Významy';
-    $('defsError').style.display = 'none';
+    formError($('defsError'));
     $('defsText').value = '';
     $('defsList').innerHTML = '';
     openModal('defsModal');
@@ -983,8 +988,7 @@ async function loadDefsList(word) {
 
 // Co o slově víme i bez sítě: pořadí podle častosti, obtížnost, délka, přesmyčky.
 function renderWordInfo(word) {
-    practiceIndex = practiceIndex || new Map(PRACTICE_WORDS.map((w, i) => [w, i]));
-    const rank = practiceIndex.get(word);
+    const rank = practiceRank(word);
     const n = lettersOf(word).length;
     const chips = [];
     if (rank !== undefined) {
@@ -1049,7 +1053,7 @@ function editDef(d, li, textEl, onSaved) {
     ta.required = true;
     ta.value = d.text;
     const err = el('p', 'feedback-error');
-    err.style.display = 'none';
+    formError(err);
     const save = el('button', 'btn btn-primary', 'Uložit změnu');
     save.type = 'submit';
     const cancel = el('button', 'btn-tertiary', 'Zrušit');
@@ -1062,11 +1066,7 @@ function editDef(d, li, textEl, onSaved) {
         save.disabled = true;
         const r = await apiPost('/api/defs/edit', { id: d.id, text: ta.value });
         save.disabled = false;
-        if (!r.ok) {
-            err.textContent = (r.data && r.data.error) || 'Nepodařilo se uložit.';
-            err.style.display = 'block';
-            return;
-        }
+        if (!r.ok) return formError(err, (r.data && r.data.error) || 'Nepodařilo se uložit.');
         d.text = ta.value.trim();
         d.votes = r.data.votes;
         textEl.textContent = d.text;
@@ -1090,15 +1090,11 @@ async function submitDef(e) {
     const word = state.wdWord;
     const btn = $('defsSubmit');
     const err = $('defsError');
-    err.style.display = 'none';
+    formError(err);
     btn.disabled = true;
     const r = await apiPost('/api/defs', { word, text: $('defsText').value });
     btn.disabled = false;
-    if (!r.ok) {
-        err.textContent = (r.data && r.data.error) || 'Význam se nepodařilo uložit.';
-        err.style.display = 'block';
-        return;
-    }
+    if (!r.ok) return formError(err, (r.data && r.data.error) || 'Význam se nepodařilo uložit.');
     $('defsText').value = '';
     defCache.delete(word);
     await loadDefsList(word);
@@ -1113,6 +1109,9 @@ async function submitDef(e) {
 // Dokud nejsou nastavené secrety pro odesílání pošty, vrací /api/me auth:false
 // a sekce účtu se vůbec neukáže — hra jede dál anonymně.
 const auth = { enabled: false, user: null, polling: null };
+
+// Avatar účtu, jinak ten vybraný v zařízení.
+const myAvatar = () => (auth.user && auth.user.avatar) || persist.avatar;
 
 async function refreshAuth() {
     const d = await apiGet('/api/me');
@@ -1168,18 +1167,14 @@ function renderSignedOut(box) {
     const btn = el('button', 'btn btn-primary', 'Poslat přihlašovací odkaz');
     btn.type = 'submit';
     const err = el('p', 'feedback-error');
-    err.style.display = 'none';
+    formError(err);
     form.append(input, err, btn);
     form.onsubmit = async (e) => {
         e.preventDefault();
         btn.disabled = true;
         const r = await apiPost('/api/auth/start', { email: input.value });
         btn.disabled = false;
-        if (!r.ok) {
-            err.textContent = (r.data && r.data.error) || 'Nepodařilo se odeslat.';
-            err.style.display = 'block';
-            return;
-        }
+        if (!r.ok) return formError(err, (r.data && r.data.error) || 'Nepodařilo se odeslat.');
         persist.pendingLogin = { id: r.data.loginId, expiresAt: r.data.expiresAt };
         savePersist();
         renderAccount();
@@ -1202,7 +1197,7 @@ function renderAwaitingCode(box) {
     const btn = el('button', 'btn btn-primary', 'Potvrdit kód');
     btn.type = 'submit';
     const err = el('p', 'feedback-error');
-    err.style.display = 'none';
+    formError(err);
     form.append(input, err, btn);
     form.onsubmit = async (e) => {
         e.preventDefault();
@@ -1212,10 +1207,9 @@ function renderAwaitingCode(box) {
         btn.disabled = false;
         const st = r.data && r.data.status;
         if (st === 'ok') return onLoggedIn(r.data.user);
-        err.textContent = st === 'badcode'
+        formError(err, st === 'badcode'
             ? `Kód nesedí. Zbývá ${r.data.left} pokusů.`
-            : 'Platnost vypršela, nech si poslat nový odkaz.';
-        err.style.display = 'block';
+            : 'Platnost vypršela, nech si poslat nový odkaz.');
         if (st !== 'badcode') { persist.pendingLogin = null; savePersist(); renderAccount(); }
     };
     const cancel = el('button', 'btn-tertiary', 'Začít znovu');
@@ -1234,18 +1228,14 @@ function renderHandlePicker(box) {
     const btn = el('button', 'btn btn-primary', 'Uložit přezdívku');
     btn.type = 'submit';
     const err = el('p', 'feedback-error');
-    err.style.display = 'none';
+    formError(err);
     form.append(input, err, btn);
     form.onsubmit = async (e) => {
         e.preventDefault();
         btn.disabled = true;
         const r = await apiPost('/api/me/handle', { handle: input.value.trim() });
         btn.disabled = false;
-        if (!r.ok) {
-            err.textContent = (r.data && r.data.error) || 'Nepodařilo se uložit.';
-            err.style.display = 'block';
-            return;
-        }
+        if (!r.ok) return formError(err, (r.data && r.data.error) || 'Nepodařilo se uložit.');
         auth.user = r.data.user;
         persist.nick = r.data.user.handle;
         savePersist();
@@ -1342,7 +1332,7 @@ function showProfile() {
 function renderProfile() {
     const played = playedDays();
     $('collectionChip').textContent = `${plural(played, 'Odehrán', 'Odehrány', 'Odehráno')} ${fmtNum(played)} ${plural(played, 'den', 'dny', 'dní')}`;
-    const days = Object.keys(persist.results).length;
+    const days = played;
     const words = Object.values(persist.results).reduce((a, b) => a + b, 0);
     const pct = days ? Math.round(words / (days * WORDS_PER_DAY) * 100) : 0;
 
@@ -1356,7 +1346,7 @@ function renderProfile() {
         apiPost('/api/me/avatar', { avatar: persist.avatar });
     }
     // SVG skládá avatar.js jen z indexů kódu, žádný text hráče se do něj nedostane.
-    const avatar = Avatar.svg((auth.user && auth.user.avatar) || persist.avatar);
+    const avatar = myAvatarSvg();
     if (avatar) $('profileAvatar').innerHTML = avatar;
     else $('profileAvatar').textContent = (nick || 'Host').charAt(0).toUpperCase();
     $('profileName').textContent = nick || 'Host';
@@ -1371,20 +1361,11 @@ function renderProfile() {
         [pct + ' %', 'úspěšnost'],
         [fmtNum(practiceSeenCount()), `uhodnutých slov v tréninku, to je ${practiceSeenPct()} % slovníku`, 'stat-tile--wide'],
     ];
-    const grid = $('profileStats');
-    grid.innerHTML = '';
-    for (const [value, label, extra] of tiles) {
-        const tile = document.createElement('div');
-        tile.className = extra ? 'stat-tile ' + extra : 'stat-tile';
-        const v = document.createElement('div');
-        v.className = 'stat-value';
-        v.textContent = value;
-        const l = document.createElement('div');
-        l.className = 'stat-label';
-        l.textContent = label;
-        tile.append(v, l);
-        grid.appendChild(tile);
-    }
+    $('profileStats').replaceChildren(...tiles.map(([value, label, extra]) => {
+        const tile = el('div', extra ? 'stat-tile ' + extra : 'stat-tile');
+        tile.append(el('div', 'stat-value', value), el('div', 'stat-label', label));
+        return tile;
+    }));
 
     renderAccount();
     renderAchievements();
@@ -1406,7 +1387,7 @@ function achState() {
         dny: playedDays(), serie: Math.max(persist.bestStreak, longestRun(r)), fenix,
         perfekt: Object.values(r).filter(n => n === WORDS_PER_DAY).length,
         perfektSerie: longestRun(r, n => n === WORDS_PER_DAY),
-        avatar: Avatar.valid((auth.user && auth.user.avatar) || persist.avatar) ? 1 : 0,
+        avatar: Avatar.valid(myAvatar()) ? 1 : 0,
         trenink: Math.max(persist.practiceWords, p.slovTreninku || 0),
         treninkRada: persist.practiceBestRun, tezka: persist.practiceHard,
         vyznamu: p.vyznamu, ziskanych: p.ziskanychHlasu, maxHlasu: p.maxHlasu, nejlepsi: p.nejlepsi, danych: p.danychHlasu,
@@ -1479,7 +1460,7 @@ function achHasText(id) {
     return v < 1 ? 'Má ho méně než 1 % hráčů' : `Má ho ${fmtNum(Math.round(v))} % hráčů`;
 }
 
-const myAvatarSvg = () => Avatar.svg((auth.user && auth.user.avatar) || persist.avatar);
+const myAvatarSvg = () => Avatar.svg(myAvatar());
 const achTile = (a, st) => Achievements.tile(a, st, { avatar: myAvatarSvg(), isNew: persist.achUnseen.includes(a.id) });
 
 function renderAchievements() {
@@ -1700,10 +1681,10 @@ function openAuthorProfile(handle) {
 // Úprava profilu: současný avatar, nebo náhodný pro toho, kdo žádný nemá;
 // „Ukázat jiného" poskládá dalšího. Uloží se až „Uložit", spolu s přezdívkou.
 function showProfileEdit() {
-    const current = (auth.user && auth.user.avatar) || persist.avatar;
+    const current = myAvatar();
     rollAvatar(Avatar.valid(current) ? current : Avatar.random());
     $('profileNickInput').value = (auth.user && auth.user.handle) || persist.nick || '';
-    $('profileNickError').style.display = 'none';
+    formError($('profileNickError'));
     showScreen('profileEdit');
     scrollTo(0, 0);
 }
@@ -1722,7 +1703,7 @@ async function saveProfile(e) {
     const nick = $('profileNickInput').value.trim().slice(0, 20);
     const avatar = state.avatarDraft;
     const err = $('profileNickError');
-    err.style.display = 'none';
+    formError(err);
     if (auth.user) {
         const steps = [];
         if (nick !== auth.user.handle) steps.push(['/api/me/handle', { handle: nick }]);
@@ -1732,9 +1713,7 @@ async function saveProfile(e) {
             const r = await apiPost(path, body);
             if (!r.ok) {
                 $('profileSaveBtn').disabled = false;
-                err.textContent = (r.data && r.data.error) || 'Nepodařilo se uložit. Zkus to znovu.';
-                err.style.display = 'block';
-                return;
+                return formError(err, (r.data && r.data.error) || 'Nepodařilo se uložit. Zkus to znovu.');
             }
             auth.user = r.data.user;
         }
@@ -1749,25 +1728,25 @@ async function saveProfile(e) {
 }
 
 function playToday() {
-    const today = todayStr();
-    if (persist.day && persist.day.done && persist.day.date === today) {
-        restoreFinishedDay();
-        showResult(true);
-        return;
-    }
-    startGame();
+    todayDone() ? showWelcome() : startGame();
 }
 
 /* ---------------- start hry ---------------- */
 
-function shuffleArr(arr) {
+function shuffleInPlace(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+const shuffleCopy = (arr) => shuffleInPlace(arr.slice());
+
+// Písmena kola nikdy nezačnou ve správném pořadí.
+function shuffleLettersOfWord(arr) {
     const original = lettersOf(state.words[state.wordIdx] || '');
     for (let attempts = 0; attempts < 200; attempts++) {
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [arr[i], arr[j]] = [arr[j], arr[i]];
-        }
-        if (arr.join('') !== original) break;
+        if (shuffleInPlace(arr).join('') !== original) break;
     }
     return arr;
 }
@@ -1823,13 +1802,13 @@ const practiceLevel = () => PRACTICE_LEVELS[persist.practiceLevel] || PRACTICE_L
 // (15 000 bitů ≈ 2,5 kB). Jen z nich dává smysl „X % slovníku" — počítadlo
 // practiceWords sčítá i opakování.
 let practiceIndex = null;
+const practiceRank = (word) => (practiceIndex = practiceIndex || new Map(PRACTICE_WORDS.map((w, i) => [w, i]))).get(word);
 const seenBytes = () => persist.practiceSeen
     ? Uint8Array.from(atob(persist.practiceSeen), c => c.charCodeAt(0))
     : new Uint8Array(Math.ceil(PRACTICE_WORDS.length / 8));
 
 function markPracticeSeen(word) {
-    practiceIndex = practiceIndex || new Map(PRACTICE_WORDS.map((w, i) => [w, i]));
-    const i = practiceIndex.get(word);
+    const i = practiceRank(word);
     if (i === undefined) return;
     const bytes = seenBytes();
     bytes[i >> 3] |= 1 << (i & 7);
@@ -1891,15 +1870,6 @@ function startPracticeGame() {
     prefetchDefs();
 }
 
-function shuffleCopy(arr) {
-    const copy = arr.slice();
-    for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-}
-
 // Bere slova z promíchané fronty bez opakování; když dojde, znovu promíchá
 // celý pool (a snaží se nezopakovat úplně poslední slovo hned znovu).
 function pickPracticeWord() {
@@ -1925,7 +1895,7 @@ function loadWord() {
     state.selected = [];
     state.processing = false;
     state.shuffledThisWord = false;
-    shuffleArr(state.letters);
+    shuffleLettersOfWord(state.letters);
     const isResume = state.resumed;
     state.resumed = false;
     const shouldAnimate = !isResume && state.wordIdx > 0;
@@ -2009,16 +1979,7 @@ function renderLetters(animate) {
 // nativní haptika jen na opravdový dotyk switch prvku, ne na programové
 // kliknutí (viz iosTap výše). 'input' event pak spustí stejnou herní logiku.
 function addLetterHapticOverlay(el) {
-    if ('vibrate' in navigator || !COARSE_POINTER) return;
-    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-    const sw = document.createElement('input');
-    sw.type = 'checkbox';
-    sw.setAttribute('switch', '');
-    sw.setAttribute('aria-hidden', 'true');
-    sw.tabIndex = -1;
-    sw.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent;border-radius:inherit;';
-    sw.addEventListener('input', () => handleTap(el));
-    el.appendChild(sw);
+    if (NEEDS_SWITCH) hapticSwitch(el, 'border-radius:inherit;').addEventListener('input', () => handleTap(el));
 }
 
 function clearIncorrectState() {
@@ -2338,13 +2299,8 @@ function shuffleLetters() {
     const firstRects = tiles.map(t => t.getBoundingClientRect());
 
     let order;
-    do {
-        order = tiles.map((_, i) => i);
-        for (let i = order.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [order[i], order[j]] = [order[j], order[i]];
-        }
-    } while (order.some((v, i) => v === i));
+    do order = shuffleInPlace(tiles.map((_, i) => i));
+    while (order.some((v, i) => v === i));   // každé písmeno se pohne
 
     order.forEach(i => row.appendChild(tiles[i]));
 
@@ -2383,14 +2339,7 @@ function renderGameGrid() {
     const el = $('gameGrid');
     if (state.mode === 'practice') { el.style.display = 'none'; el.innerHTML = ''; return; }
     el.style.display = 'grid';
-    if (el.children.length !== WORDS_PER_DAY) {
-        el.innerHTML = '';
-        for (let i = 0; i < WORDS_PER_DAY; i++) {
-            const c = document.createElement('div');
-            c.className = 'pg-cell';
-            el.appendChild(c);
-        }
-    }
+    if (el.children.length !== WORDS_PER_DAY) el.replaceChildren(...dayCells());
     updateGameGrid();
 }
 
@@ -2540,8 +2489,11 @@ function exitPractice() {
     showWelcome();
 }
 
+// Na pozadí hra stojí a odpočet mezihry se zruší, ať hráči slovo neuteče.
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pauseGame();
+    if (!document.hidden) return;
+    pauseGame();
+    holdWordDone();
 });
 
 /* ---------------- konec dne + výsledek ---------------- */
@@ -2572,23 +2524,10 @@ function finishDay() {
 
 /* ---------------- skutečný percentil (volitelný backend) ---------------- */
 
+// Offline, timeout, nenasazený backend… vždy potichu spadnout na statický odhad.
 async function fetchRealPercentile(day, score) {
-    try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), API_TIMEOUT_MS);
-        const res = await fetch(API_BASE + '/api/result', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ day, score, clientId: persist.clientId, playedOn: todayStr() }),
-            signal: ctrl.signal,
-        });
-        clearTimeout(timer);
-        if (!res.ok) return null;
-        const data = await res.json();
-        return (data && data.real) ? data : null;
-    } catch (e) {
-        return null; // offline, timeout, nenasazený backend… vždy potichu spadnout na statický odhad
-    }
+    const r = await apiPost('/api/result', { day, score, playedOn: todayStr() }, API_TIMEOUT_MS);
+    return r.ok && r.data && r.data.real ? r.data : null;
 }
 
 async function refreshRealPercentile() {
@@ -2601,7 +2540,7 @@ async function refreshRealPercentile() {
     persist.day.realTopPct = real.topPct;
     savePersist();
     if ($('result').classList.contains('active')) {
-        setEmojiText($('percentile'), formatRealPercentileText(real.topPct));
+        setEmojiText($('percentile'), percentileText(real.topPct));
     }
     prepareShareCard();   // percentil je i na obrázku
 }
@@ -2613,31 +2552,22 @@ function restoreFinishedDay() {
     state.solved = state.marks.filter(Boolean).length;
 }
 
-// Statický odhad — použije se, dokud nedorazí (nebo není nasazený) skutečný
-// percentil z backendu. Založeno na typickém rozložení skóre u podobných her.
-function getPercentileText(survived) {
-    if (survived === 20) return 'Top 1 % hráčů dneška 👑';
-    if (survived === 19) return 'Top 2 % hráčů dneška 🏆';
-    if (survived === 18) return 'Top 3 % hráčů dneška 🏆';
-    if (survived === 17) return 'Top 5 % hráčů dneška 🏆';
-    if (survived >= 15) return 'Top 10 % hráčů dneška 🏅';
-    if (survived >= 13) return 'Top 20 % hráčů dneška 🏅';
-    if (survived >= 9) return 'Top 50 % hráčů dneška 🏅';
-    return 'Dnes bez trofeje 💔';
+// Statický odhad „top X %" podle skóre — platí, dokud nedorazí (nebo není
+// nasazený) skutečný percentil z backendu. Založeno na typickém rozložení
+// skóre u podobných her.
+function estimatedTopPct(survived) {
+    if (survived >= 17) return [5, 3, 2, 1][survived - 17];
+    return survived >= 15 ? 10 : survived >= 13 ? 20 : survived >= 9 ? 50 : 100;
 }
 
-// Skutečný percentil spočítaný backendem ze skutečných výsledků dneška.
-function formatRealPercentileText(topPct) {
+function percentileText(topPct) {
     if (topPct <= 1) return 'Top 1 % hráčů dneška 👑';
-    if (topPct <= 50) {
-        const emoji = topPct <= 5 ? '🏆' : '🏅';
-        return `Top ${topPct} % hráčů dneška ${emoji}`;
-    }
+    if (topPct <= 50) return `Top ${topPct} % hráčů dneška ${topPct <= 5 ? '🏆' : '🏅'}`;
     return 'Dnes bez trofeje 💔';
 }
 
 function percentileDisplayText(survived, realTopPct) {
-    return (typeof realTopPct === 'number') ? formatRealPercentileText(realTopPct) : getPercentileText(survived);
+    return percentileText(typeof realTopPct === 'number' ? realTopPct : estimatedTopPct(survived));
 }
 
 // Jen denní výzva — trénink běží pořád dál a výsledkovou obrazovku nemá.
@@ -2907,8 +2837,6 @@ function cardSticker(g, right, cy, deg, size, label, icon, c) {
     g.textBaseline = 'alphabetic';
 }
 
-function cardStreak() { return liveStreak(); }
-
 function cardTier(day) {
     const survived = day.marks.filter(Boolean).length;
     const pct = percentileDisplayText(survived, day.realTopPct);
@@ -2921,7 +2849,7 @@ function cardTier(day) {
 async function drawShareCard() {
     const day = persist.day;
     const { survived, pct, badge, trophy, theme: t } = cardTier(day);
-    const streak = cardStreak(day);
+    const streak = liveStreak();
     const icon = name => loadImage(`designs/kostky/${name}.svg`).catch(() => null);
     const [, , badgeIcon, flame] = await Promise.all([
         document.fonts.load(`100px ${CARD_DISPLAY}`), document.fonts.load('800 40px Nunito'),
@@ -3005,7 +2933,7 @@ let shareCard = null;   // { key, ready: Promise<File>, file }
 function prepareShareCard() {
     const day = persist.day;
     if (!day || !day.done) return null;
-    const key = JSON.stringify([day.dayIdx, day.marks, day.realTopPct, cardStreak(day)]);
+    const key = JSON.stringify([day.dayIdx, day.marks, day.realTopPct, liveStreak()]);
     if (shareCard && shareCard.key === key) return shareCard.ready;
     if (shareCard && shareCard.url) URL.revokeObjectURL(shareCard.url);
     const card = { key, file: null, url: null };
@@ -3152,11 +3080,7 @@ async function enableNotifications() {
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
         });
         const { endpoint, keys } = sub.toJSON();
-        await fetch(API_BASE + '/api/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: persist.clientId, endpoint, keys }),
-        });
+        await apiPost('/api/subscribe', { endpoint, keys });
         showToast('Upozornění zapnuto!');
     } catch (e) {
         // tichý fail — notifikace jsou čistě volitelné vylepšení
@@ -3423,11 +3347,6 @@ $('wordDoneOverlay').addEventListener('click', e => {
 });
 // Podržení nesmí otevřít kontextové menu (Android, pravé tlačítko myši).
 $('wordDoneOverlay').addEventListener('contextmenu', e => e.preventDefault());
-
-// Na pozadí se odpočet zruší, ať hráči slovo neuteče.
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) holdWordDone();
-});
 
 /* ---------------- klávesnice ---------------- */
 
