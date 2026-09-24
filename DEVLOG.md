@@ -2,6 +2,38 @@
 
 ## 2026-09-24
 
+### Po dohrání dne je domovem rovnou výsledek
+Když je dnešní výzva hotová, úvodní obrazovka (název a pravidla) se nezobrazuje.
+Domovem je výsledková obrazovka: kostky, skóre, percentil, Pochlubit se, odpočet
+a upozornění, nahoře lišta Profil/Trénink. Tlačítko Trénink a odkaz Sbírka slov
+z výsledku zmizely, protože by tam byly podruhé. „Díky za hru + zpětná vazba“
+se přesunulo na konec profilu.
+
+**Root cause / approach:** Lišta je jeden uzel. `showScreen` ji přesune
+do `#welcome` nebo `#result` (stejně jako `placeGameGrid` přesouvá mřížku).
+`showWelcome` při dohraném dni rovnou zavolá `showResult(true)`, takže každé
+„zpět domů“ (profil, konec tréninku, start aplikace) skončí správně bez úprav
+volajících. Mřížka úvodu je proto vždy šedá.
+
+→ *Memory saved: `home_is_result_when_done.md`*
+
+### Dev stránka se všemi herními prvky a písmy
+`public/dev-styleguide.html` — jedna stránka (jen pro dev, appka na ni
+neodkazuje), co natáhne stejné `style.css`/`kostky.css`/fonty jako appka a
+vylistuje tlačítka, chipy, nadpisy, mřížku, sloty/písmenka, profil/statistiky,
+panel po slově, významy slov a specimeny všech tří fontů (Slovka One, Baloo 2,
+Nunito) s českou diakritikou. Pod každou ukázkou je popisek dopočítaný
+z `getComputedStyle` (font, řez, velikost, řádkování), takže se nerozejde
+s CSS.
+
+**Root cause / approach:** Žádný — čistě nová statická stránka. Jediná
+past: `html, body` z `style.css` dělá pevnou `100dvh` krabici s
+`overflow:hidden` a temným `background:var(--bg)`, což se na cizí stránce
+projeví jako tmavý blok za prvními řádky a zastavený scroll — potřeba
+explicitně přebít `!important`.
+
+→ *Memory saved: `ios_native_feel_gotchas.md`* (bod 5 — dev stránka nad stejným CSS)
+
 ### Denní výzvu jde ukončit křížkem; sbírka slov přesunutá do profilu
 Denní hra má vpravo nahoře stejný × jako trénink. Otevře sheet „Ukončit dnešní
 výzvu?“ s počtem zbývajících slov; čas mezitím stojí. „Hrát dál“, klepnutí vedle,

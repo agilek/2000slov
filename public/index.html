@@ -21,15 +21,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=12">
-<link rel="stylesheet" href="designs/kostky.css?v=15">
+<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="designs/kostky.css?v=16">
 </head>
 <body>
 
     <!-- Welcome -->
     <div class="screen" id="welcome" style="gap: 28px;">
         <!-- Horní lišta: dva cíle v rozích, jak je zvykem v mobilních aplikacích. -->
-        <div class="top-bar">
+        <div class="top-bar" id="topBar">
             <button class="icon-btn" onclick="showProfile()" aria-label="Profil">
                 <span class="icon-btn-circle"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg></span>
                 <span class="icon-btn-label">Profil</span>
@@ -91,6 +91,8 @@
             <div class="empty-card" id="profileDefs"></div>
         </div>
 
+        <p id="feedbackLine" class="feedback-line">Díky za hru! Můžeš mi <span class="feedback-link" role="button" tabindex="0" onclick="openFeedbackModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeedbackModal();}">poslat zpětnou vazbu</span>.</p>
+
         <!-- Odhlášení a nevratné smazání úplně dole, jen pro přihlášeného -->
         <div class="account-end" id="accountEnd" hidden></div>
     </div>
@@ -140,16 +142,11 @@
             <button id="shareBtn" class="btn btn-share" onclick="shareScore()">Pochlubit se <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="3" stroke="#ffffff" fill="none" stroke-linecap="round" stroke-linejoin="round"> <path stroke="none" d="M0 0h24v24H0z" fill="none"/> <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /> <path d="M8.7 10.7l6.6 -3.4" /> <path d="M8.7 13.3l6.6 3.4" /> </svg></button>
         </div>
         <p id="countdown" class="reveal-item"></p>
-        <div id="resultActions" class="result-actions reveal-item">
-            <button id="practiceBtn" class="btn btn-secondary" onclick="openPracticePicker()">Trénink</button>
-        </div>
-        <button id="collectionBtn" class="btn-tertiary reveal-item" onclick="showCollection()">Sbírka slov</button>
         <div id="a2hsBanner" class="a2hs-banner reveal-item" style="display:none;">
             <button class="a2hs-close" onclick="dismissA2hs()" aria-label="Zavřít">×</button>
             <p><span class="emoji" data-emoji="plocha">📲</span> Přidej si hru na plochu a nezmeškej žádný den — klepni na <strong>Sdílet</strong> a pak na <strong>Přidat na plochu</strong>.</p>
         </div>
         <button id="notifyBtn" class="btn-tertiary reveal-item" style="display:none;" onclick="enableNotifications()"><span class="emoji" data-emoji="zvonek">🔔</span> Zapnout upozornění na další den</button>
-        <p id="feedbackLine" class="feedback-line reveal-item">Díky za hru! Můžeš mi <span class="feedback-link" role="button" tabindex="0" onclick="openFeedbackModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeedbackModal();}">poslat zpětnou vazbu</span>.</p>
     </div>
 
     <!-- Confetti overlay (perfect game) -->
@@ -281,6 +278,6 @@
     </div>
 
 <script src="words.js?v=4"></script>
-<script src="game.js?v=15"></script>
+<script src="game.js?v=16"></script>
 </body>
 </html>

@@ -308,24 +308,6 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     margin-bottom: 40px;
     font-variant-numeric: tabular-nums;
 }
-.result-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-}
-.result-actions .btn {
-    margin: 0;
-    flex: 0 0 auto;
-    width: fit-content;
-    padding: 15px 40px;
-    font-size: 17px;
-    white-space: nowrap;
-}
-#practiceBtn { flex: 1 1 100%; width: 100%; }
 .btn-tertiary {
     display: flex;
     align-items: center;
@@ -470,7 +452,8 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
    Mobilní vzorce: cíle v rozích palcem dosažitelné, min. 48 px, kulaté,
    ikona + krátký popisek. Profil je plnohodnotná obrazovka se šipkou zpět,
    ne modal — modal se na telefonu chová jinak než "další stránka". */
-#welcome { position: relative; }
+#welcome, #result { position: relative; }
+#result { padding-top: calc(max(14px, env(safe-area-inset-top)) + 96px); }   /* pod lištu */
 .top-bar {
     position: absolute;
     top: max(14px, env(safe-area-inset-top));

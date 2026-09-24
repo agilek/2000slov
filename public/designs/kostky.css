@@ -262,7 +262,7 @@
     padding: 8px 14px;
     margin: 22px auto;
 }
-.result-actions .btn, .share-actions .btn { padding: 14px 24px; font-size: 17px; width: 100%; }
+.share-actions .btn { padding: 14px 24px; font-size: 17px; width: 100%; }
 #streakNudge { margin: 0 auto 22px; width: 100%; padding: 16px; }
 .a2hs-banner, .streak-nudge {
     background: var(--card);

@@ -270,31 +270,29 @@ function showToast(msg) {
 }
 
 function showScreen(id) {
+    // Profil a trénink v rozích patří domovu — a ten je po dohrání dne výsledek.
+    if (id === 'welcome' || id === 'result') $(id).prepend($('topBar'));
     $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
 }
 
 /* ---------------- welcome ---------------- */
 
 function renderWelcomeGrid() {
-    const el = $('welcomeGrid');
-    el.innerHTML = '';
-    const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
-    for (let i = 0; i < WORDS_PER_DAY; i++) {
-        const c = document.createElement('div');
-        c.className = 'pg-cell';
-        if (todayDone && persist.day.marks[i] !== undefined) {
-            c.classList.add(persist.day.marks[i] ? 'solved' : 'missed');
-        }
-        el.appendChild(c);
-    }
+    const grid = $('welcomeGrid');
+    grid.innerHTML = '';
+    for (let i = 0; i < WORDS_PER_DAY; i++) grid.appendChild(el('div', 'pg-cell'));
 }
 
 function showWelcome() {
     stopConfetti();
+    // Dohraný den: domovem je rovnou výsledek (kostky, skóre, odpočet).
+    if (persist.day && persist.day.done && persist.day.date === todayStr()) {
+        restoreFinishedDay();
+        showResult(true);
+        return;
+    }
     placeGameGrid('game');
     renderWelcomeGrid();
-    const todayDone = persist.day && persist.day.done && persist.day.date === todayStr();
-    $('playBtnLabel').textContent = todayDone ? 'Výsledek' : 'Hrát';
     $('welcomeRules').innerHTML = persist.attempts > 0
         ? 'Všech 20 slov udrží sérii. Dnešních 20 slov hraje dnes každý stejných.'
         : `Dnešních 20 slov z ${fmtNum(TOTAL_WORDS)} nejčastějších českých hraje dnes každý stejných. Zvládneš všechna?`;
