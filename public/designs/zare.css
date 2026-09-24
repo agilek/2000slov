@@ -1,0 +1,600 @@
+/* Směr C — „Záře": noční hra, ve které je barva světla odpočet.
+ * Vrstva přes style.css (načítá ji index.html při ?design=zare).
+ * Jediný hlasitý nápad: plný čas svítí klidně modře, s ubývajícími
+ * 30 sekundami se světlo rozpálí přes jantar do červena. Kroužek času,
+ * záře za hrou i vybraná písmena sdílí tu samou barvu (--heat), takže
+ * zbývající čas je vidět koutkem oka. Všechno ostatní je tiché: noční
+ * modř, tenké skleněné plochy, bílé písmo. */
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&family=Unbounded:wght@500..800&display=swap');
+
+/* Zbývající čas 0–1 nastavuje game.js inline na #game. Registrace z něj
+   dělá číslo, takže se dá plynule přechodovat mezi sekundovými kroky. */
+@property --t { syntax: '<number>'; inherits: true; initial-value: 1; }
+
+/* Vždy tmavé — stejné hodnoty bez ohledu na systémové nastavení, proto
+   i přes [data-theme] bloky ze style.css. */
+:root, :root[data-theme="light"], :root[data-theme="dark"] {
+    --display: 'Unbounded', 'Figtree', system-ui, sans-serif;
+    --body: 'Figtree', system-ui, -apple-system, sans-serif;
+
+    --night: #0A0F24;
+    --surface: #111838;
+    --glass: rgba(255,255,255,.06);
+    --glass-border: rgba(255,255,255,.12);
+    --faint: #5D6590;
+    --ink-dark: #07102A;
+
+    /* barvy času: plno → půlka → konec */
+    --calm: #35C8FF;
+    --white-hot: #E6F4FF;
+    --amber: #FFB23E;
+    --hot: #FF4D5E;
+    --mint: #3DF5A8;
+    --miss: #FF4D5E;
+    --gold: #FFD34D;
+    --confetti: #35C8FF #3DF5A8 #FFB23E #FF4D5E #FFFFFF;
+
+    /* tokeny základu přemapované na noc */
+    --bg: var(--night);
+    --ink: #F3F5FF;
+    --tile: var(--glass);
+    --tile-shadow: transparent;
+    --blue: var(--calm);
+    --blue-dark: #6FD9FF;
+    --green: var(--mint);
+    --green-dark: #7BFFC6;
+    --orange: var(--amber);
+    --red: var(--miss);
+    --muted: var(--faint);
+    --muted-text: #9BA3C7;
+    --card: var(--surface);
+    --line: var(--glass-border);
+    --grid-cell: rgba(255,255,255,.07);
+    --slot-border: rgba(255,255,255,.16);
+    --chip-bg: rgba(255,255,255,.07);
+    --badge-bg: rgba(61,245,168,.14);
+    --overlay: rgba(3,6,20,.62);
+    --shadow-soft: rgba(0,0,0,.4);
+    --shadow-card: rgba(0,0,0,.6);
+    --hover-tint: rgba(255,255,255,.08);
+    --radius: 20px;
+    color-scheme: dark;
+}
+* { font-family: var(--body); }
+
+/* Pozadí: body je průhledné, aby záře v body::before (z-index -1) prosvítala;
+   barvu nese html. Každá obrazovka si záři přebarví přes :has(). */
+body { background: transparent; }
+body::before {
+    content: '';
+    position: fixed;
+    inset: -20%;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(45% 30% at 50% 14%, rgba(53,200,255,.12), transparent 70%);
+}
+body:has(#welcome.active)::before {
+    background:
+        radial-gradient(420px 340px at 46% 34%, rgba(53,200,255,.26), transparent 70%),
+        radial-gradient(380px 300px at 58% 52%, rgba(61,108,255,.16), transparent 70%);
+    animation: zareDrift 18s ease-in-out infinite alternate;
+}
+body:has(#result.active)::before {
+    background: radial-gradient(42% 26% at 50% 16%, rgba(61,245,168,.2), transparent 70%);
+}
+body:has(#result.active):not(:has(#result .pg-cell.missed))::before {
+    background: radial-gradient(44% 28% at 50% 16%, rgba(255,211,77,.24), transparent 70%);
+}
+@keyframes zareDrift { to { translate: 5% -4%; rotate: 10deg; } }
+
+/* Buttons */
+.btn {
+    font-family: var(--body);
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: .1px;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--calm); color: var(--ink-dark); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 8px 26px rgba(53,200,255,.3); }
+@media (hover: hover) { .btn-primary:hover { background: #62D6FF; } }
+.btn-share { background: var(--mint); color: #05231A; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 8px 26px rgba(61,245,168,.28); }
+.btn-share svg { stroke: currentColor; }
+@media (hover: hover) { .btn-share:hover { background: #72FFC3; } }
+.btn-play {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -.2px;
+    padding: 18px 56px;
+    min-width: 224px;
+    background: var(--calm);
+    color: var(--ink-dark);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 36px rgba(53,200,255,.38), 0 0 72px rgba(53,200,255,.22);
+}
+@media (hover: hover) { .btn-play:hover { background: #62D6FF; } }
+.btn-secondary {
+    background: var(--glass);
+    color: var(--ink);
+    border: 1px solid rgba(255,255,255,.16);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+@media (hover: hover) { .btn-secondary:hover { color: var(--ink); border-color: rgba(53,200,255,.6); background: rgba(255,255,255,.09); } }
+
+/* Welcome */
+.screen .welcome-instruction {
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: clamp(18px, 5vw, 21px);
+    letter-spacing: 0;
+    line-height: 1.4;
+    color: #E4E7FA;
+    text-wrap: balance;
+}
+.screen .welcome-instruction--second {
+    margin-top: 12px;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    color: var(--muted-text) !important;
+    line-height: 1.5;
+    text-wrap: balance;
+}
+.welcome-date {
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: .1px;
+    text-transform: none;
+    color: var(--muted-text);
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid var(--glass-border);
+}
+@media (hover: hover) { .welcome-date:hover { color: var(--ink); border-color: rgba(53,200,255,.5); } }
+.welcome-date:focus-visible { border-radius: 999px; }
+
+.welcome-grid { gap: clamp(10px, 3vw, 14px); margin-bottom: 34px; }
+.welcome-grid .pg-cell {
+    width: clamp(22px, 6.4vw, 28px);
+    height: clamp(22px, 6.4vw, 28px);
+    border-radius: 50%;
+    background: rgba(255,255,255,.06);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
+    animation: zareOrbIn .6s cubic-bezier(.2,.8,.2,1) both;
+}
+/* vlna shora dolů po řádcích, jednou při každém otevření úvodu */
+.welcome-grid .pg-cell:nth-child(n+6) { animation-delay: .07s; }
+.welcome-grid .pg-cell:nth-child(n+11) { animation-delay: .14s; }
+.welcome-grid .pg-cell:nth-child(n+16) { animation-delay: .21s; }
+.welcome-grid .pg-cell.solved { background: var(--mint); box-shadow: 0 0 12px rgba(61,245,168,.5); }
+.welcome-grid .pg-cell.missed { background: var(--miss); box-shadow: 0 0 12px rgba(255,77,94,.5); }
+@keyframes zareOrbIn { from { opacity: 0; scale: .3; } }
+
+/* Welcome & Result */
+.screen h1 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(38px, 11.5vw, 46px);
+    letter-spacing: -1.5px;
+    margin-bottom: 18px;
+}
+.screen h2 { font-family: var(--display); font-weight: 700; letter-spacing: -.5px; }
+#survivedCount { font-size: clamp(20px, 6vw, 25px); margin-bottom: 18px; }
+#result:not(:has(.pg-cell.missed)) #survivedCount { color: var(--gold); text-shadow: 0 0 28px rgba(255,211,77,.35); }
+#percentile {
+    align-self: center;
+    padding: 9px 18px;
+    border-radius: 999px;
+    background: rgba(255,211,77,.08);
+    border: 1px solid rgba(255,211,77,.28);
+    color: var(--gold);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 18px !important;
+}
+#progressLine { font-size: 16px; font-weight: 500; color: var(--muted-text); line-height: 1.55; margin-bottom: 28px; }
+.win-title { font-family: var(--display); background: linear-gradient(100deg, var(--calm), var(--mint), var(--gold)); -webkit-background-clip: text; background-clip: text; }
+
+#countdown {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: 0;
+    color: var(--muted-text);
+    margin-top: 22px;
+    margin-bottom: 30px;
+}
+.btn-tertiary {
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 14px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--muted-text);
+    opacity: 1;
+}
+@media (hover: hover) { .btn-tertiary:hover { color: var(--ink); border-color: rgba(53,200,255,.5); } }
+.a2hs-banner, .streak-nudge {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+#result .a2hs-banner p { font-size: 14px; font-weight: 500; color: var(--muted-text); margin: 0; }
+.streak-nudge { margin-bottom: 22px; }
+#result .streak-nudge p { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0 0 12px; line-height: 1.5; }
+.feedback-line { font-weight: 500 !important; font-size: 15px !important; }
+
+/* Game */
+#game {
+    isolation: isolate;
+    transition: --t 1s linear;
+    /* Cesta jako u žhnoucího kovu: modrá drží do 24 s, pak přes ledově
+       bílou (18 s) do jantaru (12 s) a do červena (4 s). Modrá a jantar jsou
+       doplňkové, takže přímá směs by v půlce zešedla — bílá mezi nimi to
+       drží světlé; přes odstín (oklch) by cesta vedla zelenou. */
+    --pale: clamp(0%, (.8 - var(--t)) * 500%, 100%);
+    --warm: clamp(0%, (.6 - var(--t)) * 500%, 100%);
+    --hotness: clamp(0%, (.4 - var(--t)) * 370%, 100%);
+    --heat: color-mix(in oklab, var(--hot) var(--hotness),
+            color-mix(in oklab, var(--amber) var(--warm),
+            color-mix(in oklab, var(--white-hot) var(--pale), var(--calm))));
+}
+/* Záře za časem a za písmeny — obě se samy vycentrují na svůj prvek. */
+#progress { position: relative; gap: 14px; }
+/* V tréninku je mřížka prázdná a skrytá — kroužek pak nesedí u horní hrany,
+   ale uprostřed horní poloviny, stejně jako v denní výzvě. */
+#game .game-grid:empty + #progress { margin-top: auto; }
+#progress::before, #letterRow::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: -1;
+    pointer-events: none;
+}
+#progress::before {
+    width: 560px;
+    height: 460px;
+    translate: -50% -42%;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--heat) 30%, transparent), color-mix(in oklab, var(--heat) 9%, transparent) 55%, transparent);
+}
+#letterRow { position: relative; }
+#letterRow::before {
+    width: 680px;
+    height: 380px;
+    translate: -50% -38%;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--heat) 20%, transparent), transparent);
+}
+
+.close-game-btn {
+    width: 40px;
+    height: 40px;
+    background: var(--glass);
+    border: 1px solid rgba(255,255,255,.14);
+    color: var(--ink);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+@media (hover: hover) { .close-game-btn:hover { color: var(--ink); border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.1); } }
+.close-game-btn:focus-visible { outline: 2px solid var(--calm); outline-offset: 3px; }
+
+.icon-btn { font-family: var(--body); }
+.icon-btn-circle {
+    background: var(--glass);
+    border: 1px solid rgba(255,255,255,.14);
+    color: var(--ink);
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+.icon-btn-label { font-size: 12px; font-weight: 700; letter-spacing: .1px; color: var(--muted-text); }
+.icon-btn-circle--bare { background: transparent; border-color: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.screen-title { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: -.2px; }
+
+/* Profil */
+.profile-avatar {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 32px;
+    color: var(--ink-dark);
+    background: linear-gradient(140deg, var(--calm), var(--mint));
+    box-shadow: 0 0 0 5px rgba(255,255,255,.05), 0 10px 40px rgba(53,200,255,.32);
+}
+.profile-name { font-family: var(--display); font-weight: 700; font-size: 21px; letter-spacing: -.4px; }
+.profile-sub { color: var(--muted-text); font-weight: 500; }
+.profile-section-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -.1px;
+    text-transform: none;
+    color: var(--muted-text);
+}
+.stat-tile {
+    background: rgba(255,255,255,.045);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+    gap: 4px;
+}
+.stat-value { font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: -.5px; }
+.stat-label { color: var(--muted-text); font-weight: 500; }
+.empty-card { background: transparent; border: 1px dashed rgba(255,255,255,.16); color: var(--muted-text); }
+
+/* Mřížka dne ve hře: malé koule nahoře, aktuální slovo obtahuje barva času. */
+#game .game-grid { gap: 9px; }
+#game .pg-cell {
+    width: clamp(16px, 4.6vw, 20px);
+    height: clamp(16px, 4.6vw, 20px);
+    border-radius: 50%;
+    background: rgba(255,255,255,.07);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+    transition: background .3s ease, box-shadow .3s ease;
+}
+#game .pg-cell.solved { background: var(--mint); box-shadow: 0 0 10px rgba(61,245,168,.55); }
+#game .pg-cell.missed { background: var(--miss); box-shadow: 0 0 10px rgba(255,77,94,.55); }
+#game .pg-cell:first-child:not(.solved):not(.missed),
+#game .pg-cell.solved + .pg-cell:not(.solved):not(.missed),
+#game .pg-cell.missed + .pg-cell:not(.solved):not(.missed) {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--heat), 0 0 10px color-mix(in oklab, var(--heat) 60%, transparent);
+}
+#result .game-grid { gap: clamp(9px, 2.8vw, 12px); }
+#result .pg-cell { width: clamp(24px, 7vw, 30px); height: clamp(24px, 7vw, 30px); border-radius: 50%; }
+#result .pg-cell.solved { box-shadow: 0 0 14px rgba(61,245,168,.5); }
+#result .pg-cell.missed { box-shadow: 0 0 14px rgba(255,77,94,.5); }
+
+.gp-headline {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: .2px;
+    text-transform: none;
+    color: var(--muted-text);
+    opacity: 1;
+}
+/* Čas v kroužku: oblouk je zbývající čas, obtah i číslo září barvou času.
+   drop-shadow na rodiči, protože maska na ::before by vlastní záři ořízla. */
+.gp-timer {
+    position: relative;
+    width: 132px;
+    height: 132px;
+    border-radius: 50%;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    line-height: 132px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 44px;
+    letter-spacing: -1px;
+    color: var(--ink);
+    filter: drop-shadow(0 0 10px color-mix(in oklab, var(--heat) 55%, transparent));
+}
+.gp-timer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(var(--heat) calc(var(--t) * 1turn), rgba(255,255,255,.08) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+}
+.gp-timer-unit { font-family: var(--display); font-size: 16px; font-weight: 500; letter-spacing: 0; color: var(--muted-text); opacity: 1; margin-left: 3px; }
+.gp-timer.low { color: var(--heat); }
+.gp-timer.zero { color: var(--hot); }
+
+/* Sloty odpovědi */
+.word-display {
+    position: relative;
+    align-self: center;
+    max-width: 100%;
+    font-family: var(--display);
+    color: var(--ink);
+}
+.answer-slot {
+    font-family: var(--display);
+    font-weight: 600;
+    border: 1.5px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.035);
+    border-radius: 12px;
+    transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s cubic-bezier(.34,1.56,.64,1);
+}
+.answer-slot.filled:not(.locked) {
+    border-color: var(--heat);
+    background: color-mix(in oklab, var(--heat) 12%, transparent);
+    box-shadow: 0 0 16px color-mix(in oklab, var(--heat) 28%, transparent);
+    text-shadow: 0 0 12px color-mix(in oklab, var(--heat) 85%, transparent);
+    color: #fff;
+}
+.answer-slot.locked { border-color: rgba(255,255,255,.14); color: var(--faint); background: transparent; }
+.answer-slot.filled.missed {
+    border-color: var(--miss);
+    background: rgba(255,77,94,.12);
+    box-shadow: 0 0 16px rgba(255,77,94,.28);
+    text-shadow: 0 0 12px rgba(255,77,94,.8);
+    color: #FF7B87;
+}
+/* správně: sloty zaplaví máta vlnou zleva a od slova se rozběhne prstenec */
+.word-display.found .answer-slot:not(.locked) {
+    border-color: var(--mint);
+    background: rgba(61,245,168,.16);
+    color: #fff;
+    text-shadow: 0 0 14px rgba(61,245,168,.9);
+    animation: zareWave .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+.word-display.found .answer-slot:nth-child(2) { animation-delay: .04s; }
+.word-display.found .answer-slot:nth-child(3) { animation-delay: .08s; }
+.word-display.found .answer-slot:nth-child(4) { animation-delay: .12s; }
+.word-display.found .answer-slot:nth-child(5) { animation-delay: .16s; }
+.word-display.found .answer-slot:nth-child(6) { animation-delay: .2s; }
+.word-display.found .answer-slot:nth-child(7) { animation-delay: .24s; }
+.word-display.found .answer-slot:nth-child(8) { animation-delay: .28s; }
+.word-display.found .answer-slot:nth-child(n+9) { animation-delay: .32s; }
+@keyframes zareWave {
+    40% { scale: 1.12; box-shadow: 0 0 28px rgba(61,245,168,.75); }
+    to { scale: 1; box-shadow: 0 0 18px rgba(61,245,168,.45); }
+}
+/* záblesk místo prstence — měkký okraj se nikde neořízne ani u dlouhého slova */
+.word-display.found::after {
+    content: '';
+    position: absolute;
+    inset: -60px -30px;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(61,245,168,.5), rgba(61,245,168,.14) 55%, transparent);
+    pointer-events: none;
+    animation: zareFlash .75s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes zareFlash {
+    from { opacity: 0; scale: .6; }
+    30% { opacity: 1; }
+    to { opacity: 0; scale: 1.15; }
+}
+.word-display.shake .answer-slot:not(.locked) {
+    border-color: var(--miss);
+    background: rgba(255,77,94,.14);
+    box-shadow: 0 0 18px rgba(255,77,94,.3);
+    text-shadow: 0 0 12px rgba(255,77,94,.8);
+}
+
+/* Písmena: skleněné koule, vybrané se rozsvítí barvou času */
+.letter-row { row-gap: 12px; column-gap: 6px; }
+.letter {
+    font-family: var(--display);
+    font-weight: 600;
+    color: var(--ink);
+    background:
+        radial-gradient(110% 80% at 50% 0%, rgba(255,255,255,.17), rgba(255,255,255,0) 62%),
+        rgba(255,255,255,.05);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), inset 0 -10px 18px rgba(0,0,0,.2), 0 10px 24px rgba(0,0,0,.35);
+    transition: background-color .18s ease, color .18s ease, box-shadow .18s ease, scale .12s ease-out, transform .12s ease-out;
+}
+.letter:active { transform: none; scale: .92; }
+.letter.selected {
+    color: var(--ink-dark);
+    background: radial-gradient(110% 80% at 50% 0%, rgba(255,255,255,.5), rgba(255,255,255,0) 60%), var(--heat);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 0 22px color-mix(in oklab, var(--heat) 60%, transparent), 0 0 48px color-mix(in oklab, var(--heat) 24%, transparent);
+}
+.letter.selected.correct {
+    background: radial-gradient(110% 80% at 50% 0%, rgba(255,255,255,.5), rgba(255,255,255,0) 60%), var(--mint);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 0 24px rgba(61,245,168,.6), 0 0 48px rgba(61,245,168,.24);
+}
+.letter.selected.incorrect {
+    background: radial-gradient(110% 80% at 50% 0%, rgba(255,255,255,.45), rgba(255,255,255,0) 60%), var(--miss);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), 0 0 24px rgba(255,77,94,.6), 0 0 48px rgba(255,77,94,.24);
+}
+
+/* Modal (sheety) */
+.modal { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.modal-content {
+    background: var(--surface);
+    border-top: 1px solid rgba(255,255,255,.14);
+    border-radius: 26px 26px 0 0;
+    box-shadow: 0 -20px 60px rgba(0,0,0,.6);
+}
+.modal-header { background: var(--surface); border-bottom: 1px solid rgba(255,255,255,.08); }
+.modal-header::before { background: rgba(255,255,255,.3); opacity: 1; }
+@media (min-width: 600px) and (hover: hover) {
+    .modal-content { border-radius: 26px; border: 1px solid rgba(255,255,255,.12); }
+}
+.modal-header h2 { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: -.4px; }
+.collection-count { font-family: var(--body); font-weight: 700; font-size: 14px; color: var(--muted-text); letter-spacing: 0; }
+.close-modal { color: var(--muted-text); }
+.archive-item {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+}
+.archive-item.open { border-color: rgba(53,200,255,.7); background: rgba(53,200,255,.06); }
+@media (hover: hover) { .archive-item.locked:hover { border-color: rgba(255,255,255,.1); } }
+.archive-date { font-family: var(--display); font-weight: 500; font-size: 15px; letter-spacing: -.2px; }
+.archive-score { font-family: var(--body); font-weight: 800; background: rgba(61,245,168,.14); color: var(--mint); }
+.archive-score.not-played { background: rgba(255,255,255,.06); color: var(--muted-text); }
+.archive-words span {
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.feedback-form label { color: var(--muted-text); font-weight: 600; }
+.feedback-form input,
+.feedback-form textarea {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 14px;
+    color: var(--ink);
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.feedback-form input::placeholder,
+.feedback-form textarea::placeholder { color: #7A82A8; }
+.feedback-form input:focus,
+.feedback-form textarea:focus { border-color: var(--calm); box-shadow: 0 0 0 3px rgba(53,200,255,.2), 0 0 20px rgba(53,200,255,.15); }
+.feedback-success-icon { color: var(--ink-dark); box-shadow: 0 0 30px rgba(61,245,168,.45); }
+.feedback-success p { font-weight: 600; }
+
+/* Pauza a mezihra: plné překryvy, takže si záři nesou samy */
+.pause-overlay {
+    background: radial-gradient(420px 340px at 50% 40%, rgba(53,200,255,.13), transparent 70%), var(--night);
+}
+.pause-overlay h2 { font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: -.6px; }
+.wd-word {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(30px, 9.5vw, 38px);
+    letter-spacing: -1px;
+    text-shadow: 0 0 32px rgba(53,200,255,.35);
+}
+.wd-card {
+    background: rgba(255,255,255,.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+}
+.wd-card--empty { border-style: dashed; border-color: rgba(255,255,255,.18); }
+.wd-text { font-weight: 500; color: var(--ink); }
+.wd-card--empty .wd-text { color: var(--muted-text); }
+.wd-avatar { font-family: var(--display); font-weight: 600; font-size: 11px; color: var(--ink-dark); background: linear-gradient(140deg, var(--calm), var(--mint)); }
+.wd-vote {
+    font-family: var(--body);
+    font-weight: 700;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    color: var(--muted-text);
+}
+.wd-vote.voted { background: rgba(61,245,168,.14); border-color: rgba(61,245,168,.3); color: var(--mint); }
+.wd-count { font-family: var(--body); font-weight: 600; color: var(--muted-text); }
+.word-done.wd-paused .wd-count { color: var(--calm); }
+
+.def-item { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); }
+.def-item.mine { border-color: rgba(53,200,255,.6); }
+.def-word { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: -.2px; }
+.def-empty, .def-report { color: var(--muted-text); }
+
+/* Toast */
+.kb-toast {
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+    background: rgba(17,24,56,.82);
+    border: 1px solid rgba(255,255,255,.14);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
+}
+
+/* Omezený pohyb: bez driftu, vln a prstence. Barva času zůstává —
+   je to informace, ne ozdoba. */
+@media (prefers-reduced-motion: reduce) {
+    body:has(#welcome.active)::before,
+    .welcome-grid .pg-cell,
+    .word-display.found .answer-slot:not(.locked),
+    .gp-timer.low { animation: none; }
+    .word-display.found::after { display: none; }
+}

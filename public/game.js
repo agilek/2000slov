@@ -1437,6 +1437,8 @@ function updateUI() {
         ? `Slovo ${state.wordIdx + 1}`
         : `Slovo ${state.wordIdx + 1}/${WORDS_PER_DAY}`;
     $('progress').innerHTML = `<div class="gp-headline">${label}</div><div class="gp-timer${low}">${state.time}<span class="gp-timer-unit">s</span></div>`;
+    // zbývající čas 0–1 pro CSS (kroužek, ubývající lišta v designs/)
+    $('game').style.setProperty('--t', state.time / START_TIME);
 }
 
 /* ---------------- časovač ---------------- */
@@ -1699,7 +1701,9 @@ function launchConfetti() {
     ctx.scale(devicePixelRatio, devicePixelRatio);
     canvas.classList.add('on');
 
-    const colors = ['#2e9e5b', '#4169f1', '#f59e0b', '#e0524a', '#9b59b6'];
+    // barvy konfet si může určit design přes --confetti (mezerou oddělené)
+    const themed = getComputedStyle(document.documentElement).getPropertyValue('--confetti').trim();
+    const colors = themed ? themed.split(/\s+/) : ['#2e9e5b', '#4169f1', '#f59e0b', '#e0524a', '#9b59b6'];
     const parts = [];
     for (let i = 0; i < 140; i++) {
         parts.push({

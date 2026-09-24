@@ -1,0 +1,588 @@
+/* Směr D — „Plakát": každá obrazovka je příběh z ročního shrnutí.
+ * Vrstva přes style.css (načítá ji index.html při ?design=plakat).
+ * Plné syté plochy ve dvojbarvách, písmo je obraz (obří, těsné, hraje si
+ * se šířkou), ploché geometrické tvary, žádné karty, stíny ani sklo.
+ * Každé slovo denní výzvy je nová karta — nová dvojice barev. Odpočet se
+ * s ubývajícím časem smršťuje do úzkého řezu. Uvnitř obrazovky platí jen
+ * její dvě barvy (a jejich odstíny na dekoraci, nikdy na text). */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap');
+
+/* --f = plocha, --i = inkoust. Registrované barvy jdou přechodovat, takže
+   se celá karta přebarví jedním přechodem na :root. --t (zbývající čas 0–1)
+   nastavuje game.js inline na #game. */
+@property --f { syntax: '<color>'; inherits: true; initial-value: #3D3BF3; }
+@property --i { syntax: '<color>'; inherits: true; initial-value: #D2F65A; }
+@property --t { syntax: '<number>'; inherits: true; initial-value: 1; }
+
+/* Dvojbarvy (plocha / inkoust), všechny ≥ 5 : 1 */
+:root {
+    --p1f: #3D3BF3; --p1i: #D2F65A;   /* kobalt / limetka */
+    --p2f: #FF4FA5; --p2i: #2A0B3D;   /* růžová / švestka */
+    --p3f: #FF7A1A; --p3i: #15154A;   /* mandarinka / námořnická */
+    --p4f: #CFF56A; --p4i: #10230A;   /* limetka / skoro černá zelená */
+    --p5f: #6A38EE; --p5i: #FFF3A8;   /* fialová / bledě žlutá */
+    --pxf: #2A0B3D; --pxi: #FF6FB8;   /* švestka / růžová — profil a sheety */
+    --f: var(--p1f);
+    --i: var(--p1i);
+    --confetti: #3D3BF3 #D2F65A #FF4FA5 #FF7A1A #CFF56A #6A38EE #FFF3A8 #2A0B3D;
+    --radius: 0px;
+    color-scheme: light;
+    transition: --f .4s ease, --i .4s ease;
+}
+
+/* Tokeny základu přemapované na aktuální dvojici. Opakují se na překryvech
+   a sheetech, protože ty mají vlastní --f/--i a var() se dosazuje tam, kde je
+   vlastnost deklarovaná. [data-theme] a tmavý blok základu přebijí taky. */
+:root, :root[data-theme="light"], :root[data-theme="dark"], .pause-overlay, .modal-content {
+    --bg: var(--f);
+    --ink: var(--i);
+    --tile: var(--i);
+    --tile-shadow: transparent;
+    --blue: var(--i);
+    --blue-dark: var(--i);
+    --green: var(--i);
+    --green-dark: var(--i);
+    --orange: var(--i);
+    --red: var(--i);
+    --muted: var(--i);
+    --muted-text: var(--i);
+    --card: var(--f);
+    --line: var(--i);
+    --grid-cell: transparent;
+    --slot-border: var(--i);
+    --chip-bg: transparent;
+    --badge-bg: var(--i);
+    --overlay: rgba(20, 6, 30, .55);
+    --shadow-soft: transparent;
+    --shadow-card: transparent;
+    --hover-tint: color-mix(in srgb, var(--i) 12%, transparent);
+    --shade: color-mix(in oklch, var(--f), #000 16%);   /* odstín plochy na dekorační tvary */
+}
+
+/* Jedna rodina na všechno — šířka a váha jsou výrazové prostředky. */
+* { font-family: 'Archivo', system-ui, -apple-system, sans-serif !important; }
+
+/* ---- Která karta je na řadě ---- */
+:root:has(#result.active) { --f: var(--p2f); --i: var(--p2i); }
+:root:has(#result.active):not(:has(#result .pg-cell.missed)) { --f: var(--p4f); --i: var(--p4i); }
+:root:has(#profile.active) { --f: var(--pxf); --i: var(--pxi); color-scheme: dark; }
+/* Trénink nemá mřížku (game.js ji vyprázdní) — vlastní karta. */
+:root:has(#game.active #gameGrid:empty) { --f: var(--p3f); --i: var(--p3i); }
+/* Denní výzva: pořadí slova mod 5 podle posledního označeného políčka.
+   Poslední označené na pozici 5n+k ⇒ hraje se slovo 5n+k+1. */
+:root:has(#game.active .pg-cell:is(.solved, .missed):nth-child(5n+1) + .pg-cell:not(.solved):not(.missed)) { --f: var(--p2f); --i: var(--p2i); }
+:root:has(#game.active .pg-cell:is(.solved, .missed):nth-child(5n+2) + .pg-cell:not(.solved):not(.missed)) { --f: var(--p3f); --i: var(--p3i); }
+:root:has(#game.active .pg-cell:is(.solved, .missed):nth-child(5n+3) + .pg-cell:not(.solved):not(.missed)) { --f: var(--p4f); --i: var(--p4i); }
+:root:has(#game.active .pg-cell:is(.solved, .missed):nth-child(5n+4) + .pg-cell:not(.solved):not(.missed)) { --f: var(--p5f); --i: var(--p5i); }
+/* Ve hře se karta otočí až s dalším slovem: po uhodnutí s krátkou prodlevou,
+   po vypršení času až po odhalení slova (.zero drží do dalšího kola). */
+:root:has(#game.active) { transition-delay: .32s; }
+:root:has(#game.active .gp-timer.zero) { transition-delay: 1.5s; }
+
+html, body { background: var(--f); color: var(--i); }
+
+/* Buttons */
+.btn {
+    font-weight: 800;
+    font-stretch: 112%;
+    font-size: 19px;
+    letter-spacing: -.1px;
+    background: var(--i);
+    color: var(--f);
+    box-shadow: none;
+    transition: scale .12s ease, background-color .15s ease, color .15s ease;
+}
+.btn:active { transform: none; scale: .97; }
+.btn:focus-visible { outline: 3px solid var(--i); outline-offset: 4px; }
+.btn-primary, .btn-share, .btn-play { background: var(--i); color: var(--f); box-shadow: none; }
+@media (hover: hover) {
+    .btn-primary:hover, .btn-share:hover, .btn-play:hover { background: var(--i); scale: 1.02; }
+}
+.btn-share svg { stroke: currentColor; }
+.btn-play { font-size: 24px; font-weight: 900; padding: 20px 64px; }
+.btn-secondary { background: transparent; color: var(--i); border: 3px solid var(--i); }
+@media (hover: hover) { .btn-secondary:hover { background: var(--hover-tint); color: var(--i); border-color: var(--i); } }
+
+/* Welcome */
+.screen .welcome-instruction {
+    font-weight: 800;
+    font-stretch: 100%;
+    font-size: clamp(19px, 5.4vw, 22px);
+    letter-spacing: -.2px;
+    line-height: 1.25;
+    color: var(--i);
+    text-wrap: balance;
+}
+.welcome-instruction--second {
+    margin-top: 12px;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+    color: var(--i) !important;
+}
+.welcome-date {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--i);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
+}
+@media (hover: hover) { .welcome-date:hover { color: var(--i); text-decoration-thickness: 4px; } }
+.welcome-date:focus-visible { outline: 3px solid var(--i); outline-offset: 4px; }
+
+/* Plochý kotouč v odstínu plochy za mřížkou — jediný tvar na plakátu. */
+.welcome-grid, #result .game-grid { position: relative; isolation: isolate; }
+.welcome-grid::before, #result .game-grid::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    left: 50%;
+    top: 50%;
+    width: min(86vw, 320px);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: var(--shade);
+    pointer-events: none;
+}
+.welcome-grid { gap: clamp(8px, 2.4vw, 11px); margin-bottom: 30px; }
+
+.screen h1, .screen h2 { font-weight: 900; letter-spacing: -.5px; color: var(--i); }
+#welcome h1 {
+    position: relative;   /* nad kotoučem mřížky */
+    z-index: 1;
+    font-size: clamp(76px, 25vw, 108px);
+    font-stretch: 70%;
+    line-height: .84;
+    letter-spacing: -.02em;
+    margin-bottom: 20px;
+}
+.screen p:not(.welcome-instruction) { color: var(--i); font-weight: 600; }
+#survivedCount {
+    position: relative;   /* nad kotoučem mřížky */
+    z-index: 1;
+    font-size: clamp(46px, 14vw, 62px);
+    font-stretch: 66%;
+    line-height: .9;
+    letter-spacing: -.01em;
+    text-transform: uppercase;
+    white-space: normal;
+    text-wrap: balance;
+    color: var(--i);
+    margin: 4px 0 20px;
+}
+/* Percentil jako plochý odznak v inkoustu */
+#percentile {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 22px !important;
+    padding: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--i);
+    color: var(--f);
+    font-size: 17px;
+    font-weight: 800;
+    font-stretch: 88%;
+    line-height: 1.15;
+    rotate: -8deg;
+    text-wrap: balance;
+}
+#progressLine { color: var(--i); font-size: 17px; font-weight: 600; line-height: 1.4; }
+
+/* Perfektní den */
+.win-title { background: none; color: var(--i); -webkit-text-fill-color: currentColor; }
+
+/* Result */
+#result .game-grid.result-grid { margin-bottom: 36px; }
+#countdown {
+    color: var(--i);
+    font-size: 20px;
+    font-weight: 800;
+    font-stretch: 90%;
+    margin-top: 22px;
+    margin-bottom: 30px;
+}
+.btn-tertiary {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    opacity: 1;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--i);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
+    min-height: 44px;
+}
+@media (hover: hover) { .btn-tertiary:hover { color: var(--i); text-decoration-thickness: 4px; } }
+.btn-tertiary:focus-visible { outline: 3px solid var(--i); outline-offset: 2px; }
+/* Pruhy místo karet: silná linka nad a pod. */
+.a2hs-banner, .streak-nudge {
+    background: transparent;
+    border: 0;
+    border-top: 3px solid var(--i);
+    border-bottom: 3px solid var(--i);
+    border-radius: 0;
+    padding: 16px 38px 16px 2px;
+}
+.streak-nudge { margin: 20px auto 22px; padding-right: 2px; text-align: left; }
+#result .a2hs-banner p, #streakNudge p { color: var(--i); font-size: 15px; font-weight: 600; line-height: 1.45; }
+#streakNudge p { margin: 0 0 14px; }
+.a2hs-close { color: var(--i); }
+.feedback-line {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--i) !important;
+}
+.feedback-link:focus-visible { outline: 3px solid var(--i); }
+
+/* Game */
+.close-game-btn {
+    background: var(--i);
+    color: var(--f);
+    border: 0;
+    width: 44px;
+    height: 44px;
+}
+@media (hover: hover) { .close-game-btn:hover { background: var(--i); color: var(--f); border: 0; scale: 1.06; } }
+
+/* Horní lišta: plné kruhy v inkoustu */
+.icon-btn { color: var(--i); }
+.icon-btn-circle { background: var(--i); color: var(--f); border: 0; box-shadow: none; }
+.icon-btn:focus-visible .icon-btn-circle { outline: 3px solid var(--i); outline-offset: 3px; }
+.icon-btn-label { font-size: 12px; font-weight: 700; }
+.icon-btn-circle--bare { background: transparent; color: var(--i); }
+
+/* Profil: čísla na plakátu, žádné dlaždice */
+.screen-title { font-weight: 800; font-stretch: 110%; font-size: 18px; color: var(--i); }
+.profile-avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 44px;
+    font-weight: 900;
+    background: var(--i);
+    color: var(--f);
+    box-shadow: none;
+}
+.profile-name { font-size: 44px; font-weight: 900; font-stretch: 70%; line-height: .95; color: var(--i); }
+.profile-sub { font-size: 15px; font-weight: 600; color: var(--i); }
+#profile .profile-note { color: var(--i); font-size: 14px; font-weight: 500; }
+.profile-section-title {
+    font-size: 18px;
+    font-weight: 800;
+    font-stretch: 112%;
+    letter-spacing: -.2px;
+    text-transform: none;
+    color: var(--i);
+}
+.stat-grid { gap: 4px 18px; }
+.stat-tile {
+    background: none;
+    border: 0;
+    border-top: 3px solid var(--i);
+    border-radius: 0;
+    padding: 10px 0 8px;
+}
+.stat-value { font-size: clamp(46px, 14vw, 60px); font-weight: 900; font-stretch: 66%; line-height: .92; color: var(--i); }
+.stat-label { font-size: 14px; font-weight: 600; color: var(--i); }
+.empty-card {
+    background: none;
+    border: 0;
+    border-top: 3px solid var(--i);
+    border-radius: 0;
+    padding: 14px 0 0;
+    font-size: 15px;
+    color: var(--i);
+    text-align: left;
+}
+
+/* Mřížka dne: pending = obrys, uhodnuté = plný kruh, nestihnuté = škrt.
+   Čte se bez barvy. */
+.pg-cell, .welcome-grid .pg-cell {
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: inset 0 0 0 2.5px var(--i);
+    transition: background-color .25s ease, box-shadow .25s ease;
+}
+.pg-cell.solved { background: var(--i); }
+.pg-cell.missed {
+    background: linear-gradient(to top right,
+        transparent calc(50% - 1.6px), var(--i) calc(50% - 1.6px),
+        var(--i) calc(50% + 1.6px), transparent calc(50% + 1.6px));
+}
+/* Právě hrané slovo pulzuje */
+#game .pg-cell:first-child:not(.solved):not(.missed),
+#game .pg-cell:is(.solved, .missed) + .pg-cell:not(.solved):not(.missed) {
+    box-shadow: inset 0 0 0 5px var(--i);
+    animation: plakatNow 1.1s ease-in-out infinite;
+}
+@keyframes plakatNow { 50% { scale: .74; } }
+
+.gp-headline {
+    font-weight: 700;
+    font-stretch: 88%;
+    font-size: 17px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--i);
+    opacity: 1;
+}
+/* Odpočet je hlavní figura plakátu. Šířka řezu sleduje čas: plný čas
+   široce (125), konec úzce (62) — čas se doslova smršťuje. */
+#game { transition: --t 1s linear; }
+/* Trénink je bez mřížky — odpočet se posune do středu horní poloviny. */
+#game .game-grid:empty + .game-progress { margin-top: auto; }
+.gp-timer {
+    font-weight: 900;
+    font-size: clamp(92px, min(38vw, 19dvh), 150px);
+    font-stretch: calc(62% + var(--t) * 63%);
+    line-height: .82;
+    letter-spacing: -.035em;
+    color: var(--i);
+    transition: none;
+}
+.gp-timer-unit {
+    font-size: .2em;
+    font-weight: 800;
+    font-stretch: 100%;
+    letter-spacing: 0;
+    color: var(--i);
+    opacity: 1;
+    margin-left: .06em;
+}
+/* Posledních 10 s: číslo bliká mezi plným a obrysem — zůstává ve dvojbarvě. */
+.gp-timer.low { color: var(--i); animation: plakatFlick 1s steps(1, end) infinite; }
+.gp-timer.zero { color: var(--i); animation: none; }
+@keyframes plakatFlick {
+    50% { color: transparent; -webkit-text-stroke: 3px var(--i); }
+}
+
+/* Skládané slovo je titulek karty: velká písmena, prázdné pozice jako
+   tlusté podtržítko, žádné rámečky. */
+.word-display {
+    position: relative;
+    isolation: isolate;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 4px 0;
+    color: var(--i);
+}
+.word-display.found { color: var(--i); }
+#wordDisplay .answer-slot {
+    border: 0;
+    border-bottom: 5px solid var(--i);
+    border-radius: 1px;
+    background: none;
+    color: var(--i);
+    font-weight: 900;
+    font-stretch: 72%;
+    font-size: 50px !important;
+    line-height: 1;
+    transform: none;
+    transition: border-color .15s ease, color .2s ease;
+}
+/* Kratší slovo = větší písmo (počet slotů přes :has) */
+#wordDisplay:has(.answer-slot:nth-child(8)) .answer-slot { font-size: 42px !important; }
+#wordDisplay:has(.answer-slot:nth-child(10)) .answer-slot { font-size: 34px !important; }
+#wordDisplay:has(.answer-slot:nth-child(12)) .answer-slot { font-size: 28px !important; }
+#wordDisplay .answer-slot.filled { border-bottom-color: transparent; transform: none; }
+#wordDisplay .answer-slot.locked { border-bottom: 5px dotted var(--i); color: var(--i); opacity: .6; }
+
+/* Uhodnuto: za slovo vjede plný pruh inkoustu, písmena se obrátí. */
+.word-display.found::before {
+    content: '';
+    position: absolute;
+    inset: -8px -6px;
+    z-index: -1;
+    border-radius: 999px;
+    background: var(--i);
+    animation: plakatBand .32s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+#wordDisplay.found .answer-slot { color: var(--f); }
+@keyframes plakatBand { from { scale: .2 1; opacity: .4; } to { scale: 1 1; opacity: 1; } }
+
+/* Špatně: slovo se roztřese a na okamžik zůstane jen obrys. */
+.word-display.shake { color: var(--i) !important; }
+#wordDisplay.shake .answer-slot.filled { color: transparent; -webkit-text-stroke: 2px var(--i); }
+
+/* Nestihnuto: obrysová písmena a přes ně přeškrtnutí tažené zleva. */
+#wordDisplay .answer-slot.missed { color: transparent; -webkit-text-stroke: 2px var(--i); border-color: transparent; }
+.word-display:has(.answer-slot.missed)::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    top: 50%;
+    height: 6px;
+    margin-top: -3px;
+    border-radius: 3px;
+    background: var(--i);
+    transform-origin: left center;
+    animation: plakatStrike .45s cubic-bezier(.6, 0, .2, 1) .25s both;
+}
+@keyframes plakatStrike { from { scale: 0 1; } to { scale: 1 1; } }
+
+/* Písmena: plné kruhy v inkoustu, písmeno v barvě plochy.
+   Vybrané se vyprázdní na obrys a zmenší — je jasně „použité". */
+.letter-row { row-gap: 12px; }
+.letter {
+    background: var(--i);
+    color: var(--f);
+    font-weight: 800;
+    font-stretch: 100%;
+    box-shadow: none;
+    transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, scale .15s cubic-bezier(.3, 1.4, .5, 1), transform .12s ease-out;
+}
+@media (hover: hover) { .letter:hover { transform: none; scale: 1.05; } }
+.letter:active { transform: none; scale: .9; }
+.letter.selected,
+.letter.selected.correct,
+.letter.selected.incorrect {
+    background: transparent;
+    color: var(--i);
+    box-shadow: inset 0 0 0 3px var(--i);
+    scale: .86;
+}
+
+/* Modal (sheety): švestková plocha s růžovým inkoustem, bez stínu */
+.modal { background: var(--overlay); }
+.modal-content {
+    --f: var(--pxf);
+    --i: var(--pxi);
+    background: var(--f);
+    color: var(--i);
+    border-radius: 24px 24px 0 0;
+    box-shadow: none;
+    color-scheme: dark;
+}
+@media (min-width: 600px) and (hover: hover) { .modal-content { border-radius: 24px; } }
+.modal-header { background: var(--f); border-bottom: 3px solid var(--i); margin-bottom: 8px; }
+.modal-header::before { background: var(--i); opacity: .7; }
+.modal-header h2 { font-size: 32px; font-weight: 900; font-stretch: 70%; letter-spacing: -.3px; color: var(--i); }
+.collection-count { font-size: 16px; font-weight: 700; font-stretch: 100%; color: var(--i); }
+.close-modal { color: var(--i); }
+@media (hover: hover) { .close-modal:hover { color: var(--i); background: var(--hover-tint); } }
+.close-modal:focus-visible { outline: 3px solid var(--i); }
+
+/* Sbírka: řádky oddělené linkou, rozbalený řádek se obrátí */
+.archive-item {
+    border: 0;
+    border-bottom: 2px solid var(--i);
+    border-radius: 0;
+    margin: 0;
+    padding: 16px 6px;
+    transition: background-color .15s ease, color .15s ease;
+}
+@media (hover: hover) { .archive-item:hover { border-color: var(--i); background: var(--hover-tint); } }
+.archive-item.locked { opacity: .5; }
+@media (hover: hover) { .archive-item.locked:hover { border-color: var(--i); background: none; } }
+.archive-date { font-size: 19px; font-weight: 800; font-stretch: 88%; color: inherit; }
+.archive-score {
+    font-size: 13px;
+    font-weight: 800;
+    padding: 5px 12px;
+    background: var(--i);
+    color: var(--f);
+}
+.archive-score.not-played { background: transparent; color: var(--i); box-shadow: inset 0 0 0 2px var(--i); }
+.archive-item.open { background: var(--i); color: var(--f); border-radius: 18px; border-bottom-color: transparent; margin: 6px 0; }
+.archive-item.open .archive-score { background: var(--f); color: var(--i); }
+.archive-words span { background: transparent; color: var(--f); box-shadow: inset 0 0 0 2px var(--f); border-radius: 999px; font-weight: 700; }
+
+/* Formuláře */
+.feedback-form label { color: var(--i); font-weight: 700; }
+.feedback-form input,
+.feedback-form textarea {
+    background: transparent;
+    border: 3px solid var(--i);
+    border-radius: 14px;
+    color: var(--i);
+    font-weight: 500;
+}
+.feedback-form input::placeholder,
+.feedback-form textarea::placeholder { color: var(--i); opacity: .6; }
+.feedback-form input:focus,
+.feedback-form textarea:focus { border-color: var(--i); background: var(--hover-tint); outline: none; }
+.feedback-error { color: var(--i); font-weight: 800; text-decoration: underline wavy; text-underline-offset: 4px; }
+.feedback-success-icon { background: var(--i); color: var(--f); }
+.feedback-success p { color: var(--i); }
+
+/* Pauza a mezihra: fialová karta s bledě žlutým inkoustem */
+.pause-overlay {
+    --f: var(--p5f);
+    --i: var(--p5i);
+    background: var(--f);
+    color: var(--i);
+}
+.pause-overlay h2 { font-size: clamp(64px, 20vw, 96px); font-weight: 900; font-stretch: 68%; line-height: .9; letter-spacing: -.02em; color: var(--i); }
+
+.wd-word {
+    font-size: clamp(56px, 18vw, 84px);
+    font-weight: 900;
+    font-stretch: 68%;
+    line-height: .9;
+    letter-spacing: -.02em;
+    color: var(--i);
+}
+.wd-card, .wd-card--empty {
+    background: none;
+    border: 0;
+    border-top: 3px solid var(--i);
+    border-radius: 0;
+    padding: 16px 2px 4px;
+}
+.wd-text { color: var(--i); font-size: 18px; font-weight: 600; line-height: 1.4; }
+.wd-meta { color: var(--i); font-size: 14px; font-weight: 600; }
+.wd-avatar { background: var(--i); color: var(--f); font-weight: 900; }
+.wd-vote {
+    background: transparent;
+    color: var(--i);
+    box-shadow: inset 0 0 0 2.5px var(--i);
+    font-weight: 800;
+    font-size: 14px;
+}
+.wd-vote.voted { background: var(--i); color: var(--f); }
+.wd-vote:active { transform: none; scale: .94; }
+.wd-count { color: var(--i); font-size: 16px; font-weight: 800; font-stretch: 100%; }
+.word-done.wd-paused .wd-count { color: var(--f); background: var(--i); border-radius: 999px; padding: 6px 16px; }
+
+/* Významy v modalu */
+.def-item {
+    background: none;
+    border: 0;
+    border-top: 3px solid var(--i);
+    border-radius: 0;
+    padding: 14px 2px 8px;
+}
+.def-item.mine { border-top-width: 7px; }
+.def-word { font-size: 20px; font-weight: 900; font-stretch: 80%; color: var(--i); }
+.def-empty { color: var(--i); font-size: 15px; }
+.def-report { color: var(--i); opacity: 1; font-weight: 600; }
+#profile .wd-text, #profileDefs .wd-text { color: var(--i); font-size: 16px; font-weight: 600; margin: 0; line-height: 1.4; }
+
+/* Toast */
+.kb-toast {
+    background: var(--i);
+    color: var(--f);
+    font-weight: 800;
+    font-size: 16px;
+    box-shadow: none;
+}
+
+/* Omezený pohyb: karty se přebarví okamžitě, odpočet se zúží skokem,
+   žádné blikání ani pulz. */
+@media (prefers-reduced-motion: reduce) {
+    :root, :root:has(#game.active), #game { transition: none !important; }
+    #game .pg-cell,
+    .gp-timer.low,
+    .word-display.found::before,
+    .word-display:has(.answer-slot.missed)::after { animation: none !important; }
+}

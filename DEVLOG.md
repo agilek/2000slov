@@ -1,5 +1,26 @@
 # Devlog
 
+## 2026-09-24
+
+### Šest vizuálních směrů pro Gen Z (větev design/genz-directions)
+Průzkum vzhledu bez změny funkcí: šest vrstev CSS v `public/designs/` nad
+`style.css`, zapínaných `?design=<název>` (pamatuje se, `?design=off` vypne).
+Tři vlastní (Kostky/Duolingo, Sešit, Záře) a tři podle identit aplikací
+(Plakát/Spotify Wrapped, Cvak/Snapchat, Smyčka/TikTok). `/designs.html` je
+ukazuje živě vedle sebe a přepíná všechny do stejného stavu i režimu. Do
+`game.js` přibyly jen dva prezentační háky: `--t` (zbývající čas 0–1) na
+`#game` a barvy konfet z `--confetti`. Který směr, čeká v OTEVRENE-OTAZKY 1.6.
+
+**Root cause / approach:** Nástěnka řídí iframy přes `contentWindow.eval`, který
+vidí i `let`/`const` globály hry (`state`, `persist`, `defCache`); `savePersist`
+je deklarace funkce, takže jde v rámečku přepsat na no-op a ukázková data
+nepřepíšou uloženou hru. Chrome dává iframu `prefers-color-scheme` podle
+`color-scheme` rámečku — přepínač režimu tak nesahá do hry. Past pro každou
+kůži: `.answer-slot` si nechává `entering` i inline `animation-delay` napořád,
+keyframe na `.filled` pak dědí zpoždění i×40 ms.
+
+→ *Memory saved: `design_directions_board.md`, `webkit_check.md`*
+
 ## 2026-09-21
 
 ### Revize očima iOS designéra: bezpečné zóny, sheety, palcová zóna

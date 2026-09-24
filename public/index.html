@@ -21,6 +21,26 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=4">
+<script>
+// Průzkum vizuálních směrů (větev design/genz-directions): ?design=kostky|sesit|zare|plakat|cvak|smycka
+// přidá přes style.css vrstvu z designs/. Volba se pamatuje, ?design=off ji vypne.
+// document.write, ať styl blokuje vykreslení jako statický <link> — bez probliknutí.
+(function () {
+    var DESIGNS = {
+        kostky: ['#ffffff', '#131f24'], sesit: ['#f4f8fd', '#1c3a2e'], zare: ['#0a0f24', '#0a0f24'],
+        plakat: ['#3d3bf3', '#3d3bf3'], cvak: ['#fffc00', '#000000'], smycka: ['#000000', '#000000'],
+    };
+    var d = new URLSearchParams(location.search).get('design');
+    try {
+        if (d && self === top) localStorage.setItem('design', d);
+        if (!d) d = localStorage.getItem('design');
+    } catch (e) {}
+    if (!DESIGNS[d]) return;
+    document.documentElement.dataset.design = d;
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (m, i) { m.content = DESIGNS[d][i]; });
+    document.write('<link rel="stylesheet" href="designs/' + d + '.css">');
+})();
+</script>
 </head>
 <body>
 

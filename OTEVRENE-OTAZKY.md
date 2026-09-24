@@ -1,7 +1,7 @@
 # Otevřené otázky
 
 Věci, na které čekám odpověď, a co se nedá dodělat bez rozhodnutí.
-Poslední aktualizace: 2026-09-21.
+Poslední aktualizace: 2026-09-24.
 
 > Pravidlo: cokoli, co potřebuje rozhodnutí uživatele, patří sem — hned, jak to
 > vyjde najevo. Ne až na konci, ne jen v odpovědi v chatu. Zodpovězené se
@@ -58,6 +58,22 @@ Teď je vidí jen ten, kdo hraje trénink. Kdo hraje jen denní výzvu, o funkci
 nikdy nezjistí. Dřív jsi zvolil „jen trénink", ale to bylo předtím, než významy
 vůbec existovaly — stojí za přehodnocení, aspoň pro výsledkovou obrazovku.
 
+### 1.6 Který vizuální směr?
+**Stav:** čeká na rozhodnutí (větev `design/genz-directions`).
+Šest kůží nad stejnou hrou, srovnání vedle sebe na `/designs.html`, jednotlivě
+`/?design=<název>`:
+
+- *Kostky* — Duolingo nativně: klávesy s rtem, otisk po použitém písmenu, panel zdola.
+- *Sešit* — samolepky na čtverečkovaném papíře, zvýrazňovač, červená propiska; tmavý = tabule.
+- *Záře* — tmavá, barva světla je zbývající čas (azurová → bílá → jantar → červená).
+- *Plakát* (podle Spotify Wrapped) — dvoubarevné plochy, každé slovo nová barva, číslo času se zužuje.
+- *Cvak* (podle Snapchatu) — žlutá a černá, písmena jako spoušť, záblesk závěrky.
+- *Smyčka* (podle TikToku) — černá, azurovo-červený posun, lišta vpravo, srdíčko a glitch.
+
+Můj názor: Kostky nebo Záře. Ze směrů podle aplikací bych bral jednotlivé
+nápady, ne celou kůži — žlutá Snapchatu i azurovo-červený posun TikToku jsou
+jejich poznávací znamení a v produkci by hra působila jako napodobenina.
+
 ---
 
 ## 2. Chybí, ale rozhodnutí nepotřebuju
@@ -76,6 +92,13 @@ Můžu udělat, až řekneš.
 - **Přepínač světlý/tmavý režim** — CSS háky `data-theme` existují, nic je
   nenastavuje.
 - **Významy jdou upravit, ale ne smazat.**
+- **Drobné chyby vzhledu v `style.css`**, na které narazil průzkum směrů:
+  pobídka k sérii (`.streak-nudge`) sedí nalepená na tlačítku sdílení;
+  „Sbírka slov" je vidět dřív, než na ni dojde postupné odhalení výsledku
+  (`.btn-tertiary { opacity }` přebíjí `.reveal-item`).
+- **Úprava přezdívky v profilu:** po doběhnutí `refreshAuth()` se znovu ukáže
+  tlačítko „Změnit přezdívku" vedle rozepsaného formuláře — `renderProfile()`
+  mu vrací `display`.
 - **Dvě mrtvé větve** `claude/button-haptic-feedback-8kgxkn` a
   `claude/czech-word-game-f2hnia` na originu, dávno zmergované.
 

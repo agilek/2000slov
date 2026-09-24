@@ -1,0 +1,668 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap');
+
+/* ================================================================
+   Směr A — „Kostky"
+   Všechno je hmatatelný předmět, který jde zmáčknout: dlaždice a tlačítka
+   mají pevný spodní „ret" a při stisku o něj klesnou. Jazyk Duolinga —
+   ploché syté barvy, zaoblené tučné písmo, pružné odezvy a panel se
+   zpětnou vazbou zdola. Vrstva přes style.css, DOM ani logika se nemění.
+   ================================================================ */
+
+:root {
+    --display: 'Fredoka', 'Nunito', system-ui, sans-serif;
+    --bg: #ffffff;
+    --ink: #2b3a42;
+    --muted-text: #66747c;
+    --muted: #afbbc1;          /* jen dekorace (úchyty, zamčené znaky) */
+    --card: #ffffff;
+    --line: #e3e8eb;
+    --lip: #d3dce0;            /* ret pod bílými dlaždicemi */
+    --ghost: #e9eef1;          /* otisk po použitém písmenu, prázdné pole */
+    --tile: #ffffff;
+    --grid-cell: #e9eef1;
+    --chip-bg: #f1f5f7;
+    --hover-tint: #f5f8fa;
+
+    --green: #34a81c;  --green-lip: #26860f;  --green-dark: #2d9a17;
+    --blue: #1b93e6;   --blue-lip: #1476bd;   --blue-dark: #1686d4;
+    --blue-ink: #0b6aaa;                       /* modrý text na bílé */
+    --blue-tint: #ddf4ff; --blue-soft: #84d8ff;
+    --red: #f24b4b;    --red-lip: #c93636;
+    --gold: #ffb800;   --gold-lip: #e09a00;   --gold-bg: #fff4d1; --gold-ink: #8a5a00;
+    --gold-title: #a86f00;
+    --orange: #ff9600;
+
+    --ok-bg: #d7ffb8;  --ok-ink: #2b7a0b;  --ok-line: #a5ed6e;
+    --bad-bg: #ffdfe0; --bad-ink: #b3261e; --bad-line: #ffb2b2;
+    --toast-bg: #2b3a42; --toast-ink: #ffffff;
+
+    --overlay: rgba(19, 31, 36, .45);
+    --shadow-soft: rgba(0, 0, 0, .06);
+    --shadow-card: rgba(0, 0, 0, .16);
+    --radius: 16px;
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+    --confetti: #34a81c #1b93e6 #ffb800 #f24b4b #ce82ff;
+    color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #131f24;
+        --ink: #f1f7fb;
+        --muted-text: #93a4ac;
+        --muted: #52656e;
+        --card: #131f24;
+        --line: #37464f;
+        --lip: #37464f;
+        --ghost: #26363d;
+        --tile: #131f24;
+        --grid-cell: #26363d;
+        --chip-bg: #1b2b32;
+        --hover-tint: #1b2b32;
+
+        --green: #4cb82b;  --green-lip: #38931a;  --green-dark: #56c434;
+        --blue: #1b93e6;   --blue-lip: #1476bd;   --blue-dark: #2aa0f0;
+        --blue-ink: #49c0f8;
+        --blue-tint: #10304a; --blue-soft: #1f6e9e;
+        --red: #ff5a5a;    --red-lip: #c93636;
+        --gold: #ffc21a;   --gold-lip: #c48600;   --gold-bg: #3a3218; --gold-ink: #ffd363;
+        --gold-title: #ffc21a;
+
+        --ok-bg: #1e3a1a;  --ok-ink: #8ee05a;  --ok-line: #3a6b2a;
+        --bad-bg: #3d1f22; --bad-ink: #ff8a8a; --bad-line: #7a3238;
+        --toast-bg: #37464f; --toast-ink: #f1f7fb;
+
+        --overlay: rgba(0, 0, 0, .6);
+        --shadow-soft: rgba(0, 0, 0, .35);
+        --shadow-card: rgba(0, 0, 0, .5);
+        color-scheme: dark;
+    }
+}
+
+/* Písmo: Fredoka na všechno, co je „předmět" nebo nadpis, Nunito na text. */
+.btn, .btn-tertiary, .icon-btn, .screen h1, .screen h2, .welcome-date,
+.screen-title, .profile-avatar, .profile-name, .profile-section-title, .stat-value,
+.gp-headline, .gp-timer, .word-display, .answer-slot, .letter,
+.modal-header h2, .collection-count, .archive-date, .archive-score, .kb-toast,
+.pause-overlay h2, .wd-word, .wd-avatar, .wd-vote, .wd-count, .def-word {
+    font-family: var(--display);
+}
+
+/* ---- Tlačítka: ret pod tlačítkem, stisk o něj klesne ---- */
+.btn {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    border-radius: 16px;
+    padding: 14px 24px;
+    min-height: 52px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 0 var(--lip);
+    transition: translate .08s ease, box-shadow .08s ease, background .15s ease, filter .15s ease;
+}
+.btn:active { transform: none; translate: 0 4px; box-shadow: 0 0 0 transparent; }
+.btn:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; }
+.btn:disabled { filter: saturate(.3) opacity(.7); }
+.btn-primary { background: var(--blue); box-shadow: 0 4px 0 var(--blue-lip); }
+.btn-share, .btn-play { background: var(--green); box-shadow: 0 4px 0 var(--green-lip); }
+.btn-play { font-size: 20px; min-height: 58px; padding: 16px 24px; }
+.btn-secondary {
+    background: var(--card);
+    color: var(--blue-ink);
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+}
+@media (hover: hover) {
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-share:hover, .btn-play:hover { background: var(--green-dark); }
+    .btn-secondary:hover { background: var(--hover-tint); color: var(--blue-ink); border-color: var(--line); }
+}
+
+/* Terciární tlačítko = modrý odkaz velkými písmeny (Duolingo „NE, DÍKY"). */
+.btn-tertiary {
+    background: none;
+    border: none;
+    opacity: 1;
+    color: var(--blue-ink);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    min-height: 48px;
+    padding: 8px 12px;
+    text-wrap: balance;
+    border-radius: 12px;
+    transition: background .12s ease, scale .08s ease;
+}
+.btn-tertiary:active { scale: .97; }
+.btn-tertiary:focus { outline: none; }
+.btn-tertiary:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 2px; }
+@media (hover: hover) { .btn-tertiary:hover { opacity: 1; color: var(--blue-ink); background: var(--hover-tint); } }
+
+/* ---- Úvod ---- */
+.screen .welcome-instruction {
+    font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: clamp(19px, 5.2vw, 22px);
+    letter-spacing: 0;
+    line-height: 1.35;
+    max-width: 22ch;
+    margin: 0 auto;
+}
+.welcome-instruction--second {
+    margin-top: 12px !important;
+    max-width: 30ch !important;
+    font-size: clamp(15px, 4.2vw, 17px) !important;
+    font-weight: 600 !important;
+    line-height: 1.5 !important;
+    color: var(--muted-text) !important;
+}
+.welcome-actions { gap: 18px; }
+.welcome-actions > .btn-play { width: 100%; }
+
+/* Datum jako plastový štítek — klepnutím otevře sbírku. */
+.welcome-date {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink);
+    padding: 9px 16px 9px 12px;
+    gap: 8px;
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 3px 0 var(--lip);
+    transition: translate .08s ease, box-shadow .08s ease, background .15s ease;
+}
+.welcome-date::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    background: var(--blue);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6v13'/%3E%3Cpath d='M12 6v13'/%3E%3Cpath d='M21 6v13'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0'/%3E%3Cpath d='M3 6v13'/%3E%3Cpath d='M12 6v13'/%3E%3Cpath d='M21 6v13'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.welcome-date:active { transform: none; translate: 0 3px; box-shadow: 0 0 0 transparent; }
+.welcome-date:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 3px; border-radius: 14px; }
+@media (hover: hover) { .welcome-date:hover { color: var(--ink); background: var(--hover-tint); } }
+
+/* Mřížka dne: 20 kostek s retem. Při každém zobrazení úvodu (mřížka se
+   staví znovu) i výsledku (mřížka se do něj přesune) napadají vlnou —
+   zpoždění se skládá ze sloupce (--c) a řádku (--r). */
+.welcome-grid { gap: 10px 8px; margin-bottom: 30px; }
+.welcome-grid .pg-cell,
+#result .pg-cell {
+    width: clamp(34px, 9.4vw, 44px);
+    height: clamp(34px, 9.4vw, 44px);
+    border-radius: 11px;
+    background: var(--ghost);
+    box-shadow: 0 4px 0 var(--lip);
+    animation: blockDrop .5s var(--spring) both;
+    animation-delay: calc(var(--c, 0) * 45ms + var(--r, 0) * 80ms);
+}
+.welcome-grid .pg-cell.solved, #result .pg-cell.solved { background: var(--green); box-shadow: 0 4px 0 var(--green-lip); }
+.welcome-grid .pg-cell.missed, #result .pg-cell.missed { background: var(--red); box-shadow: 0 4px 0 var(--red-lip); }
+.pg-cell:nth-child(5n+2) { --c: 1; }
+.pg-cell:nth-child(5n+3) { --c: 2; }
+.pg-cell:nth-child(5n+4) { --c: 3; }
+.pg-cell:nth-child(5n+5) { --c: 4; }
+.pg-cell:nth-child(n+6)  { --r: 1; }
+.pg-cell:nth-child(n+11) { --r: 2; }
+.pg-cell:nth-child(n+16) { --r: 3; }
+@keyframes blockDrop {
+    0%   { opacity: 0; translate: 0 -22px; scale: .7; }
+    60%  { opacity: 1; translate: 0 3px; scale: 1.04; }
+    100% { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+/* Nadpisy */
+.screen h1, .screen h2 { font-weight: 700; letter-spacing: 0; }
+.screen h1 { font-size: clamp(40px, 12vw, 48px); margin-bottom: 14px; line-height: 1; }
+
+/* ---- Výsledek ---- */
+#result { gap: 0; }
+#result .game-grid.result-grid { gap: 10px 8px; margin-bottom: 30px; }
+#survivedCount { font-size: clamp(26px, 7.4vw, 32px); margin-bottom: 16px; }
+#result:not(:has(.pg-cell.missed)) #survivedCount { color: var(--gold-title); }
+#percentile {
+    align-self: center;
+    display: inline-block;
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold-ink);
+    background: var(--gold-bg);
+    border: 2px solid var(--gold);
+    box-shadow: 0 4px 0 var(--gold-lip);
+    border-radius: 16px;
+    padding: 9px 18px;
+    margin-bottom: 20px !important;
+}
+#progressLine {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--muted-text);
+    margin-bottom: 26px;
+}
+#countdown {
+    align-self: center;
+    font-family: var(--display);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--blue-ink);
+    background: var(--blue-tint);
+    border-radius: 12px;
+    padding: 8px 14px;
+    margin: 22px auto;
+}
+.result-actions .btn, .share-actions .btn { padding: 14px 24px; font-size: 17px; width: 100%; }
+#streakNudge { margin: 0 auto 22px; width: 100%; padding: 16px; }
+.a2hs-banner, .streak-nudge {
+    background: var(--card);
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    border-radius: 18px;
+}
+#a2hsBanner p { font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--muted-text); margin: 0; }
+#streakNudge p { font-size: 16px; font-weight: 700; line-height: 1.45; color: var(--ink); margin: 0 0 14px; }
+.a2hs-close { color: var(--muted-text); }
+#feedbackLine { font-size: 15px !important; font-weight: 600 !important; }
+.feedback-link { color: var(--blue-ink); text-decoration-thickness: 2px; }
+
+/* ---- Hra: rozvržení lekce ---- */
+.game-screen { gap: 20px; padding-top: calc(14px + env(safe-area-inset-top)); }
+
+/* Postup dne = segmentová lišta nahoře, jako lekce v Duolingu. */
+#game .game-grid {
+    grid-template-columns: repeat(20, 1fr);
+    gap: 3px;
+    width: 100%;
+    margin: 6px 0 0;
+}
+#game .pg-cell {
+    position: relative;
+    width: auto;
+    height: 16px;
+    border-radius: 4px;
+    background: var(--ghost);
+}
+#game .pg-cell:first-child { border-radius: 8px 4px 4px 8px; }
+#game .pg-cell:last-child  { border-radius: 4px 8px 8px 4px; }
+#game .pg-cell.solved { background: var(--green); }
+#game .pg-cell.missed { background: var(--red); }
+/* světlý proužek nahoře na vyplněném dílku */
+#game .pg-cell.solved::after, #game .pg-cell.missed::after {
+    content: '';
+    position: absolute;
+    left: 3px; right: 3px; top: 3px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .32);
+}
+/* aktuální slovo: první dílek bez výsledku */
+#game .pg-cell:first-child:not(.solved):not(.missed),
+#game .pg-cell.solved + .pg-cell:not(.solved):not(.missed),
+#game .pg-cell.missed + .pg-cell:not(.solved):not(.missed) {
+    animation: segNow 1.4s ease-in-out infinite;
+}
+#game .pg-cell.pop { animation: segPop .4s var(--spring); }
+@keyframes segNow { 0%, 100% { background: var(--blue-soft); } 50% { background: var(--blue-tint); } }
+@keyframes segPop { 45% { scale: 1.12 1.5; } }
+
+.game-progress { margin-top: auto; gap: 4px; }
+.gp-headline {
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: .08em;
+    color: var(--muted-text);
+    opacity: 1;
+}
+.gp-timer {
+    display: inline-flex;
+    align-items: baseline;
+    font-weight: 700;
+    font-size: 56px;
+    color: var(--ink);
+}
+.gp-timer::before {
+    content: '';
+    align-self: center;
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
+    background: currentColor;
+    opacity: .9;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.gp-timer-unit { font-size: 26px; color: currentColor; opacity: .55; }
+.gp-timer.low, .gp-timer.zero { color: var(--red); }
+
+/* Zavřít trénink: holý šedý křížek, 44 px na dotyk. */
+.close-game-btn {
+    width: 44px; height: 44px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    border-radius: 12px;
+}
+.close-game-btn svg { width: 26px; height: 26px; stroke-width: 3; }
+.close-game-btn:focus-visible { outline: 3px solid var(--blue-soft); }
+@media (hover: hover) { .close-game-btn:hover { color: var(--muted-text); background: var(--hover-tint); border-color: transparent; } }
+
+/* ---- Sloty odpovědi: prázdné pole → dlaždice s retem ---- */
+.word-display { color: var(--ink); gap: 10px 6px; }
+.word-display.found { color: #fff; }
+.answer-slot {
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: var(--ghost);
+    font-weight: 600;
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
+}
+.answer-slot.filled:not(.locked) {
+    transform: none;
+    background: var(--tile);
+    color: var(--ink);
+    border-color: var(--line);
+    box-shadow: 0 3px 0 var(--lip);
+    animation: slotPop .24s var(--spring) both;
+    animation-delay: 0s !important;   /* inline zpoždění z náběhu slova tu nepatří */
+}
+@keyframes slotPop { 0% { scale: .55; } 70% { scale: 1.08; } 100% { scale: 1; } }
+.answer-slot.locked { background: none; border-color: transparent; color: var(--muted); }
+
+/* Správně: sloty zezelenají vlnou zleva doprava. */
+.word-display.found .answer-slot:not(.locked) {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+    box-shadow: 0 3px 0 var(--green-lip);
+    animation: slotWin .3s var(--spring) both;
+}
+.word-display.found .answer-slot:nth-child(2)  { animation-delay: 30ms !important; }
+.word-display.found .answer-slot:nth-child(3)  { animation-delay: 60ms !important; }
+.word-display.found .answer-slot:nth-child(4)  { animation-delay: 90ms !important; }
+.word-display.found .answer-slot:nth-child(5)  { animation-delay: 120ms !important; }
+.word-display.found .answer-slot:nth-child(6)  { animation-delay: 150ms !important; }
+.word-display.found .answer-slot:nth-child(7)  { animation-delay: 180ms !important; }
+.word-display.found .answer-slot:nth-child(8)  { animation-delay: 210ms !important; }
+.word-display.found .answer-slot:nth-child(n+9) { animation-delay: 240ms !important; }
+@keyframes slotWin {
+    0%   { translate: 0 0; background: var(--tile); color: var(--ink); border-color: var(--line); box-shadow: 0 3px 0 var(--lip); }
+    40%  { translate: 0 -8px; }
+    100% { translate: 0 0; }
+}
+
+/* Špatně: sloty zčervenají a zatřesou se (třes je ze style.css). */
+.word-display.shake .answer-slot.filled:not(.locked) {
+    background: var(--bad-bg);
+    border-color: var(--red);
+    color: var(--bad-ink);
+    box-shadow: 0 3px 0 var(--red-lip);
+}
+.answer-slot.missed {
+    background: var(--bad-bg);
+    border-color: var(--bad-line);
+    color: var(--bad-ink);
+    box-shadow: 0 3px 0 var(--bad-line);
+}
+
+/* ---- Zásobník písmen: klávesy s retem, použité nechají otisk ---- */
+.letter-row { row-gap: 12px; }
+.letter {
+    border-radius: 16px;
+    background: var(--tile);
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    font-weight: 600;
+    color: var(--ink);
+    transition: background .12s ease, color .12s ease, border-color .12s ease, box-shadow .08s ease, translate .08s ease;
+}
+@media (hover: hover) { .letter:hover { transform: none; background: var(--hover-tint); } }
+.letter:active { transform: none; translate: 0 4px; box-shadow: 0 0 0 var(--lip); }
+.letter.selected,
+.letter.selected.correct,
+.letter.selected.incorrect {
+    background: var(--ghost);
+    border-color: transparent;
+    color: transparent;
+    box-shadow: none;
+    translate: 0 4px;
+}
+
+/* ---- Panel se zpětnou vazbou zdola (Duolingo) ----
+   Čistě z CSS: vyjede, dokud má slovo .found (správně) nebo sloty .missed
+   (čas vypršel). Zpátky zmizí bez animace, ať se text nepřepne při sjíždění. */
+#game::after {
+    content: 'Paráda!';
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 20;
+    padding: 24px 24px calc(28px + env(safe-area-inset-bottom)) 80px;
+    text-align: left;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.2;
+    color: var(--ok-ink);
+    background: var(--ok-bg) no-repeat 24px 20px / 40px 40px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2334a81c'/%3E%3Cpath d='M12 20.5l5.5 5.5L28.5 15' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    pointer-events: none;
+    translate: 0 110%;
+    visibility: hidden;
+}
+#game:has(.word-display.found)::after,
+#game:has(.answer-slot.missed)::after {
+    translate: 0 0;
+    visibility: visible;
+    transition: translate .28s var(--spring);
+}
+#game:has(.word-display.found):has(.gp-timer.low)::after { content: 'Tak tak!'; }
+#game:has(.answer-slot.missed)::after {
+    content: 'Čas vypršel';
+    color: var(--bad-ink);
+    background-color: var(--bad-bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23f24b4b'/%3E%3Cpath d='M14 14l12 12M26 14L14 26' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* ---- Horní lišta úvodu + profil ---- */
+.icon-btn { gap: 6px; }
+.icon-btn-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    transition: translate .08s ease, box-shadow .08s ease, background .15s ease;
+}
+.top-bar .icon-btn:first-child .icon-btn-circle { color: var(--blue); }
+.top-bar .icon-btn:last-child .icon-btn-circle { color: var(--orange); }
+.icon-btn:active .icon-btn-circle { transform: none; translate: 0 4px; box-shadow: 0 0 0 var(--lip); }
+.icon-btn:focus-visible .icon-btn-circle { outline: 3px solid var(--blue-soft); outline-offset: 3px; }
+@media (hover: hover) { .icon-btn:hover .icon-btn-circle { background: var(--hover-tint); } }
+.icon-btn-label { font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--muted-text); }
+.icon-btn-circle--bare { border: none; box-shadow: none; color: var(--muted-text); }
+.icon-btn-circle--bare:active { transform: none; translate: 0 2px; }
+
+.screen-title { font-weight: 700; font-size: 20px; }
+.profile-head { gap: 6px; }
+.profile-avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 42px;
+    font-weight: 700;
+    background: var(--blue);
+    box-shadow: 0 5px 0 var(--blue-lip);
+    margin-bottom: 6px;
+}
+.profile-name { font-weight: 700; font-size: 26px; }
+.profile-sub { font-size: 15px; font-weight: 700; color: var(--muted-text); }
+#profile .profile-note { font-size: 14px; font-weight: 600; margin: -6px 0 0; }
+.profile-section { gap: 12px; }
+.profile-section-title {
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--ink);
+    letter-spacing: 0;
+    text-transform: none;
+}
+.stat-grid { gap: 12px; }
+.stat-tile {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 10px;
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    border-radius: 16px;
+    padding: 13px 14px;
+}
+.stat-tile::before { grid-row: span 2; font-size: 26px; line-height: 1; }
+.stat-tile:nth-child(1)::before { content: '🔥'; }
+.stat-tile:nth-child(2)::before { content: '📅'; }
+.stat-tile:nth-child(3)::before { content: '📚'; }
+.stat-tile:nth-child(4)::before { content: '🎯'; }
+.stat-tile:nth-child(5)::before { content: '💪'; }
+.stat-value { font-weight: 700; font-size: 24px; }
+.stat-label { font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--muted-text); }
+.empty-card {
+    border: 2px dashed var(--line);
+    border-radius: 16px;
+    font-weight: 600;
+}
+#profile .wd-text { font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--ink); margin: 0; }
+#profile .wd-meta span { font-size: 13px; }
+
+/* ---- Sheety ---- */
+.modal-content {
+    border-radius: 22px 22px 0 0;
+    background: var(--card);
+    border-top: 2px solid var(--line);
+}
+.modal-header { border-bottom: 2px solid var(--line); background: var(--card); }
+.modal-header::before { background: var(--lip); opacity: 1; width: 42px; }
+.modal-header h2 { font-weight: 700; font-size: 22px; }
+.collection-count { font-weight: 600; color: var(--muted-text); }
+.close-modal { color: var(--muted); width: 44px; height: 44px; top: 14px; font-size: 30px; }
+.close-modal:focus-visible { outline: 3px solid var(--blue-soft); }
+@media (min-width: 600px) and (hover: hover) {
+    .modal-content { border: 2px solid var(--line); box-shadow: 0 6px 0 var(--lip), 0 24px 60px var(--shadow-card); }
+}
+
+.archive-item {
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    transition: translate .08s ease, box-shadow .08s ease, border-color .12s ease, background .12s ease;
+}
+.archive-item:not(.locked):active { translate: 0 4px; box-shadow: 0 0 0 var(--lip); }
+.archive-item.open { background: var(--blue-tint); border-color: var(--blue-soft); box-shadow: 0 4px 0 var(--blue-soft); }
+.archive-item.locked { opacity: .5; box-shadow: 0 4px 0 var(--line); }
+@media (hover: hover) {
+    .archive-item:hover { border-color: var(--blue-soft); }
+    .archive-item.locked:hover { border-color: var(--line); }
+}
+.archive-date { font-weight: 600; font-size: 17px; }
+.archive-score { font-weight: 700; font-size: 14px; padding: 5px 12px; background: var(--ok-bg); color: var(--ok-ink); }
+.archive-score.not-played { background: var(--ghost); color: var(--muted-text); }
+/* dnešek: jediný neodehraný den, který není zamčený */
+.archive-item:not(.locked) .archive-score.not-played { background: var(--blue); color: #fff; }
+.archive-words { gap: 6px; padding-top: 14px; }
+.archive-words span {
+    background: var(--card);
+    border: 2px solid var(--line);
+    box-shadow: 0 2px 0 var(--lip);
+    border-radius: 10px;
+    padding: 3px 10px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Formuláře */
+.feedback-form { gap: 14px; }
+.feedback-form label { font-family: var(--display); font-size: 15px; font-weight: 600; margin-bottom: -8px; }
+.feedback-form input,
+.feedback-form textarea {
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    background: var(--ghost);
+    font-weight: 700;
+    padding: 13px 14px;
+    transition: border-color .12s ease, background .12s ease;
+}
+.feedback-form input::placeholder, .feedback-form textarea::placeholder { color: var(--muted-text); font-weight: 600; }
+.feedback-form input:focus,
+.feedback-form textarea:focus { border-color: var(--blue); background: var(--card); }
+.feedback-form .btn { margin-top: 8px; }
+.feedback-success-icon { background: var(--green); box-shadow: 0 4px 0 var(--green-lip); font-family: var(--display); }
+.feedback-success p { font-family: var(--display); font-weight: 600; font-size: 18px; }
+
+/* ---- Pauza ---- */
+.pause-overlay h2 { font-weight: 700; font-size: 36px; }
+.pause-overlay .pause-buttons { width: min(400px, 100% - 44px); }
+.pause-overlay .btn-primary { background: var(--green); box-shadow: 0 4px 0 var(--green-lip); min-height: 58px; font-size: 20px; }
+
+/* ---- Mezihra po slově v tréninku ---- */
+.word-done { gap: 18px; }
+.wd-word { font-weight: 700; font-size: clamp(34px, 10vw, 44px); letter-spacing: 0; }
+.wd-card {
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+}
+.wd-card--empty { border-style: dashed; box-shadow: none; }
+.wd-text { font-size: 17px; font-weight: 700; line-height: 1.5; }
+.wd-card--empty .wd-text { color: var(--muted-text); font-weight: 600; }
+.wd-meta { font-size: 14px; font-weight: 700; }
+.wd-avatar { background: var(--blue); font-weight: 700; width: 26px; height: 26px; font-size: 13px; }
+.wd-vote {
+    background: var(--card);
+    border: 2px solid var(--line);
+    box-shadow: 0 3px 0 var(--lip);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 5px 12px;
+    color: var(--muted-text);
+    transition: translate .08s ease, box-shadow .08s ease;
+}
+.wd-vote:active { transform: none; translate: 0 3px; box-shadow: none; }
+.wd-vote:disabled { cursor: default; }
+.wd-vote.voted { background: var(--ok-bg); border-color: var(--ok-line); box-shadow: 0 3px 0 var(--ok-line); color: var(--ok-ink); }
+.wd-count { font-weight: 600; font-size: 16px; }
+.word-done.wd-paused .wd-count { color: var(--blue-ink); }
+
+/* Seznam významů v sheetu */
+.def-item {
+    border: 2px solid var(--line);
+    box-shadow: 0 4px 0 var(--lip);
+    border-radius: 16px;
+}
+.def-item.mine { border-color: var(--blue-soft); box-shadow: 0 4px 0 var(--blue-soft); }
+.def-word { font-weight: 700; font-size: 17px; }
+.def-report { color: var(--blue-ink); font-weight: 700; opacity: 1; font-size: 13px; }
+
+/* ---- Toast ---- */
+.kb-toast {
+    background: var(--toast-bg);
+    color: var(--toast-ink);
+    border-radius: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, .18), 0 12px 30px var(--shadow-card);
+}
+
+/* ---- Omezený pohyb: pryč s vlnami, pulzy i vyjížděním ---- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        animation-delay: 0s !important;
+        transition-duration: .01ms !important;
+    }
+}
