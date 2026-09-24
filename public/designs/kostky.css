@@ -29,6 +29,7 @@
     --gold: #ffb800;   --gold-lip: #e09a00;   --gold-bg: #fff4d1; --gold-ink: #8a5a00;
     --gold-title: #a86f00;
     --orange: #ff9600;
+    --streak-ink: #b85400;     /* číslo série na bílé (4,9:1) */
 
     --ok-bg: #d7ffb8;  --ok-ink: #2b7a0b;  --ok-line: #a5ed6e;
     --bad-bg: #ffdfe0; --bad-ink: #b3261e; --bad-line: #ffb2b2;
@@ -68,6 +69,7 @@
         --ok-bg: #1e3a1a;  --ok-ink: #8ee05a;  --ok-line: #3a6b2a;
         --bad-bg: #3d1f22; --bad-ink: #ff8a8a; --bad-line: #7a3238;
         --toast-bg: #37464f; --toast-ink: #f1f7fb;
+        --streak-ink: #ffab3d;
 
         --overlay: rgba(0, 0, 0, .6);
         --shadow-soft: rgba(0, 0, 0, .35);
@@ -81,7 +83,7 @@
 .screen-title, .profile-avatar, .profile-name, .profile-section-title, .stat-value,
 .gp-headline, .gp-timer, .word-display, .answer-slot, .letter,
 .modal-header h2, .collection-count, .archive-date, .archive-score, .kb-toast,
-.pause-overlay h2, .wd-word, .wd-avatar, .wd-vote, .wd-count, .def-word {
+.pause-overlay h2, .wd-title, .wd-sub, .wd-streak, .wd-tile, .wd-avatar, .wd-vote, .def-word {
     font-family: var(--display);
 }
 
@@ -435,7 +437,8 @@
 
 /* ---- Panel se zpětnou vazbou zdola (Duolingo) ----
    Čistě z CSS: vyjede, dokud má slovo .found (správně) nebo sloty .missed
-   (čas vypršel). Zpátky zmizí bez animace, ať se text nepřepne při sjíždění. */
+   (čas vypršel). Zpátky zmizí bez animace, ať se text nepřepne při sjíždění.
+   V tréninku ho nahrazuje panel mezihry, proto #game:not(.practice). */
 #game::after {
     content: 'Paráda!';
     position: fixed;
@@ -454,8 +457,8 @@
     translate: 0 110%;
     visibility: hidden;
 }
-#game:has(.word-display.found)::after,
-#game:has(.answer-slot.missed)::after {
+#game:not(.practice):has(.word-display.found)::after,
+#game:not(.practice):has(.answer-slot.missed)::after {
     translate: 0 0;
     visibility: visible;
     transition: translate .28s var(--spring);
@@ -529,7 +532,9 @@
     height: 36px;
     background: center / contain no-repeat;
 }
-.stat-tile:nth-child(1)::before { background-image: url(kostky/plamen.svg); }
+.stat-tile:nth-child(1)::before { background-image: url(kostky/plamen-zivy.svg); }
+/* nulová série: plamen zhasne (šedý, bez plápolání) jako v Duolingu */
+.stat-tile.stat-tile--off::before { background-image: url(kostky/plamen.svg); filter: grayscale(1); opacity: .45; }
 .stat-tile:nth-child(2)::before { background-image: url(kostky/kalendar.svg); }
 .stat-tile:nth-child(3)::before { background-image: url(kostky/kostka.svg); }
 .stat-tile:nth-child(4)::before { background-image: url(kostky/terc.svg); }
@@ -643,18 +648,115 @@
 .pause-overlay .pause-buttons { width: min(400px, 100% - 44px); }
 .pause-overlay .btn-primary { background: var(--green); box-shadow: 0 4px 0 var(--green-lip); min-height: 58px; font-size: 20px; }
 
-/* ---- Mezihra po slově v tréninku ---- */
-.word-done { gap: 18px; }
-.wd-word { font-weight: 700; font-size: clamp(34px, 10vw, 44px); letter-spacing: 0; }
+/* ---- Mezihra po slově v tréninku: panel jako Duolingo po odpovědi ----
+   Zelený po uhodnutí, červený po vypršení. Odznak vyskočí (✓) nebo se zatřese
+   (✗), kostky slova naskočí vlnou; uhodnuté jednou poskočí, nestihnuté se
+   přeskládají z rozsypaného pořadí. Na milníku série plamen vzplane a jiskří. */
+.word-done { background: color-mix(in srgb, var(--overlay) 22%, transparent); }
+.wd-panel {
+    background: var(--ok-bg);
+    border-top: 2px solid var(--ok-line);
+    box-shadow: 0 -10px 40px var(--shadow-card);
+    gap: 16px;
+}
+.word-done.missed .wd-panel { background: var(--bad-bg); border-top-color: var(--bad-line); }
+.wd-badge { font-size: 0; background: center / 40px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%2334a81c'/%3E%3Cpath d='M12 20.5l5.5 5.5L28.5 15' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); animation: wdBadgePop .5s var(--spring) .12s both; }
+.wd-badge::before { content: none; }
+.word-done.missed .wd-badge { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%23f24b4b'/%3E%3Cpath d='M14 14l12 12M26 14L14 26' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round'/%3E%3C/svg%3E"); animation: wdBadgeShake .5s ease .12s both; }
+@keyframes wdBadgePop { from { scale: 0; rotate: -30deg; } }
+@keyframes wdBadgeShake {
+    0% { scale: 0; }
+    35% { scale: 1; rotate: 0deg; }
+    50% { rotate: -14deg; }
+    65% { rotate: 11deg; }
+    80% { rotate: -6deg; }
+    100% { rotate: 0deg; }
+}
+.wd-title { font-weight: 700; font-size: 26px; color: var(--ok-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wd-sub { font-weight: 600; font-size: 15px; color: var(--ok-ink); opacity: .8; }
+.word-done.missed .wd-title, .word-done.missed .wd-sub { color: var(--bad-ink); }
+.wd-streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--streak-ink);
+    background: var(--card);
+    border: 2px solid var(--line);
+    box-shadow: 0 3px 0 var(--lip);
+    padding: 4px 12px 4px 8px;
+    animation: wdChipPop .5s var(--spring) .3s both;
+}
+.wd-streak .emoji { width: 1.45em; height: 1.45em; vertical-align: 0; }
+.wd-streak--lost { color: var(--muted-text); text-decoration: line-through 2px; animation-name: wdChipFade; }
+.wd-streak--lost .emoji { background-image: url(kostky/plamen.svg); filter: grayscale(1); opacity: .5; }
+@keyframes wdChipPop { from { scale: .4; opacity: 0; } }
+@keyframes wdChipFade { from { opacity: 0; translate: 0 6px; } }
+/* milník série: plamen vzplane, kolem se rozletí jiskry (tečky v box-shadow) */
+.wd-streak--milestone { animation: wdChipFlare .9s var(--spring) .3s both; }
+.wd-streak--milestone .emoji { animation: wdFlameFlare .9s ease .35s both; }
+.wd-streak--milestone::after {
+    content: '';
+    position: absolute;
+    left: 17px;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    margin-top: -3px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: wdSparks .8s ease-out .5s both;
+}
+@keyframes wdChipFlare { 0% { scale: .4; opacity: 0; } 45% { scale: 1.25; opacity: 1; } 70% { scale: .95; } }
+@keyframes wdFlameFlare { 40% { scale: 1.7; filter: drop-shadow(0 0 6px #ffc800); } }
+@keyframes wdSparks {
+    from {
+        opacity: 1;
+        box-shadow: 0 0 0 #ffb800, 0 0 0 #ff9600, 0 0 0 #ffc800, 0 0 0 #ff9600,
+                    0 0 0 #ffb800, 0 0 0 #ff9600, 0 0 0 #ffc800, 0 0 0 #ff9600;
+    }
+    to {
+        opacity: 0;
+        box-shadow: 0 -26px 0 -1px #ffb800, 18px -18px 0 -1px #ff9600, 26px 0 0 -1px #ffc800, 18px 18px 0 -1px #ff9600,
+                    0 26px 0 -1px #ffb800, -18px 18px 0 -1px #ff9600, -26px 0 0 -1px #ffc800, -18px -18px 0 -1px #ff9600;
+    }
+}
+.wd-tile {
+    font-weight: 700;
+    border-radius: 12px;
+    background: var(--green);
+    box-shadow: 0 4px 0 var(--green-lip);
+    animation: wdTileIn .38s var(--spring) calc(.1s + var(--i) * 45ms) both;
+}
+.word-done.missed .wd-tile { background: var(--red); box-shadow: 0 4px 0 var(--red-lip); }
+.wd-tile--gap { box-shadow: none; }
+.word-done.solved .wd-tile {
+    animation: wdTileIn .38s var(--spring) calc(.1s + var(--i) * 45ms) both,
+               wdTileJump .42s ease calc(.6s + var(--i) * 55ms);
+}
+.wd-unscramble .wd-tile {
+    animation: wdTileIn .3s var(--spring) calc(var(--i) * 30ms) both,
+               wdUnscramble .62s cubic-bezier(.34, 1.3, .64, 1) calc(.6s + var(--i) * 45ms) both;
+}
+@keyframes wdTileIn { from { scale: .3; opacity: 0; } }
+@keyframes wdTileJump { 40% { translate: 0 -9px; } }
+@keyframes wdUnscramble {
+    from { translate: var(--from, 0px) 0; }
+    50% { translate: calc(var(--from, 0px) / 2) var(--hop, 0px); }
+    to { translate: 0 0; }
+}
+.wd-next { background: var(--green); box-shadow: 0 4px 0 var(--green-lip); }
+.word-done.missed .wd-next { background: var(--red); box-shadow: 0 4px 0 var(--red-lip); }
+.wd-more { margin-top: -6px; }
 .wd-card {
     border: 2px solid var(--line);
     box-shadow: 0 4px 0 var(--lip);
     border-radius: 18px;
     padding: 16px 16px 14px;
 }
-.wd-card--empty { border-style: dashed; box-shadow: none; }
 .wd-text { font-size: 17px; font-weight: 700; line-height: 1.5; }
-.wd-card--empty .wd-text { color: var(--muted-text); font-weight: 600; }
 .wd-meta { font-size: 14px; font-weight: 700; }
 .wd-avatar { background: var(--blue); font-weight: 700; width: 26px; height: 26px; font-size: 13px; }
 .wd-vote {
@@ -670,8 +772,6 @@
 .wd-vote:active { transform: none; translate: 0 3px; box-shadow: none; }
 .wd-vote:disabled { cursor: default; }
 .wd-vote.voted { background: var(--ok-bg); border-color: var(--ok-line); box-shadow: 0 3px 0 var(--ok-line); color: var(--ok-ink); }
-.wd-count { font-weight: 600; font-size: 16px; }
-.word-done.wd-paused .wd-count { color: var(--blue-ink); }
 
 /* Seznam významů v sheetu */
 .def-item {
@@ -704,7 +804,7 @@
 .emoji[data-emoji="palec"]    { background-image: url(kostky/palec.svg); }
 .emoji[data-emoji="zamceno"]  { background-image: url(kostky/zamceno.svg); }
 .emoji[data-emoji="odemceno"] { background-image: url(kostky/odemceno.svg); }
-.emoji[data-emoji="plamen"]   { background-image: url(kostky/plamen.svg); }
+.emoji[data-emoji="plamen"]   { background-image: url(kostky/plamen-zivy.svg); }
 .emoji[data-emoji="zvonek"]   { background-image: url(kostky/zvonek.svg); }
 .emoji[data-emoji="plocha"]   { background-image: url(kostky/plocha.svg); }
 #percentile .emoji { width: 1.55em; height: 1.55em; vertical-align: -.42em; margin-left: 2px; }
@@ -732,6 +832,8 @@
 
 /* ---- Omezený pohyb: pryč s vlnami, pulzy i vyjížděním ---- */
 @media (prefers-reduced-motion: reduce) {
+    .emoji[data-emoji="plamen"], .stat-tile:nth-child(1)::before { background-image: url(kostky/plamen.svg); }
+    .wd-next.counting::before { display: none; }
     *, *::before, *::after {
         animation-duration: .01ms !important;
         animation-iteration-count: 1 !important;

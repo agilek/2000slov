@@ -20,8 +20,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4">
-<link rel="stylesheet" href="designs/kostky.css?v=1">
+<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="designs/kostky.css?v=2">
 </head>
 <body>
 
@@ -133,12 +133,26 @@
     <!-- Toast -->
     <div id="toast" class="kb-toast"></div>
 
-    <!-- Mezihra po každém slově v tréninku -->
-    <div class="pause-overlay word-done" id="wordDoneOverlay">
-        <div class="wd-word" id="wdWord"></div>
-        <div class="wd-card" id="wdCard"></div>
-        <button class="btn-tertiary wd-more" id="wdMoreBtn" onclick="openDefs(event)"></button>
-        <div class="wd-count" id="wdCount"></div>
+    <!-- Mezihra po každém slově v tréninku: panel zdola, hra nad ním zůstává vidět.
+         Vlastní křížek sedí přesně na křížku hry, který panel překrývá. -->
+    <div class="word-done" id="wordDoneOverlay">
+        <div class="wd-frame">
+            <button class="close-game-btn" aria-label="Ukončit trénink" onclick="exitPractice()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg></button>
+            <div class="wd-panel">
+                <div class="wd-head" role="status">
+                    <span class="wd-badge" aria-hidden="true"></span>
+                    <div class="wd-titles">
+                        <div class="wd-title" id="wdTitle"></div>
+                        <div class="wd-sub" id="wdSub"></div>
+                    </div>
+                    <span class="wd-streak" id="wdStreak" hidden></span>
+                </div>
+                <div class="wd-tiles" id="wdTiles" role="img"></div>
+                <div class="wd-card" id="wdCard" hidden></div>
+                <button class="btn wd-next" id="wdNextBtn" onclick="nextWord()"><span>Další slovo</span></button>
+                <button class="btn-tertiary wd-more" id="wdMoreBtn" onclick="openDefs(event)" hidden></button>
+            </div>
+        </div>
     </div>
 
     <!-- Významy slova -->
@@ -222,6 +236,6 @@
     </div>
 
 <script src="words.js?v=4"></script>
-<script src="game.js?v=5"></script>
+<script src="game.js?v=6"></script>
 </body>
 </html>

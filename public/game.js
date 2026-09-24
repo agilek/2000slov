@@ -10,7 +10,9 @@
 'use strict';
 
 const START_TIME = 30;
-const PRACTICE_GAP = 5;   // s — mezihra po slově v tréninku (slovo + význam)
+// s — za jak dlouho po slově v tréninku naběhne další samo; po chybě déle,
+// je co si přečíst. Klepnutím kamkoli jde hned.
+const PRACTICE_GAP = { solved: 3, missed: 6 };
 const WORDS_PER_DAY = 20;
 const TOTAL_WORDS = PACKED.length * WORDS_PER_DAY; // 7300
 const TOTAL_LEVELS = TOTAL_WORDS / WORDS_PER_DAY; // 365
@@ -349,65 +351,144 @@ function prefetchDefs() {
 
 /* ---------------- mezihra po slově (jen trénink) ---------------- */
 
-function showWordDone(word, gen) {
+// Panel zdola jako Duolingo po odpovědi: zelený po uhodnutí, červený po
+// vypršení času, hra nad ním zůstává vidět. Další slovo naběhne samo (tlačítko
+// se mezitím vyplňuje), klepnutím kamkoli mimo kartu hned. Sáhnutí na kartu
+// s významem, otevření významů nebo odchod z aplikace odpočet zruší — kdo čte,
+// tomu obrazovka neuteče.
+const PRAISE = ['Paráda!', 'Výborně!', 'Super!', 'Skvělé!', 'Bomba!'];
+const STREAK_MILESTONES = [5, 10, 20, 30, 50, 100];
+
+function showWordDone(word, gen, solved) {
     if (state.gen !== gen) return;
     clearInterval(state.timer);
-    clearInterval(state.nextTimer);
+    clearTimeout(state.nextTimer);
+    const ov = $('wordDoneOverlay');
+    const elapsed = START_TIME - state.time;
     state.wdWord = word;
-    state.wdPaused = false;
-    state.wdLeft = PRACTICE_GAP;
-    renderWordDone(word);
-    $('wordDoneOverlay').classList.add('active');
-    $('wordDoneOverlay').classList.remove('wd-paused');
+    ov.classList.remove('closing', 'solved', 'missed');
+    ov.classList.add(solved ? 'solved' : 'missed');
+    ov.querySelector('.wd-panel').style.cssText = '';
+    $('wdTitle').textContent = !solved ? 'Čas vypršel'
+        : elapsed <= 5 ? 'Bleskovka!'
+        : state.time <= 10 ? 'Tak tak!'
+        : PRAISE[Math.floor(Math.random() * PRAISE.length)];
+    $('wdSub').textContent = solved ? `za ${elapsed} s`
+        : state.lostStreak >= 2 ? 'Série skončila' : 'Hledané slovo';
+    renderWdStreak(solved);
+    renderWdTiles(word, solved);
+    renderWdCard(word);
+    const gap = PRACTICE_GAP[solved ? 'solved' : 'missed'];
+    const next = $('wdNextBtn');
+    next.style.setProperty('--gap', gap + 's');
+    next.classList.add('counting');
+    ov.classList.add('active');
+    state.nextTimer = setTimeout(nextWord, gap * 1000);
     if (!defCache.has(word)) {
         apiGet(defsUrl(word)).then(d => {
             if (!d || !d.defs) return;
             defCache.set(word, d.defs[word] || null);
-            if (state.gen === gen && state.wdWord === word) renderWordDone(word);
+            if (state.gen === gen && state.wdWord === word) renderWdCard(word);
         });
     }
-    renderWdCount();
-    state.nextTimer = setInterval(() => {
-        if (state.gen !== gen) { clearInterval(state.nextTimer); state.nextTimer = null; return; }
-        if (state.wdPaused) return;
-        if (--state.wdLeft > 0) return renderWdCount();
-        clearInterval(state.nextTimer);
-        state.nextTimer = null;
-        hideWordDone();
-        loadWord();
-    }, 1000);
     prefetchDefs();
 }
 
-function hideWordDone() {
-    $('wordDoneOverlay').classList.remove('active', 'wd-paused');
+// Série uhodnutých slov v tréninku; na milníku plamen vzplane (CSS) a zazní
+// fanfára. Po chybě zhaslý plamen s přeškrtnutým číslem, jak to dělá Duolingo.
+function renderWdStreak(solved) {
+    const chip = $('wdStreak');
+    const n = solved ? state.practiceCount : state.lostStreak;
+    chip.className = 'wd-streak' + (solved ? '' : ' wd-streak--lost');
+    chip.hidden = n < 2;
+    if (n < 2) return;
+    setEmojiText(chip, solved ? `🔥 ${n} v řadě` : `🔥 ${n}`);
+    chip.setAttribute('aria-label', solved ? `${n} v řadě` : `Série ${n} skončila`);
+    if (solved && STREAK_MILESTONES.includes(n)) {
+        chip.classList.add('wd-streak--milestone');
+        setTimeout(() => { playWinSound(); haptic('win'); }, 350);
+    }
 }
 
-function renderWdCount() {
-    $('wdCount').textContent = state.wdPaused ? 'Klepnutím pokračuješ' : `Další slovo za ${state.wdLeft} s`;
+// Slovo jako kostky. Nestihnuté naskočí v rozsypaném pořadí, jak bylo ve hře,
+// a přeskládá se do správného (posun --from, oblouček --hop řeší CSS).
+function renderWdTiles(word, solved) {
+    const box = $('wdTiles');
+    const chars = [...word];
+    const gap = 6;
+    const avail = Math.min(window.innerWidth, 440) - 44;
+    const size = Math.max(20, Math.min(44, Math.floor((avail - (chars.length - 1) * gap) / chars.length)));
+    box.style.setProperty('--tile', size + 'px');
+    box.setAttribute('aria-label', word);
+    box.classList.remove('wd-unscramble');
+    const tiles = chars.map((ch, i) => {
+        const t = el('span', LETTER_RE.test(ch) ? 'wd-tile' : 'wd-tile wd-tile--gap', ch.trim());
+        t.style.setProperty('--i', i);
+        return t;
+    });
+    box.replaceChildren(...tiles);
+    if (solved) return;
+    const bank = [...$$('#letterRow .letter')].map(l => state.letters[+l.dataset.index]);
+    const slots = chars.map((_, i) => i).filter(i => LETTER_RE.test(chars[i]));
+    const used = new Set();
+    slots.forEach(slot => {
+        const k = bank.findIndex((c, j) => !used.has(j) && c === chars[slot]);
+        if (k < 0) return;
+        used.add(k);
+        const dx = (slots[k] - slot) * (size + gap);
+        tiles[slot].style.setProperty('--from', dx + 'px');
+        tiles[slot].style.setProperty('--hop', dx ? '-16px' : '0px');
+    });
+    box.classList.add('wd-unscramble');
 }
 
-function renderWordDone(word) {
-    $('wdWord').textContent = word;
+function renderWdCard(word) {
     const def = defCache.get(word);
     const card = $('wdCard');
-    card.innerHTML = '';
-    const text = document.createElement('p');
-    text.className = 'wd-text';
+    const more = $('wdMoreBtn');
+    card.hidden = !def;
+    card.replaceChildren();
     if (def) {
-        card.classList.remove('wd-card--empty');
-        text.textContent = def.text;                     // cizí text vždy přes textContent
-        const meta = document.createElement('div');
-        meta.className = 'wd-meta';
+        const meta = el('div', 'wd-meta');
         meta.append(authorEl(def.author), voteBtn(def));
-        card.append(text, meta);
-        $('wdMoreBtn').textContent = 'Významy a přidat vlastní';
-    } else {
-        card.classList.add('wd-card--empty');
-        text.textContent = 'Pro toto slovo zatím nemáme význam – buď první, kdo ho vytvoří.';
-        card.append(text);
-        $('wdMoreBtn').textContent = 'Přidat význam';
+        card.append(el('p', 'wd-text', def.text), meta);   // cizí text vždy přes textContent
     }
+    // Bez významu a bez účtů by „Přidat význam" vedlo do slepé uličky.
+    more.hidden = !def && !auth.enabled;
+    more.textContent = !def ? 'Přidat význam' : auth.enabled ? 'Významy a přidat vlastní' : 'Všechny významy';
+}
+
+function nextWord() {
+    const ov = $('wordDoneOverlay');
+    if (!ov.classList.contains('active') || ov.classList.contains('closing')) return;
+    clearTimeout(state.nextTimer);
+    state.nextTimer = null;
+    hideWordDone(true);
+    $('wordDisplay').style.cssText = '';
+    loadWord();
+}
+
+// Odpočet se zruší, ne pozastaví: kdo sáhl na význam, klepne na Další sám.
+function holdWordDone() {
+    if (!$('wordDoneOverlay').classList.contains('active')) return;
+    clearTimeout(state.nextTimer);
+    state.nextTimer = null;
+    $('wdNextBtn').classList.remove('counting');
+}
+
+function hideWordDone(animated) {
+    const ov = $('wordDoneOverlay');
+    if (!ov.classList.contains('active')) return;
+    const panel = ov.querySelector('.wd-panel');
+    const finish = () => {
+        ov.classList.remove('active', 'closing');
+        panel.style.cssText = '';
+        $('wdNextBtn').classList.remove('counting');
+    };
+    if (!animated || REDUCED_MOTION.matches) return finish();
+    ov.classList.add('closing');
+    slideDown(panel, 260);
+    setTimeout(() => { if (ov.classList.contains('closing')) finish(); }, 260);
 }
 
 function authorEl(name) {
@@ -454,7 +535,7 @@ async function voteDef(def, btn) {
 
 function openDefs(e) {
     if (e) e.stopPropagation();
-    pauseWordDone(true);                                  // session se pozastaví, nezabíjí
+    holdWordDone();                                       // kdo čte významy, pokračuje sám
     const word = state.wdWord;
     $('defsTitle').textContent = word || 'Významy';
     $('defsError').style.display = 'none';
@@ -487,14 +568,6 @@ function renderDefsForm() {
 
 function closeDefs() {
     closeSheet($('defsModal'));
-    pauseWordDone(false);                                 // a zase se rozjede
-}
-
-function pauseWordDone(paused) {
-    if (!$('wordDoneOverlay').classList.contains('active')) return;
-    state.wdPaused = paused;
-    $('wordDoneOverlay').classList.toggle('wd-paused', paused);
-    renderWdCount();
 }
 
 async function loadDefsList(word) {
@@ -577,7 +650,7 @@ function editDef(d, li, textEl) {
         form.remove();
         defCache.delete(state.wdWord);
         loadDefsList(state.wdWord);
-        renderWordDone(state.wdWord);
+        renderWdCard(state.wdWord);
         showToast(r.data.resetVotes ? 'Upraveno, hlasy vynulovány.' : 'Upraveno.');
     };
     li.appendChild(form);
@@ -609,7 +682,7 @@ async function submitDef(e) {
     await loadDefsList(word);
     const fresh = await apiGet(defsUrl(word));
     if (fresh && fresh.defs) defCache.set(word, fresh.defs[word] || null);
-    renderWordDone(word);
+    renderWdCard(word);
     showToast('Díky! Význam je uložený.');
 }
 
@@ -869,7 +942,7 @@ function renderProfile() {
         : 'Přezdívkou se podepíšeš u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.';
 
     const tiles = [
-        [fmtNum(persist.streak), 'dní v řadě'],
+        [fmtNum(persist.streak), 'dní v řadě', persist.streak ? '' : 'stat-tile--off'],
         [fmtNum(days), 'odehraných dní'],
         [fmtNum(words), 'slov v denní výzvě'],
         [pct + ' %', 'úspěšnost'],
@@ -982,6 +1055,7 @@ function startGame() {
     const today = todayStr();
     state.gen++;
     state.mode = 'daily';
+    $('game').classList.remove('practice');
     $('closeGameBtn').style.display = 'none';
     const idx = dayIndex(today);
     state.words = dayWords(idx);
@@ -1042,7 +1116,9 @@ function startPracticeGame() {
         .filter(w => !level.maxLetters || lettersOf(w).length <= level.maxLetters);
     state.gen++;
     state.mode = 'practice';
+    $('game').classList.add('practice');
     $('closeGameBtn').style.display = 'flex';
+    refreshAuth();                       // mezihra podle něj nabízí „Přidat význam"
     state.pool = pool;
     state.practiceQueue = shuffleCopy(pool);
     state.words = [];
@@ -1050,7 +1126,8 @@ function startPracticeGame() {
     state.marks = [];
     state.solved = 0;
     state.practiceCount = 0;
-    clearInterval(state.nextTimer);
+    state.lostStreak = 0;
+    clearTimeout(state.nextTimer);
     state.nextTimer = null;
     hideWordDone();
     state.time = START_TIME;
@@ -1310,11 +1387,13 @@ function checkWord() {
     }, 450);
 
     const genOk = state.gen;
+    // V tréninku vyjede panel mezihry hned po zeleném bliknutí.
+    if (state.mode === 'practice') setTimeout(() => showWordDone(target, genOk, true), 450);
     setTimeout(() => {
         if (state.gen !== genOk) return;
         $('wordDisplay').classList.remove('found');
+        if (state.mode === 'practice') return;   // styl slova vrátí nextWord, ať pod panelem neprobleskne
         $('wordDisplay').style.cssText = '';
-        if (state.mode === 'practice') return showWordDone(target, genOk);
         loadWord();
     }, 750);
 }
@@ -1329,6 +1408,25 @@ function handleTimeout() {
 
     const wd = $('wordDisplay');
     const target = state.words[state.wordIdx] || '';
+    state.wordIdx++;
+    state.marks.push(false);
+    updateGameGrid(state.marks.length - 1);
+    saveDayProgress();
+
+    // Trénink: slovo ukáže až panel mezihry (kostky se v něm přeskládají
+    // z rozsypaného pořadí), hra jen zmizí. Série tréninku tu končí.
+    if (state.mode === 'practice') {
+        state.lostStreak = state.practiceCount;
+        state.practiceCount = 0;
+        [wd, ...$$('#letterRow .letter')].forEach(el => {
+            el.style.transition = 'opacity .25s ease-out, transform .25s ease-out';
+            el.style.opacity = '0';
+            el.style.transform = 'scale(.85)';
+        });
+        setTimeout(() => showWordDone(target, gen, false), 300);
+        return;
+    }
+
     const chars = [...target];
     const slots = [...wd.querySelectorAll('.answer-slot')];
 
@@ -1350,18 +1448,8 @@ function handleTimeout() {
         }, i * stagger);
     });
 
-    state.wordIdx++;
-    state.marks.push(false);
-    updateGameGrid(state.marks.length - 1);
-    saveDayProgress();
-
     const revealDone = slots.length * stagger + 340;
-    // Trénink neskončí — jen se počká, ať si hráč nestihnuté slovo přečte,
-    // a další naběhne samo. Skončí se křížkem vpravo nahoře.
-    // V tréninku se po odhalení slova rovnou otevře mezihra, která si odpočet
-    // řídí sama; v denní výzvě zůstává původní krátká pauza.
-    const hold = state.mode === 'practice' ? 500 : 850;
-    if (state.mode === 'practice') state.practiceCount = 0;
+    const hold = 850;
 
     setTimeout(() => {
         if (state.gen !== gen) return;
@@ -1376,7 +1464,6 @@ function handleTimeout() {
     setTimeout(() => {
         if (state.gen !== gen) return;
         wd.style.cssText = '';
-        if (state.mode === 'practice') return showWordDone(target, gen);
         loadWord();
     }, revealDone + hold + 320);
 }
@@ -1543,7 +1630,7 @@ function exitPractice() {
     if (state.mode !== 'practice') return;
     state.gen++;
     clearInterval(state.timer);
-    clearInterval(state.nextTimer);
+    clearTimeout(state.nextTimer);
     state.nextTimer = null;
     hideWordDone();
     closeModal();
@@ -2005,20 +2092,24 @@ function closeSheet(modal) {
         modal.opener = null;
     };
     if (REDUCED_MOTION.matches) return finish();
-    const from = getComputedStyle(sheet).transform;
-    sheet.style.animation = 'none';
-    sheet.style.transition = 'none';
-    sheet.style.transform = from;
-    sheet.getBoundingClientRect();                        // zapsat výchozí polohu, než se rozjede
-    sheet.style.transition = `transform ${SHEET_CLOSE_MS}ms cubic-bezier(.32,.72,0,1)`;
-    sheet.style.transform = 'translateY(100%)';
+    slideDown(sheet, SHEET_CLOSE_MS);
     // časovač, ne transitionend — ten probublává i z přechodů uvnitř sheetu
     setTimeout(finish, SHEET_CLOSE_MS);
 }
 
+// Sjede prvkem dolů z místa, kde právě je (i z půlky tahu nebo otevírání).
+function slideDown(el, ms) {
+    const from = getComputedStyle(el).transform;
+    el.style.animation = 'none';
+    el.style.transition = 'none';
+    el.style.transform = from;
+    el.getBoundingClientRect();                           // zapsat výchozí polohu, než se rozjede
+    el.style.transition = `transform ${ms}ms cubic-bezier(.32,.72,0,1)`;
+    el.style.transform = 'translateY(110%)';
+}
+
 function closeModal() {
     $$('.modal.active').forEach(closeSheet);
-    pauseWordDone(false);   // trénink pokračuje, i když se zavřelo Escapem nebo klikem vedle
 }
 
 function submitFeedback(e) {
@@ -2073,15 +2164,18 @@ document.addEventListener('pointerdown', e => {
     document.addEventListener('pointercancel', end);
 })();
 
-// Mezihra: klepnutí kamkoli mimo tlačítka pozastaví a zase rozjede odpočet.
+// Mezihra: sáhnutí na kartu s významem zruší odpočet (čte se), klepnutí
+// kamkoli jinam mimo tlačítka = hned další slovo.
 $('wordDoneOverlay').addEventListener('pointerdown', e => {
-    if (e.target.closest('button, a')) return;
-    pauseWordDone(!state.wdPaused);
+    if (e.target.closest('.wd-card')) holdWordDone();
+});
+$('wordDoneOverlay').addEventListener('click', e => {
+    if (!e.target.closest('button, a, .wd-card')) nextWord();
 });
 
-// Na pozadí se odpočet zastaví, ať hráči slovo neuteče.
+// Na pozadí se odpočet zruší, ať hráči slovo neuteče.
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pauseWordDone(true);
+    if (document.hidden) holdWordDone();
 });
 
 /* ---------------- klávesnice ---------------- */
@@ -2090,6 +2184,12 @@ const STRIP = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 document.onkeydown = e => {
     if (e.key === 'Escape') { closeModal(); return; }
+    // Mezihra: Enter nebo mezerník = další slovo (když fokus nestojí na tlačítku).
+    if ($('wordDoneOverlay').classList.contains('active') && !document.querySelector('.modal.active') &&
+        (e.key === 'Enter' || e.key === ' ') && !e.target.closest('button, a, input, textarea')) {
+        e.preventDefault();
+        return nextWord();
+    }
     if (
         !$('game').classList.contains('active') ||
         state.processing ||

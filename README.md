@@ -20,8 +20,9 @@ Denní výzva má **7300 slov (365 dní)**. Trénink navíc čerpá z podkladov�
 **frekvenčního poolu 15 000 slov**, bez omezení na datum, a hráč si volí
 obtížnost: Lehká = z 3000 nejběžnějších jen slova do 5 písmen (1215), Střední = 7300 (slova denní výzvy),
 Těžká = všech 15 000. Běží
-nekonečně dokola a nic v něm neklikáš: po nestihnutém slově se odpočítají
-3 sekundy a další slovo naběhne samo. Ukončíš ho křížkem vpravo nahoře.
+nekonečně dokola: po každém slově vyjede panel s výsledkem, sérií a významem
+a další slovo naběhne samo (3 s po uhodnutí, 6 s po chybě), nebo hned na
+klepnutí. Ukončíš ho křížkem vpravo nahoře.
 
 ## Spuštění
 

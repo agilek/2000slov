@@ -2,6 +2,27 @@
 
 ## 2026-09-24
 
+### Mezihra v tréninku jako panel zdola, živý plamen
+Mezihra po slově byla všude stejná (text uprostřed, „Další slovo za 5 s"),
+nešlo z ní přejít dál ani odejít a klepnutí ji *pozastavilo*. Teď vyjede panel
+zdola jako Duolingo po odpovědi: zelený/červený, odznak ✓/✗, slovo jako kostky
+(uhodnuté poskočí, nestihnuté se přeskládají z rozsypaného pořadí), série
+„🔥 N v řadě" s plamenem, který plápolá a na milnících vzplane s jiskrami.
+Tlačítko Další slovo se vyplňuje (3 s / 6 s po chybě), klepnutí mimo kartu
+nebo Enter jde hned, sáhnutí na význam odpočet zruší, křížek funguje i tady.
+„Přidat význam" se bez účtů neukáže (vedlo do slepé uličky). Živý plamen je
+i v profilu (šedý při nulové sérii) a v pobídce k sérii.
+
+**Root cause / approach:** Plamen je jedno SVG s CSS animací uvnitř
+(`plamen-zivy.svg`) — jako background-image plápolá v Chromu i WebKitu, pod
+omezeným pohybem ho Kostky vymění za statický. Přeskládání kostek je FLIP bez
+měření: kostky jsou v jedné řadě, takže posun = rozdíl indexů × (šířka + mezera)
+do `--from`, oblouček `--hop`, animace v keyframes s `var()`. Panel „Paráda!"
+ze hry je v tréninku schovaný (`#game.practice`), jinak by vyjely dva.
+Sjetí dolů sdílí se sheety `slideDown()`.
+
+→ *Memory saved: `kostky_live_icons.md`*
+
 ### Sheety: čisté záhlaví a zavírání vždy animací
 Ze sheetů zmizel křížek i dělicí čára; zůstal úchyt a nadpis, který nese
 informaci — v tréninku rovnou otázka „Jak těžká slova chceš?", ve zpětné vazbě

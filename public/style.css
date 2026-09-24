@@ -897,17 +897,109 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 .pause-overlay h2 { font-family: 'Baloo 2', sans-serif; font-size: 32px; font-weight: 800; }
 .pause-overlay .pause-buttons { display: flex; flex-direction: column; gap: 12px; }
 
-/* ---- Mezihra po slově v tréninku ----
+/* ---- Mezihra po slově v tréninku: panel zdola ----
    Překryv, ne .screen: .screen je 100dvh s touch-action:none a showScreen()
-   by deaktivoval #game, do kterého je fyzicky vložená herní mřížka. */
-.word-done { gap: 16px; padding: 24px 22px calc(24px + env(safe-area-inset-bottom)); text-align: center; }
-.wd-word {
+   by deaktivoval #game, do kterého je fyzicky vložená herní mřížka. Hra nad
+   panelem zůstává vidět; .wd-frame má šířku obrazovky hry, ať vlastní křížek
+   sedí přesně na křížku hry. */
+.word-done {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    justify-content: center;
+    background: color-mix(in srgb, var(--overlay) 50%, transparent);
+    transition: background-color .26s ease;
+    touch-action: manipulation;
+}
+.word-done.active { display: flex; animation: wdScrimIn .26s ease; }
+.word-done.closing { background-color: transparent; }
+@keyframes wdScrimIn { from { background-color: transparent; } }
+.word-done [hidden] { display: none !important; }
+.wd-frame {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+.word-done .close-game-btn { display: flex; }
+.wd-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 22px calc(22px + env(safe-area-inset-bottom));
+    background: var(--card);
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -8px 40px var(--shadow-card);
+    animation: wdPanelUp .42s cubic-bezier(.32, 1.2, .5, 1);
+}
+@keyframes wdPanelUp { from { transform: translateY(100%); } }
+.wd-head { display: flex; align-items: center; gap: 12px; }
+.wd-badge {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    background: var(--green);
+}
+.wd-badge::before { content: '✓'; }
+.word-done.missed .wd-badge { background: var(--red); }
+.word-done.missed .wd-badge::before { content: '✕'; }
+.wd-titles { flex: 1; min-width: 0; text-align: left; }
+.wd-title { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 24px; line-height: 1.1; color: var(--green-dark); }
+.word-done.missed .wd-title { color: var(--red); }
+.wd-sub { font-size: 14px; font-weight: 700; color: var(--muted-text); }
+.wd-streak {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 999px;
     font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
-    font-size: clamp(30px, 9vw, 42px);
+    font-size: 15px;
+    white-space: nowrap;
     color: var(--ink);
-    letter-spacing: .5px;
+    background: var(--chip-bg);
 }
+.wd-streak--lost { color: var(--muted-text); }
+.wd-tiles { display: flex; justify-content: center; gap: 6px; }
+.wd-tile {
+    width: var(--tile, 40px);
+    height: calc(var(--tile, 40px) * 1.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: calc(var(--tile, 40px) * .55);
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--green);
+}
+.word-done.missed .wd-tile { background: var(--red); }
+.wd-tile--gap { background: none !important; }
+.wd-next { position: relative; overflow: hidden; width: 100%; margin: 4px 0 0; background: var(--green); }
+.word-done.missed .wd-next { background: var(--red); }
+.wd-next > span { position: relative; }
+/* Odpočet: tlačítko se vyplňuje, dokud další slovo nenaběhne samo. */
+.wd-next.counting::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, .24);
+    transform-origin: left;
+    animation: wdFill var(--gap, 3s) linear both;
+}
+@keyframes wdFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.wd-more { margin-top: -4px; }
 .wd-card {
     background: var(--card);
     border: 2px solid var(--line);
@@ -919,9 +1011,7 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     flex-direction: column;
     gap: 10px;
 }
-.wd-card--empty { border-style: dashed; }
 .wd-card .wd-text { text-align: left; }
-.wd-card--empty .wd-text { text-align: center; }
 .wd-text {
     font-size: 16px;
     line-height: 1.5;
@@ -947,15 +1037,6 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 }
 .wd-vote.voted { background: var(--badge-bg); color: var(--green-dark); }
 .wd-vote:active { transform: scale(.94); }
-.wd-more { max-width: 420px; }
-.wd-count {
-    font-family: 'Baloo 2', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--muted-text);
-    min-height: 22px;
-}
-.word-done.wd-paused .wd-count { color: var(--blue); }
 
 /* Seznam významů v modalu */
 .defs-list { list-style: none; padding: 0; margin: 0 0 18px; display: flex; flex-direction: column; gap: 10px; }

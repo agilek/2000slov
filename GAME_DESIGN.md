@@ -78,11 +78,15 @@ z herního slovníku + frekvenčního seznamu validovaného hunspellem — 1234 
    u přesmyčky víc než frekvence), **Střední** 7300 (přesně slova denní výzvy, výchozí), **Těžká**
    všech 15 000 včetně vzácných (dřív jediná možnost — polovina slov pak byla
    z řídkého konce poolu, třeba *douglaska*). Volba se pamatuje (`practiceLevel`)
-   a je vidět v liště („Slovo 5 · Lehká"). **Nemá výsledkovou obrazovku ani žádné
-   tlačítko „pokračovat"** — nestihnuté slovo se odhalí, na místě časovače
-   naskočí odpočet „Další slovo za 3 s" a další slovo naběhne samo.
-   Správně složené slovo se posune hned (~0,75 s), bez odpočtu. Jediný způsob,
-   jak trénink ukončit, je křížek vpravo nahoře. Bez vlivu na denní výzvu.
+   a je vidět v liště („Slovo 5 · Lehká"). **Nemá výsledkovou obrazovku** —
+   po každém slově vyjede zdola **panel mezihry** (jako Duolingo po odpovědi):
+   zelený po uhodnutí („Paráda!", „Tak tak!", „Bleskovka!" + čas), červený po
+   vypršení (kostky slova naskočí rozsypané a přeskládají se), série „🔥 N v řadě"
+   s oslavou na milnících 5/10/20/30/50/100, význam slova a tlačítko **Další
+   slovo**, které se vyplňuje, dokud další slovo nenaběhne samo (3 s po uhodnutí,
+   6 s po chybě). Klepnutí kamkoli mimo kartu nebo Enter = hned další; sáhnutí na
+   význam odpočet zruší. Trénink se ukončí křížkem vpravo nahoře (i z mezihry).
+   Bez vlivu na denní výzvu.
 
 ## 3. Trofeje a sdílení
 

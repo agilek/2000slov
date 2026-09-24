@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <style>
+    .f { transform-origin: 24px 45px; animation: sway 1.7s ease-in-out infinite alternate; }
+    .i { transform-origin: 24px 42px; animation: flick .62s ease-in-out infinite alternate; }
+    .h { animation: glint 1.7s ease-in-out infinite alternate; }
+    @keyframes sway { from { transform: rotate(-3.5deg) scale(1, .96); } to { transform: rotate(3.5deg) scale(1, 1.04); } }
+    @keyframes flick { from { transform: scale(.9, .84); } to { transform: scale(1.05, 1.07); } }
+    @keyframes glint { from { opacity: .2; } to { opacity: .55; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+  <g class="f">
+    <path d="M24 3c3 6.5 12.5 11.5 14.3 22.6C40 36.4 33.3 45 24 45S7.8 37.9 8.6 28.3c.6-6.9 4.9-10.8 7-16.1 1.8 3.4 2.9 5.9 5 7.4-.3-6.4.8-11.2 3.4-16.6z" fill="#ff9600"/>
+    <path d="M24 3c3 6.5 12.5 11.5 14.3 22.6C40 36.4 33.3 45 24 45c6.2-2.6 9.8-8.4 9.2-16.1C32.5 19.5 26.5 13.6 24 3z" fill="#f07c00"/>
+    <path class="i" d="M24.2 21.5c3.5 4 7.6 6.9 7.6 12.5 0 4.9-3.4 8.4-7.8 8.4s-7.8-3.3-7.8-7.7c0-4.9 4.9-7.3 8-13.2z" fill="#ffc800"/>
+    <path class="h" d="M13.6 24.5c.6-3.3 2.4-5.7 3.9-8.1" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

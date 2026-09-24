@@ -67,8 +67,6 @@ Můžu udělat, až řekneš.
 - **Text o soukromí + přepínač „skrýt profil"** — poslední kus P5. Sloupec
   `users.hide_profile` v databázi je, UI k němu ne.
 - **Oprava nepravdivých tvrzení** v `worker/README.md:185` a `worker/schema.sql:3`.
-- **Série v tréninku se nikde nezobrazuje** — `state.practiceCount` se
-  inkrementuje i nuluje a pak s ním nikdo nic nedělá. Mrtvý stav, levná výhra.
 - **Souboj přes odkaz `?vyzva=<den>`** — v `GAME_DESIGN.md` od začátku, nikdy
   nepostavené.
 - **OG obrázek výsledku** — sdílený odkaz na hru nemá náhled (profil `/u/<handle>`
