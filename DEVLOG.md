@@ -2,6 +2,28 @@
 
 ## 2026-09-24
 
+### Refaktoring celé appky: rychlejší načtení, Safari bez zbytečné práce, jeden stylesheet
+Architektura (jeden Worker + D1, statika bez buildu, sdílené moduly hra/worker)
+zůstala. Vzhled se nezměnil, ověřeno snímky HEAD proti stromu v Chromiu
+i WebKitu. Na první načtení jde o ~70 kB méně a nic se nestahuje z cizích
+domén. `words.js` 132 → 86 kB brotli, v cestě už není Google Fonts, zmizely
+preloady nepoužitých řezů. `squircle.js` v Safari dělá ~36× méně
+`getComputedStyle`. CSS je jeden `style.css` (kostky.css v něm, 403 přebitých
+deklarací a mrtvé třídy pryč). `?v=`/CACHE/SHELL počítá `tools/stamp.mjs`.
+Worker má sdílené `http.js`, percentil jedním dotazem a opravu pro druhý rok.
+
+**Root cause / approach:**
+- `squircle.js`: MutationObserver po každé změně DOM prošel celý dokument.
+  Časovač ji dělá každou sekundu. Teď bere jen přidané, odebrané a přetříděné
+  prvky a odebrané pouští z ResizeObserveru, který je dřív držel navždy.
+- `PACKED`: nese pořadí v poolu místo šifrovaného textu, který nešel komprimovat.
+- Baloo 2 i Slovka ExtraLight se stahovaly, ale nikde nevykreslovaly (`document.fonts`).
+- `results` měl klíč podle dne v cyklu 1–365, takže od 21. 9. 2027 by se míchaly
+  výsledky dvou let. Klient teď posílá pořadí dne od startu (v prvním roce je
+  totéž číslo).
+
+→ *Memory saved: `visual_regression_harness.md` (nové); upraveno `squircle_corners.md`, `packed_daily_words.md`, `slovka_weights.md`, `ios_native_feel_gotchas.md`, `parallel_sessions_commits.md` + odkazy na kostky.css*
+
 ### Obrazovky v historii prohlížeče: zpět gestem a reload na stejné místo
 Reload vracel hráče vždy na úvod a gesto zpět z Profilu opustilo hru.
 Každá obrazovka má teď adresu za # a historie prohlížeče kopíruje zásobník
