@@ -504,6 +504,7 @@ body:has(#result.active) { overflow: visible; height: auto; min-height: 100dvh; 
     height: 44px;
 }
 .icon-btn-circle--bare:active { transform: scale(.92); }
+.screen-bar-end { margin-left: auto; }   /* akce obrazovky vpravo nahoře */
 
 /* Profil se scrolluje — .screen je jinak zamčená na 100dvh bez scrollu. */
 html:has(#profile.active, #myDefs.active, #publicProfile.active) { overflow-y: auto; height: auto; min-height: 100dvh; }   /* viz #result výš */

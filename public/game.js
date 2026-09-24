@@ -912,18 +912,10 @@ function renderHandlePicker(box) {
 
 function renderSignedIn(box) {
     box.append(el('p', 'profile-note', `Přihlášen jako ${auth.user.handle}. Významy se ukládají k účtu.`));
-    // Profil žije na serveru, kde je účet — ne na FALLBACK_URL pro sdílení z localhostu.
-    const link = `${location.origin}/u/${encodeURIComponent(auth.user.handle)}`;
     const show = el('button', 'btn btn-secondary', 'Můj veřejný profil');
     show.type = 'button';
     show.onclick = showPublicProfile;
-    const share = el('button', 'btn-tertiary', 'Sdílet odkaz na profil');
-    share.onclick = async () => {
-        if (navigator.share) { try { await navigator.share({ url: link }); return; } catch (e) { return; } }
-        try { await navigator.clipboard.writeText(link); showToast('Odkaz zkopírován.'); }
-        catch (e) { showToast(link); }
-    };
-    box.append(show, share);
+    box.append(show);
     const out = el('button', 'btn btn-secondary', 'Odhlásit se');
     out.onclick = async () => {
         await apiPost('/api/auth/logout', {});
@@ -1129,6 +1121,15 @@ function myDefItem(d) {
 // Veřejný profil jako obrazovka hry (zpět = profil), ne nová karta. Obsah
 // renderuje server — stejný markup jako sdílená stránka /u/<přezdívka>;
 // texty hráčů v něm escapuje worker/src/profile.js.
+// Sdílení profilu: ikona vpravo nahoře na obrazovce veřejného profilu.
+async function sharePublicProfile() {
+    // Profil žije na serveru, kde je účet — ne na FALLBACK_URL pro sdílení z localhostu.
+    const link = `${location.origin}/u/${encodeURIComponent(auth.user.handle)}`;
+    if (navigator.share) { try { await navigator.share({ title: `${auth.user.handle} — 20 slov`, url: link }); } catch (e) {} return; }
+    try { await navigator.clipboard.writeText(link); showToast('Odkaz na profil zkopírován.'); }
+    catch (e) { showToast(link); }
+}
+
 async function showPublicProfile() {
     const body = $('publicProfileBody');
     body.replaceChildren(el('p', 'profile-note', 'Načítám profil…'));
