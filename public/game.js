@@ -4,7 +4,7 @@
  * Slovník: jen podstatná jména (Wikislovník). Každý den má jedno slovo
  * z každého z 20 frekvenčních pásem, takže dny mají srovnatelnou obtížnost.
  * Slož slovo ze všech písmen do 30 s. Jeden pokus denně; zítra přijde další
- * den bez ohledu na dnešní výsledek (nestihnuté slovo jen přetrhne sérii).
+ * den bez ohledu na dnešní výsledek. Série = odehrané dny v kuse, přetrhne ji jen vynechaný den.
  * Trénink čerpá z širšího poolu PRACTICE_WORDS (15 000 slov), denní výzva
  * má 7300 slov / 365 dní a v words.js je zamíchaná — rozbaluje ji unpackDay. */
 'use strict';
@@ -51,7 +51,7 @@ function defaultPersist() {
         results: {},         // { [index dne]: počet získaných slov } — odehrané dny
         streak: 0,
         bestStreak: 0,
-        lastWinDate: null,
+        lastPlayDate: null, // den poslední dohrané denní výzvy; série = odehrané dny v kuse
         attempts: 0,
         wins: 0,
         kbHintShown: false,
@@ -63,6 +63,8 @@ function defaultPersist() {
         ach: {},            // příznaky úspěchů, které nejdou dopočítat: { sdileno, blesk, chlup, sova, presmycka, cisty }
         achGot: {},         // { [id úspěchu]: datum získání } — získaný úspěch už nezmizí
         achUnseen: [],      // získané, ale ještě neotevřené (červená tečka)
+        achQueue: [],       // čekají na oznámení, až hráč dohraje (announceAchievements)
+        achSent: [],        // už nahlášené serveru (jen pro „Má ho X % hráčů")
         nick: '',           // přezdívka u přidaných významů
         avatar: '',         // kód avatara „tvar-barva-oči-pusa", viz avatar.js
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
@@ -84,7 +86,9 @@ function loadPersist() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
-            const p = Object.assign(defaultPersist(), JSON.parse(raw));
+            const saved = JSON.parse(raw);
+            const p = Object.assign(defaultPersist(), saved);
+            if (!('lastPlayDate' in saved)) migrateStreak(p);
             // uložený den ze staré, postupové verze nemá index dne — zahodit
             if (p.day && typeof p.day.dayIdx !== 'number') p.day = null;
             return p;
@@ -97,8 +101,40 @@ function savePersist() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(persist)); } catch (e) {}
 }
 
-function todayStr() {
+// Série dřív počítala jen perfektní dny (20/20). Teď jsou to odehrané dny
+// v kuse, stejně jako na serveru a u úspěchů. Jednou se přepočítá z results.
+function migrateStreak(p) {
+    const today = dayIndex();
+    const end = p.results[today] !== undefined ? today : p.results[today - 1] !== undefined ? today - 1 : null;
+    let run = 0;
+    if (end !== null) for (let i = end; i >= 0 && p.results[i] !== undefined; i--) run++;
+    p.streak = run;
+    p.lastPlayDate = end === null ? null : end === today ? todayStr() : daysAgoStr(1);
+    p.bestStreak = Math.max(p.bestStreak, longestRun(p.results));
+    delete p.lastWinDate;
+}
+
+// Nejdelší řada po sobě jdoucích dní v results (klíče = indexy dní),
+// volitelně jen dní se skóre, které projde `ok`.
+function longestRun(results, ok = () => true) {
+    const idx = Object.keys(results).map(Number).filter(i => ok(results[i])).sort((a, b) => a - b);
+    let best = 0, run = 0;
+    idx.forEach((d, i) => { run = i > 0 && d === idx[i - 1] + 1 ? run + 1 : 1; best = Math.max(best, run); });
+    return best;
+}
+
+// Série, jak ji hráč vidí: po vynechaném dni už neplatí, i když se ještě nepřepsala.
+function liveStreak() {
+    return persist.lastPlayDate === todayStr() || persist.lastPlayDate === daysAgoStr(1) ? persist.streak : 0;
+}
+
+function daysAgoStr(n) {
     const d = new Date();
+    d.setDate(d.getDate() - n);
+    return todayStr(d);
+}
+
+function todayStr(d = new Date()) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
@@ -417,6 +453,7 @@ function showScreen(id) {
     // Profil a trénink v rozích patří domovu — a ten je po dohrání dne výsledek.
     if (id === 'welcome' || id === 'result') $(id).prepend($('topBar'));
     $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+    if (id === 'welcome' || id === 'profile' || id === 'achievements') whenCalm();   // výsledek čeká na konec odhalení
 }
 
 /* ---------------- welcome ---------------- */
@@ -438,7 +475,7 @@ function showWelcome() {
     placeGameGrid('game');
     renderWelcomeGrid();
     $('welcomeRules').innerHTML = persist.attempts > 0
-        ? 'Všech 20 slov udrží sérii. Dnešních 20 slov hraje dnes každý stejných.'
+        ? 'Dohraj dnešek a série poběží dál. Dnešních 20 slov hraje dnes každý stejných.'
         : `Dnešních 20 slov z ${fmtNum(TOTAL_WORDS)} nejčastějších českých hraje dnes každý stejných. Zvládneš všechna?`;
     showScreen('welcome');
 }
@@ -1177,7 +1214,7 @@ function renderProfile() {
         : 'Přezdívkou se podepíšeš u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.';
 
     const tiles = [
-        [fmtNum(persist.streak), 'dní v řadě', persist.streak ? '' : 'stat-tile--off'],
+        [fmtNum(liveStreak()), 'dní v řadě', liveStreak() ? '' : 'stat-tile--off'],
         [fmtNum(days), 'odehraných dní'],
         [fmtNum(words), 'slov v denní výzvě'],
         [pct + ' %', 'úspěšnost'],
@@ -1204,29 +1241,24 @@ function renderProfile() {
         ? 'Série i postup žijí jen v tomhle zařízení. Přihlášením o ně nepřijdeš.'
         : 'Série i postup žijí jen v tomhle zařízení — vymazáním dat prohlížeče zmizí.';
     renderAchievements();
+    loadAchStats();
     loadMyDefs();
     loadMyPoints();
 }
 
 /* ---------------- úspěchy (seznam a markup v achievements.js) ---------------- */
 
-// Plochý stav počtů pro Achievements. Série = nejdelší řada *odehraných* dní
-// (klíče results jsou po sobě jdoucí indexy dní); persist.streak jsou jen
-// perfektní dny a nese Hattrick. Počty z významů zná jen server (účet).
+// Plochý stav počtů pro Achievements. Série = nejdelší řada odehraných dní
+// (klíče results jsou po sobě jdoucí indexy dní), Hattrick = řada dní 20/20.
+// Počty z významů zná jen server (účet).
 function achState() {
-    const idx = Object.keys(persist.results).map(Number).sort((a, b) => a - b);
-    let serie = 0, run = 0, fenix = 0;
-    idx.forEach((d, i) => {
-        const next = i > 0 && d === idx[i - 1] + 1;
-        run = next ? run + 1 : 1;
-        serie = Math.max(serie, run);
-        if (next && persist.results[idx[i - 1]] <= 8 && persist.results[d] >= 17) fenix = 1;
-    });
+    const r = persist.results;
+    const fenix = Object.keys(r).some(i => r[i] <= 8 && r[+i + 1] >= 17) ? 1 : 0;
     const p = (auth.user && state.points) || {};
     const st = {
-        dny: idx.length, serie, fenix, slova: uncoveredCount(),
-        perfekt: Object.values(persist.results).filter(n => n === WORDS_PER_DAY).length,
-        perfektSerie: persist.bestStreak,
+        dny: playedDays(), serie: Math.max(persist.bestStreak, longestRun(r)), fenix, slova: uncoveredCount(),
+        perfekt: Object.values(r).filter(n => n === WORDS_PER_DAY).length,
+        perfektSerie: longestRun(r, n => n === WORDS_PER_DAY),
         avatar: Avatar.valid((auth.user && auth.user.avatar) || persist.avatar) ? 1 : 0,
         trenink: Math.max(persist.practiceWords, p.slovTreninku || 0),
         treninkRada: persist.practiceBestRun, tezka: persist.practiceHard,
@@ -1241,16 +1273,60 @@ function achState() {
 // Zapíše nově splněné (datum + nové) a rozsvítí tečku na Profilu.
 function syncAchievements() {
     const st = achState();
-    let fresh = false;
+    let fresh = !persist.achInit;
     for (const a of Achievements.LIST) {
         if (persist.achGot[a.id] || !Achievements.done(a, st)) continue;
         persist.achGot[a.id] = todayStr();
         persist.achUnseen.push(a.id);
+        // Úspěchy z historie (první spuštění s úspěchy) se neoznamují, jen svítí tečkou.
+        if (persist.achInit) persist.achQueue.push(a.id);
         fresh = true;
     }
+    persist.achInit = true;
     if (fresh) savePersist();
+    reportAchievements();
     $('topBar').querySelector('.icon-btn').classList.toggle('icon-btn--dot', persist.achUnseen.length > 0);
     return st;
+}
+
+// Serveru jen id získaných, kvůli „Má ho X % hráčů". Neodeslané se zkusí příště.
+function reportAchievements() {
+    const ids = Object.keys(persist.achGot).filter(id => !persist.achSent.includes(id));
+    if (!ids.length || state.achPosting) return;
+    state.achPosting = true;
+    apiPost('/api/achievements', { ids }).then(r => {
+        state.achPosting = false;
+        if (!r.ok) return;
+        persist.achSent.push(...ids);
+        savePersist();
+    });
+}
+
+// Oznámení nového úspěchu nikdy nepřeruší hru ani jiný sheet. Čeká ve frontě
+// na klidnou chvíli: konec odhalení výsledku, návrat z tréninku, zavřený sheet.
+// Oslava je sheet nad obrazovkou, kam hráč stejně šel, po zavření tam zůstane.
+function announceAchievements() {
+    if (!persist.achQueue.length || $('game').classList.contains('active')) return;
+    if (document.querySelector('.modal.active') || revealTimeouts.length) return;
+    openAchievement(persist.achQueue[0]);
+}
+
+function whenCalm(ms = 450) { setTimeout(announceAchievements, ms); }
+
+// „Má ho X % hráčů", hodinová cache na serveru; stačí jednou za načtení.
+function loadAchStats() {
+    if (state.achStats !== undefined) return Promise.resolve(state.achStats);
+    state.achStats = null;
+    return apiGet('/api/achievements/stats').then(d => (state.achStats = d && d.pct ? d : null));
+}
+
+function achHasText(id) {
+    const s = state.achStats;
+    if (!s || !Object.keys(s.pct).length) return '';
+    const v = s.pct[id];
+    // sám ho má, i když ho server ještě nezapočítal (statistiky mají hodinovou cache)
+    if (!v) return persist.achGot[id] ? 'Patříš mezi první, kdo ho má' : 'Zatím ho nemá nikdo';
+    return v < 1 ? 'Má ho méně než 1 % hráčů' : `Má ho ${fmtNum(Math.round(v))} % hráčů`;
 }
 
 const myAvatarSvg = () => Avatar.svg((auth.user && auth.user.avatar) || persist.avatar);
@@ -1303,6 +1379,7 @@ function openAchievement(id) {
     const st = achState();
     const locked = !A.done(a, st), secret = A.hidden(a, st);
     const celebrate = persist.achUnseen.includes(id);
+    persist.achQueue = persist.achQueue.filter(x => x !== id);
     if (celebrate) {
         persist.achUnseen = persist.achUnseen.filter(x => x !== id);
         savePersist();
@@ -1325,8 +1402,11 @@ function openAchievement(id) {
         <span class="ach-rarity ach--${rarity}">${A.RARITY[a.r]}</span>
         <p class="ach-desc">${secret ? 'Nápověda: ' + a.secret : a.desc}</p>
         ${info}
+        <p class="ach-meta" id="achHas">${achHasText(id)}</p>
         ${celebrate ? '<button class="btn btn-play ach-ok" onclick="closeModal()">Paráda!</button>' : ''}`;
     openModal('achModal');
+    loadAchStats().then(() => { if ($('achTitle').dataset.id === id) $('achHas').textContent = achHasText(id); });
+    $('achTitle').dataset.id = id;
     if (celebrate) { playWinSound(); haptic('win'); }
 }
 
@@ -1339,7 +1419,7 @@ document.addEventListener('click', e => {
 async function loadMyPoints() {
     const pill = $('profilePoints');
     const d = auth.user && await apiGet('/api/me/points');
-    if (d && Number.isInteger(d.total)) { state.points = d; renderAchievements(); }
+    if (d && Number.isInteger(d.total)) { state.points = d; renderAchievements(); whenCalm(); }
     pill.hidden = !(d && Number.isInteger(d.total));
     if (!pill.hidden) setEmojiText(pill, `⭐ ${fmtNum(d.total)} ${plural(d.total, 'bod', 'body', 'bodů')}`);
 }
@@ -2324,16 +2404,13 @@ function finishDay() {
     persist.day.realTopPct = persist.day.realTopPct ?? null;
     persist.attempts++;
     persist.results[persist.day.dayIdx] = state.marks.filter(Boolean).length;
-    if (perfect) {
-        persist.wins++;
-        const y = new Date(); y.setDate(y.getDate() - 1);
-        const yesterday = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
-        persist.streak = (persist.lastWinDate === yesterday) ? persist.streak + 1 : 1;
-        persist.bestStreak = Math.max(persist.bestStreak, persist.streak);
-        persist.lastWinDate = todayStr();
-    } else {
-        persist.streak = 0;
+    if (perfect) persist.wins++;
+    // Série = odehrané dny v kuse, na skóre nezáleží (jako server a úspěchy).
+    if (persist.lastPlayDate !== todayStr()) {
+        persist.streak = persist.lastPlayDate === daysAgoStr(1) ? persist.streak + 1 : 1;
+        persist.lastPlayDate = todayStr();
     }
+    persist.bestStreak = Math.max(persist.bestStreak, persist.streak);
     if (perfect && !persist.day.wrong) persist.ach.cisty = 1;
     if (new Date().getHours() < 4) persist.ach.sova = 1;
     savePersist();
@@ -2450,7 +2527,7 @@ function renderStreakNudge() {
     const box = $('streakNudge');
     box.style.display = 'none';
     box.innerHTML = '';
-    const s = persist.streak;
+    const s = liveStreak();
     if (!auth.enabled || auth.user || !NUDGE_AT.includes(s) || persist.nudgedAt === s) return;
     persist.nudgedAt = s;
     savePersist();
@@ -2479,12 +2556,15 @@ function animateResultReveal(perfect, instant) {
     });
     if (instant) {
         items.forEach(el => el.classList.add('show'));
+        whenCalm();
         return;
     }
     items.forEach(el => el.classList.remove('show'));
     items.forEach((el, i) => {
         revealTimeouts.push(setTimeout(() => el.classList.add('show'), 250 + i * 350));
     });
+    // až je výsledek celý venku, smí přijít oznámení úspěchu
+    revealTimeouts.push(setTimeout(() => { revealTimeouts = []; whenCalm(0); }, 250 + items.length * 350 + 500));
     if (perfect) revealTimeouts.push(setTimeout(() => { haptic('win'); playWinSound(); launchConfetti(); }, 400));
 }
 
@@ -2669,7 +2749,7 @@ function cardSticker(g, right, cy, deg, size, label, icon, c) {
     g.textBaseline = 'alphabetic';
 }
 
-function cardStreak(day) { return day.perfect ? persist.streak : 0; }
+function cardStreak() { return liveStreak(); }
 
 function cardTier(day) {
     const survived = day.marks.filter(Boolean).length;
@@ -2716,7 +2796,7 @@ async function drawShareCard() {
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     g.fillStyle = t.ink; g.font = `56px ${CARD_DISPLAY}`;
     g.fillText(`Den ${day.dayIdx + 1}`, X, 392);
-    // série jen za perfektní den — tehdy je čím se chlubit
+    // série od dvou dní, s jakýmkoli skóre
     if (streak >= 2) cardSticker(g, W - X, 372, 4, 50, `${fmtNum(streak)} ${plural(streak, 'den', 'dny', 'dní')} v řadě`, flame, STICKERS.streak);
 
     // skóre: obří číslo s retem, vedle „z 20 / slov"
@@ -2989,6 +3069,7 @@ function closeSheet(modal) {
         sheet.style.cssText = '';
         if (modal.opener && modal.opener.isConnected) modal.opener.focus({ preventScroll: true });
         modal.opener = null;
+        whenCalm(250);   // další úspěch ve frontě (nebo ten, co čekal na zavření sheetu)
     };
     if (REDUCED_MOTION.matches) return finish();
     slideDown(sheet, SHEET_CLOSE_MS);

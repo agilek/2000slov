@@ -2,6 +2,25 @@
 
 ## 2026-09-24
 
+### Jedna série (odehrané dny), oznámení úspěchů až po aktivitě, „Má ho X % hráčů“
+Série je teď všude „odehrané dny v kuse“, dřív lokálně jen dny 20/20.
+Starý stav se jednou přepočítá z `results`. Nálepka série je na kartě
+při každém skóre. Nový úspěch čeká ve frontě `persist.achQueue` a oslava
+vyjede až v klidu: po odhalení výsledku, po ukončení tréninku nebo po
+zavření sheetu. Server sbírá id získaných úspěchů (`achievements` v D1)
+a vrací procenta.
+
+**Root cause / approach:** Migrace se pozná podle chybějícího `lastPlayDate`
+v uloženém JSON. V `defaultPersist` ho testovat nejde, `Object.assign` ho
+doplní. Totéž u `achInit`: bez něj v defaultu jde odlišit první spuštění
+(historie → jen tečky) od skutečného odemčení (→ fronta). Klid hlídá
+`announceAchievements()`: aktivní `#game`, otevřený sheet nebo běžící
+`revealTimeouts` → počká. Volá se ze `showScreen`, z konce odhalení
+a z `closeSheet`. Při ladění servíruje service worker starý `game.js`,
+dokud se nezvedne `?v=`.
+
+→ *Memory saved: `achievements_proposal.md` (doplněno)*
+
 ### Úspěchy ve hře: 27 odznaků v profilu, obrazovka Úspěchy, oslava v sheetu
 Místo čtyř zamčených kostek má profil skutečné úspěchy. Sekce ukazuje nové,
 čerstvé a nejbližší odznaky, obrazovka `#achievements` souhrn, „Na dosah“

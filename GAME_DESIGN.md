@@ -28,9 +28,14 @@ hráč si volí, jak velkou část (obtížnost).
   - špatně → červené zatřesení, výběr se vrátí, **časovač běží dál** — zkoušíš znovu,
   - vyprší čas → hledané slovo se červeně odhalí, políčko v mřížce zčervená a **hraje se dál**.
 - Hraje se vždy **všech 20 slov**. Mřížka 4×5 nahoře se plní zeleně/červeně.
-- **Všech 20 zelených** → den zvládnut, série pokračuje.
-- **Jakékoli červené** → série se trhá. Den se ale neopakuje — zítra přijde
-  další datum a s ním nových 20 slov. Nedohraný den se už nevrátí (až za rok).
+- **Série = odehrané dny v kuse.** Každý dohraný den ji prodlouží, na skóre
+  nezáleží. Přetrhne ji jen vynechaný den (jako Duolingo). Stejně ji počítá
+  server (`stats().serie`) i úspěchy. Do 2026-09-24 se počítaly jen dny 20/20,
+  starý stav se jednou přepočítá z `results` (`migrateStreak`).
+- **Všech 20 zelených** = perfektní den (koruna, zlatá karta, konfety).
+  Perfektní dny po sobě nese úspěch Hattrick.
+- Den se neopakuje — zítra přijde další datum a s ním nových 20 slov.
+  Nedohraný den se už nevrátí (až za rok).
 - Odehraný den (ať dopadl jakkoli) se odkryje do sbírky.
 - **Jeden pokus denně**, nové kolo o půlnoci. Rozehraný den přežije reload
   (stav se ukládá každou sekundu), opuštěný nedohraný den se druhý den zahodí.
@@ -108,11 +113,12 @@ a Facebooku). Kreslí ji `drawShareCard()` do canvasu a existuje pro každé sk�
 
 | Skóre (dle percentilu) | Plocha | Nálepka | Výzva dole |
 |---|---|---|---|
-| 20 | zlatá | Top 1 % 👑 (+ „N dní v řadě 🔥“ od série 2) | Dáš taky všech 20? |
+| 20 | zlatá | Top 1 % 👑 | Dáš taky všech 20? |
 | 🏆 (17–19) | zelená | Top X % 🏆 | Překonáš mě? |
 | 🏅 (9–16) | modrá | Top X % 🏅 | Překonáš mě? |
 | bez trofeje (0–8) | fialová | Zítra to dám! 👍 | Dáš to líp? |
 
+Od série 2 má každá karta vpravo nahoře nálepku „N dní v řadě 🔥“.
 Vždy je tam nápis „20 SLOV“ z kostek písmen, den, obří skóre „N z 20 slov“,
 mřížka dne na tmavé desce a adresa hry.
 
@@ -165,12 +171,19 @@ Stejný soubor používá hra, worker (veřejný profil) i `dev-uspechy.html`.
 - **Odemčení:** `syncAchievements()` zapíše datum do `persist.achGot`.
   Získaný odznak už nezmizí, ani když počet klesne. Nový dostane červenou
   tečku na Profilu a u dlaždice, první otevření je oslava „Nový úspěch!“.
+- **Oznámení nikdy nepřeruší aktivitu.** Nový úspěch čeká v `persist.achQueue`,
+  dokud není klid: odhalení výsledku doběhne, hráč ukončí trénink, zavře
+  se jiný sheet. Pak vyjede oslava nad obrazovkou, kam hráč stejně šel,
+  a po zavření tam zůstane. Víc úspěchů jde po sobě. Úspěchy z historie
+  (první spuštění s úspěchy) se neoznamují, jen svítí tečkou.
+- **„Má ho X % hráčů“:** klient hlásí id získaných na `POST /api/achievements`
+  (podle `clientId`, i bez účtu). `GET /api/achievements/stats` vrací procenta
+  z počtu zařízení, hodinová cache na edge, pod 15 zařízeními nic.
 - **Data:** klient skládá stav v `achState()` z `persist` a z
   `/api/me/points`. Server přidal `maxHlasu` a `nejlepsi`. Co jinak nejde
   dopočítat, drží příznaky `persist.ach` (sdílení, rychlost, noc, přesmyčka,
   čistý den) a čítače `practiceBestRun` a `practiceHard`.
-- **Série** u odznaků = nejdelší řada *odehraných* dní. `persist.streak`
-  jsou perfektní dny a nese je Hattrick.
+- **Série** u odznaků = nejdelší řada odehraných dní, Hattrick = řada dní 20/20.
 
 ## 4. Roadmapa
 

@@ -11,6 +11,7 @@ import {
     authLogout, meGet, meSetHandle, meSetAvatar, meDelete, currentUser, purgeAuth, devMode, devLogin,
 } from './auth.js';
 import { apiProfile, profilePage, validPlayedOn, points } from './profile.js';
+import Achievements from '../../public/achievements.js';
 
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
@@ -48,6 +49,8 @@ const ROUTES = {
     'POST /api/profile/backfill': handleBackfill,
     'GET /api/me/points': handleMyPoints,
     'POST /api/training': handleTraining,
+    'POST /api/achievements': handleAchievements,
+    'GET /api/achievements/stats': handleAchievementStats,
     'GET /api/dev/login': (rq, env, url, ctx) => devLogin(rq, env, url, ctx, json),   // jen DEV=1, viz auth.js
 };
 
@@ -121,6 +124,40 @@ async function handleBackfill(request, env) {
          VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(user_id, played_on) DO NOTHING`
     ).bind(user.id, d.d, d.dayIdx, d.score, Date.now())));
     return json({ ok: true, added: rows.length }, 200);
+}
+
+// Získané úspěchy zařízení (i bez účtu). Slouží jen k „Má ho X % hráčů“.
+// Klient si je tvrdí sám jako /api/result. Proto nic víc než tahle čísla.
+const ACH_IDS = new Set(Achievements.LIST.map(a => a.id));
+async function handleAchievements(request, env) {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    if (!validClient(body && body.clientId) || !Array.isArray(body.ids)) return json({ error: 'bad params' }, 400);
+    const ids = [...new Set(body.ids)].filter(id => ACH_IDS.has(id));
+    if (!ids.length) return json({ ok: true }, 200);
+    await env.DB.batch(ids.map(id => env.DB.prepare(
+        'INSERT INTO achievements (client_id, ach, created_at) VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING'
+    ).bind(body.clientId, id, Date.now())));
+    return json({ ok: true }, 200);
+}
+
+// { total, pct: { id: % } }. Pod MIN_SAMPLE zařízeními bez procent, jako
+// percentil dne. Mění se pomalu, proto hodinová cache na edge.
+async function handleAchievementStats(request, env, url, ctx) {
+    const cache = devMode(env) ? null : caches.default;
+    const key = new Request(url.origin + '/api/achievements/stats');
+    const hit = cache && await cache.match(key);
+    if (hit) return hit;
+    const [{ results: tot }, { results: rows }] = await Promise.all([
+        env.DB.prepare('SELECT COUNT(DISTINCT client_id) AS n FROM achievements').all(),
+        env.DB.prepare('SELECT ach, COUNT(*) AS n FROM achievements GROUP BY ach').all(),
+    ]);
+    const total = tot[0].n;
+    const pct = {};
+    if (total >= MIN_SAMPLE) for (const r of rows) pct[r.ach] = Math.round(r.n / total * 1000) / 10;
+    const res = json({ total, pct }, 200, { 'Cache-Control': 'public, max-age=3600' });
+    if (cache) ctx.waitUntil(cache.put(key, res.clone()));
+    return res;
 }
 
 // Body pro vlastní profil. Veřejný je má v markupu z profile.js.

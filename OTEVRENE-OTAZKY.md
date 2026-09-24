@@ -89,20 +89,9 @@ Můžu udělat, až řekneš.
   významů, kterým smazaný hráč dal hlas. Autoři tak mají v počtu hlasů
   (a v bodech) i hlasy, které už neexistují. Oprava je v `meDelete` o dva řádky.
 - **Úspěchy (běží, 2026-09-24):** 27 odznaků, seznam v `public/achievements.js`,
-  náhled s ukázkovými hráči v `public/dev-uspechy.html`. Zvolil jsem výchozí
-  řešení, můžeš je změnit:
+  náhled v `public/dev-uspechy.html`. Zbývá:
   1. Seznam a prahy: přidat, škrtnout, přejmenovat?
-  2. **Série = odehrané dny v kuse** (jako Duolingo). Lokální `persist.streak`
-     („dní v řadě“ v profilu a na kartě) ale počítá jen *perfektní* dny.
-     Perfektní řadu nese odznak „Hattrick“. Hráč tak vidí dvě různé „série“.
-     Sjednotit?
-  3. Úspěchy běží i bez účtu z localStorage. Odznaky za významy a hlasy se
-     odemknou jen s účtem, protože počty zná jen server.
-  4. Oznámení odemčení je zatím jen červená tečka na Profilu a u dlaždice.
-     Oslava „Nový úspěch!“ přijde až po klepnutí. Chceš sheet rovnou po
-     výsledku dne nebo po mezihře tréninku?
-  5. „Má ho X % hráčů“ v detailu není, server by to musel počítat.
-  6. Veřejný profil ukazuje jen odznaky, které zná server. Odznaky jen
+  2. Veřejný profil ukazuje jen odznaky, které zná server. Odznaky jen
      z klienta (sdílení, Bleskovka, tajné, …) tam chybí.
 - **Dvě mrtvé větve** `claude/button-haptic-feedback-8kgxkn` a
   `claude/czech-word-game-f2hnia` na originu, dávno zmergované.
@@ -115,7 +104,10 @@ Můžu udělat, až řekneš.
 |---|---|---|
 | Velikost denní hry | 7300 slov / 365 dní | rok hraní |
 | Co určuje dnešní slova | **datum**, ne postup hráče | aby šly výsledky porovnávat |
-| Nestihnuté slovo | série se trhá, den se **neopakuje** | Wordle model |
+| Nestihnuté slovo | den se **neopakuje** | Wordle model |
+| Série (2026-09-24) | **odehrané dny v kuse**, na skóre nezáleží; dřív jen dny 20/20 | jedna série pro hru, server i úspěchy; perfektní řadu nese úspěch Hattrick |
+| Oznámení úspěchu (2026-09-24) | až po skončení aktivity (výsledek dne, konec tréninku, zavřený sheet), nikdy uprostřed; po zavření hráč zůstane, kam šel | nesmí vyrušit hráče, ale musí se ukázat |
+| „Má ho X % hráčů“ (2026-09-24) | počítá server z hlášení zařízení, od 15 zařízení | i bez účtu; klient si to tvrdí sám, jde jen o orientační číslo |
 | Přihlášení | magic link + 6místný kód | odkaz z mailu neotevře PWA |
 | Avatary | generované z přezdívky | žádný upload, žádná moderace obrázků |
 | Hosting | vše z jednoho Workeru | jedna doména → žádné CORS, `HttpOnly` cookie |

@@ -18,13 +18,13 @@ const Achievements = (() => {
         { id: 'rozcvicka', g: 'zacatky', r: 'common', icon: 'lehka', name: 'Rozcvička', desc: 'Uhodni první slovo v tréninku.', v: 'trenink', goal: 1, how: 'persist.practiceWords, training_days' },
         { id: 'chlouba', g: 'zacatky', r: 'common', icon: 'sdilet', name: 'Chlouba', desc: 'Pochlub se kartou dne.', v: 'sdileno', goal: 1, how: 'persist.ach.sdileno ze shareCardFile / shareText' },
 
-        { id: 'rozjezd', g: 'serie', r: 'common', icon: 'plamen-zivy', num: '3', name: 'Rozjezd', desc: 'Hraj denní výzvu 3 dny v kuse.', v: 'serie', goal: 3, unit: DNY, how: 'nejdelší řada odehraných dní (persist.results / stats().nejdelsi); persist.streak jsou jen perfektní dny' },
+        { id: 'rozjezd', g: 'serie', r: 'common', icon: 'plamen-zivy', num: '3', name: 'Rozjezd', desc: 'Hraj denní výzvu 3 dny v kuse.', v: 'serie', goal: 3, unit: DNY, how: 'nejdelší řada odehraných dní: persist.bestStreak / longestRun(results), na serveru stats().nejdelsi' },
         { id: 'tyden', g: 'serie', r: 'rare', icon: 'plamen-zivy', num: '7', name: 'Týden v kuse', desc: 'Hraj denní výzvu 7 dní v kuse.', v: 'serie', goal: 7, unit: DNY, how: 'nejdelší řada odehraných dní ≥ 7' },
         { id: 'mesic', g: 'serie', r: 'epic', icon: 'plamen-zivy', num: '30', name: 'Měsíc v kuse', desc: 'Hraj denní výzvu 30 dní v kuse.', v: 'serie', goal: 30, unit: DNY, how: 'nejdelší řada odehraných dní ≥ 30' },
         { id: 'stovka', g: 'serie', r: 'legend', icon: 'plamen-zivy', num: '100', name: 'Stovka', desc: 'Hraj denní výzvu 100 dní v kuse.', v: 'serie', goal: 100, unit: DNY, how: 'nejdelší řada odehraných dní ≥ 100' },
 
         { id: 'dvacitka', g: 'den', r: 'rare', icon: 'koruna', num: '20', name: 'Dvacítka', desc: 'Slož za jeden den všech 20 slov.', v: 'perfekt', goal: 1, how: 'počet dní s 20/20' },
-        { id: 'hattrick', g: 'den', r: 'epic', icon: 'koruna', num: '3×', name: 'Hattrick', desc: 'Dej všech 20 slov tři dny po sobě.', v: 'perfektSerie', goal: 3, unit: DNY, how: 'persist.bestStreak (série perfektních dní)' },
+        { id: 'hattrick', g: 'den', r: 'epic', icon: 'koruna', num: '3×', name: 'Hattrick', desc: 'Dej všech 20 slov tři dny po sobě.', v: 'perfektSerie', goal: 3, unit: DNY, how: 'longestRun(results) jen přes dny 20/20' },
         { id: 'cista-prace', g: 'den', r: 'epic', icon: 'terc', name: 'Čistá práce', desc: 'Dej všech 20 slov bez jediného chybného pokusu.', v: 'cisty', goal: 1, how: 'persist.day.wrong = 0 v perfektním dni' },
         { id: 'zpatky', g: 'den', r: 'rare', icon: 'raketa', name: 'Zpátky ve hře', desc: 'Po dni bez trofeje (8 slov a méně) dej hned další den aspoň 17.', v: 'fenix', goal: 1, how: 'persist.results dvou po sobě jdoucích dnů' },
 

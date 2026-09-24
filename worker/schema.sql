@@ -122,3 +122,12 @@ CREATE TABLE IF NOT EXISTS training_days (
 
 -- Body za rozdané hlasy: PK (definition_id, client_id) hledání podle hlasujícího nepokryje.
 CREATE INDEX IF NOT EXISTS idx_votes_client ON votes(client_id, created_at);
+
+-- Získané úspěchy podle zařízení (i bez účtu), jen pro „Má ho X % hráčů“.
+-- Seznam id je v public/achievements.js, klient si je tvrdí sám.
+CREATE TABLE IF NOT EXISTS achievements (
+  client_id  TEXT NOT NULL,
+  ach        TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (client_id, ach)
+);
