@@ -139,11 +139,16 @@ function todayStr(d = new Date()) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-// Index dne = počet dní od EPOCH, po roce se cyklí dokola. Počítá se z data
-// v místní půlnoci, takže se den láme tam, kde hráč skutečně žije.
-function dayIndex(dateStr) {
+// Počet dní od EPOCH. Počítá se z data v místní půlnoci, takže se den láme
+// tam, kde hráč skutečně žije.
+function daysSinceEpoch(dateStr) {
     const [y, m, d] = (dateStr || todayStr()).split('-').map(Number);
-    const days = Math.floor((Date.UTC(y, m - 1, d) - EPOCH) / 86400000);
+    return Math.floor((Date.UTC(y, m - 1, d) - EPOCH) / 86400000);
+}
+
+// Index dne v ročním cyklu slov: po 365 dnech se slova opakují.
+function dayIndex(dateStr) {
+    const days = daysSinceEpoch(dateStr);
     return ((days % TOTAL_LEVELS) + TOTAL_LEVELS) % TOTAL_LEVELS;
 }
 
@@ -2533,9 +2538,10 @@ async function fetchRealPercentile(day, score) {
 async function refreshRealPercentile() {
     const day = persist.day;
     if (!day) return;
-    const dayNum = day.dayIdx + 1;
+    // Server počítá pořadí ze dne hry, ne z dne cyklu — jinak by se po roce
+    // míchaly výsledky dvou let se stejnými slovy.
     const survived = day.marks.filter(Boolean).length;
-    const real = await fetchRealPercentile(dayNum, survived);
+    const real = await fetchRealPercentile(daysSinceEpoch(day.date) + 1, survived);
     if (!real || persist.day !== day) return; // mezitím mohl začít další den
     persist.day.realTopPct = real.topPct;
     savePersist();

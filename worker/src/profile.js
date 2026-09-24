@@ -5,6 +5,7 @@
 // ?cast=1 bere jen obsah a ukáže ho jako svou obrazovku — jeden vzhled, dvě cesty.
 
 import Avatar from '../../public/avatar.js';
+import { json } from './http.js';
 import Achievements from '../../public/achievements.js';
 
 const PER_DAY = 20;
@@ -108,7 +109,7 @@ async function loadProfile(env, handle) {
     return { user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n, points: body, ach: new Set(ach.map(r => r.ach)) };
 }
 
-export async function apiProfile(request, env, url, ctx, json) {
+export async function apiProfile(request, env, url) {
     const data = await loadProfile(env, url.searchParams.get('handle'));
     if (!data) return json({ error: 'not found' }, 404);
     return json({

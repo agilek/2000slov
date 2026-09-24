@@ -1,5 +1,6 @@
 -- Skutečné percentily pro "Top X % hráčů dneška".
--- Jeden řádek = jeden výsledek jednoho hráče pro daný den hry (0-1000, ne kalendářní datum).
+-- Jeden řádek = jeden výsledek jednoho hráče pro daný den hry: pořadí dne od
+-- 21. 9. 2026 (1, 2, …), po roce se NEopakuje, i když slova ano.
 -- clientId je náhodné anonymní UUID vygenerované v prohlížeči, žádná osobní data.
 CREATE TABLE IF NOT EXISTS results (
   day INTEGER NOT NULL,

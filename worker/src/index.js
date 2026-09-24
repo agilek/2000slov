@@ -5,9 +5,10 @@
 // a funguje tak přímo ve Workers.
 
 import { buildPushHTTPRequest } from '@pushforge/builder';
-import { clean, defTextError, validClient, VULGAR, AUTHOR_MAX } from './validate.js';
+import { clean, defTextError, validClient } from './validate.js';
+import { json, readJson, badJson } from './http.js';
 import {
-    authEnabled, authStart, authPoll, authVerify, authApprove, authLandingPage,
+    authStart, authPoll, authVerify, authApprove, authLandingPage,
     authLogout, meGet, meSetHandle, meSetAvatar, meDelete, currentUser, purgeAuth, devMode, devLogin,
 } from './auth.js';
 import { apiProfile, profilePage, validPlayedOn, points } from './profile.js';
@@ -15,6 +16,7 @@ import Achievements from '../../public/achievements.js';
 
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
+const DAYS = 365;
 const ADMIN_CONTACT = 'https://github.com/agilek/2000slov'; // VAPID "sub" kontakt, viz RFC 8292
 // Kam vede klepnutí na push notifikaci. V cronu není request, ze kterého by
 // šlo origin odvodit, takže je natvrdo — po navázání vlastní domény přepsat.
@@ -35,23 +37,23 @@ const ROUTES = {
     'POST /api/defs/edit': handleDefEdit,
     // Účty. Bez RESEND_KEY/MAIL_FROM zůstane /api/auth/start na 503 a klient
     // přihlášení vůbec nenabídne — viz `auth` v odpovědi /api/me.
-    'POST /api/auth/start': (rq, env, url, ctx) => authStart(rq, env, url, ctx, json),
-    'GET /api/auth/poll': (rq, env, url, ctx) => authPoll(rq, env, url, ctx, json),
-    'POST /api/auth/verify': (rq, env, url, ctx) => authVerify(rq, env, url, ctx, json),
-    'POST /api/auth/approve': (rq, env, url, ctx) => authApprove(rq, env, url, ctx, json),
-    'POST /api/auth/logout': (rq, env, url, ctx) => authLogout(rq, env, url, ctx, json),
-    'GET /prihlaseni': (rq, env, url) => authLandingPage(rq, env, url),
-    'GET /api/me': (rq, env, url, ctx) => meGet(rq, env, url, ctx, json),
-    'POST /api/me/handle': (rq, env, url, ctx) => meSetHandle(rq, env, url, ctx, json),
-    'POST /api/me/avatar': (rq, env, url, ctx) => meSetAvatar(rq, env, url, ctx, json),
-    'POST /api/me/delete': (rq, env, url, ctx) => meDelete(rq, env, url, ctx, json),
-    'GET /api/profile': (rq, env, url, ctx) => apiProfile(rq, env, url, ctx, json),
+    'POST /api/auth/start': authStart,
+    'GET /api/auth/poll': authPoll,
+    'POST /api/auth/verify': authVerify,
+    'POST /api/auth/approve': authApprove,
+    'POST /api/auth/logout': authLogout,
+    'GET /prihlaseni': authLandingPage,
+    'GET /api/me': meGet,
+    'POST /api/me/handle': meSetHandle,
+    'POST /api/me/avatar': meSetAvatar,
+    'POST /api/me/delete': meDelete,
+    'GET /api/profile': apiProfile,
     'POST /api/profile/backfill': handleBackfill,
     'GET /api/me/points': handleMyPoints,
     'POST /api/training': handleTraining,
     'POST /api/achievements': handleAchievements,
     'GET /api/achievements/stats': handleAchievementStats,
-    'GET /api/dev/login': (rq, env, url, ctx) => devLogin(rq, env, url, ctx, json),   // jen DEV=1, viz auth.js
+    'GET /api/dev/login': devLogin,   // jen DEV=1, viz auth.js
 };
 
 // Limity na významy. Drží se v D1 dotazech, žádné nové úložiště.
@@ -93,30 +95,18 @@ function sameOrigin(request, url) {
     return !origin || origin === url.origin;
 }
 
-function json(obj, status, extra) {
-    return new Response(JSON.stringify(obj), {
-        status,
-        headers: Object.assign({ 'Content-Type': 'application/json; charset=utf-8' }, extra || {}),
-    });
-}
-
-function validParams(day, score, clientId) {
-    if (!Number.isInteger(day) || day < 1 || day > MAX_DAY) return false;
-    if (!Number.isInteger(score) || score < 0 || score > 20) return false;
-    if (typeof clientId !== 'string' || clientId.length < 8 || clientId.length > 64) return false;
-    return true;
-}
+const validScore = (n) => Number.isInteger(n) && n >= 0 && n <= 20;
 
 // Historie z doby před přihlášením — klient si ji tvrdí sám, stejně jako
 // /api/result. Proto profil ano, žebříček ne.
 async function handleBackfill(request, env) {
     const user = await currentUser(request, env);
     if (!user) return json({ error: 'not logged in' }, 401);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const days = Array.isArray(body && body.days) ? body.days.slice(0, 400) : [];
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const days = Array.isArray(body.days) ? body.days.slice(0, 400) : [];
     const rows = days.filter(d =>
-        validPlayedOn(d && d.d) && Number.isInteger(d.score) && d.score >= 0 && d.score <= 20
+        validPlayedOn(d && d.d) && validScore(d.score)
         && Number.isInteger(d.dayIdx) && d.dayIdx >= 0 && d.dayIdx < 365);
     if (!rows.length) return json({ ok: true, added: 0 }, 200);
     await env.DB.batch(rows.map(d => env.DB.prepare(
@@ -132,9 +122,9 @@ async function handleBackfill(request, env) {
 // Proto jen tahle čísla a odznaky na profilu, nic, co by šlo zneužít.
 const ACH_IDS = new Set(Achievements.LIST.map(a => a.id));
 async function handleAchievements(request, env) {
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    if (!validClient(body && body.clientId) || !Array.isArray(body.ids)) return json({ error: 'bad params' }, 400);
+    const body = await readJson(request);
+    if (!body) return badJson();
+    if (!validClient(body.clientId) || !Array.isArray(body.ids)) return json({ error: 'bad params' }, 400);
     const ids = [...new Set(body.ids)].filter(id => ACH_IDS.has(id));
     if (!ids.length) return json({ ok: true }, 200);
     const user = await currentUser(request, env);
@@ -179,9 +169,9 @@ async function handleMyPoints(request, env) {
 async function handleTraining(request, env) {
     const user = await currentUser(request, env);
     if (!user) return json({ error: 'not logged in' }, 401);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    if (!validPlayedOn(body && body.playedOn)) return json({ error: 'bad params' }, 400);
+    const body = await readJson(request);
+    if (!body) return badJson();
+    if (!validPlayedOn(body.playedOn)) return json({ error: 'bad params' }, 400);
     await env.DB.prepare(
         `INSERT INTO training_days (user_id, played_on, words) VALUES (?1, ?2, 1)
          ON CONFLICT(user_id, played_on) DO UPDATE SET words = words + 1`
@@ -189,88 +179,60 @@ async function handleTraining(request, env) {
     return json({ ok: true }, 200);
 }
 
+// `day` je pořadí dne od začátku hry (1 = 21. 9. 2026), ne den v ročním
+// cyklu: denní slova se po 365 dnech opakují, ale výsledky různých let se
+// míchat nesmí. V prvním roce jsou obě čísla stejná.
 async function handleSubmit(request, env) {
-    let body;
-    try {
-        body = await request.json();
-    } catch {
-        return json({ error: 'bad json' }, 400);
-    }
-
-    const day = Number(body.day);
-    const score = Number(body.score);
-    const clientId = String(body.clientId || '');
-    if (!validParams(day, score, clientId)) {
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const { day, score, clientId } = body;
+    if (!Number.isInteger(day) || day < 1 || day > MAX_DAY || !validScore(score) || !validClient(clientId)) {
         return json({ error: 'bad params' }, 400);
     }
 
     // upsert: pokud hráč (stejné clientId) pro tento den už výsledek poslal, přepíše se
-    await env.DB.prepare(
+    const writes = [env.DB.prepare(
         `INSERT INTO results (day, score, client_id, updated_at) VALUES (?1, ?2, ?3, ?4)
          ON CONFLICT(day, client_id) DO UPDATE SET score = excluded.score, updated_at = excluded.updated_at`
-    ).bind(day, score, clientId, Date.now()).run();
+    ).bind(day, score, clientId, Date.now())];
 
     // Přihlášenému se den zapíše i do profilu — klíčováno skutečným datem,
     // protože index dne se po roce opakuje. Nepřihlášení hrají beze změny.
     const user = await currentUser(request, env);
     if (user && validPlayedOn(body.playedOn)) {
-        await env.DB.prepare(
+        writes.push(env.DB.prepare(
             `INSERT INTO profile_days (user_id, played_on, day_idx, score, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT(user_id, played_on) DO UPDATE SET score = excluded.score`
-        ).bind(user.id, body.playedOn, day - 1, score, Date.now()).run();
+        ).bind(user.id, body.playedOn, (day - 1) % DAYS, score, Date.now()));
     }
-
+    await env.DB.batch(writes);
     return json(await computePercentile(env, day, score), 200);
 }
 
 async function handlePercentile(request, env, url) {
     const day = Number(url.searchParams.get('day'));
     const score = Number(url.searchParams.get('score'));
-    if (!Number.isInteger(day) || !Number.isInteger(score) || score < 0 || score > 20) {
-        return json({ error: 'bad params' }, 400);
-    }
+    if (!Number.isInteger(day) || !validScore(score)) return json({ error: 'bad params' }, 400);
     return json(await computePercentile(env, day, score), 200);
 }
 
+// Jeden průchod indexem idx_results_day: kolik hráčů dne a kolik z nich má aspoň tolik.
 async function computePercentile(env, day, score) {
-    const totalRow = await env.DB.prepare(
-        'SELECT COUNT(*) AS n FROM results WHERE day = ?1'
-    ).bind(day).first();
-    const total = totalRow?.n || 0;
-
-    if (total < MIN_SAMPLE) {
-        return { real: false, total };
-    }
-
-    const betterOrEqualRow = await env.DB.prepare(
-        'SELECT COUNT(*) AS n FROM results WHERE day = ?1 AND score >= ?2'
+    const row = await env.DB.prepare(
+        'SELECT COUNT(*) AS total, COALESCE(SUM(score >= ?2), 0) AS better FROM results WHERE day = ?1'
     ).bind(day, score).first();
-    const betterOrEqual = betterOrEqualRow?.n || 0;
-
-    const topPct = Math.max(1, Math.round((betterOrEqual / total) * 100));
-    return { real: true, total, topPct };
-}
-
-function validSubscription(clientId, endpoint, keys) {
-    if (typeof clientId !== 'string' || clientId.length < 8 || clientId.length > 64) return false;
-    if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) return false;
-    if (!keys || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string') return false;
-    return true;
+    const total = row?.total || 0;
+    if (total < MIN_SAMPLE) return { real: false, total };
+    return { real: true, total, topPct: Math.max(1, Math.round(row.better / total * 100)) };
 }
 
 async function handleSubscribe(request, env) {
-    let body;
-    try {
-        body = await request.json();
-    } catch {
-        return json({ error: 'bad json' }, 400);
-    }
-
-    const clientId = String(body.clientId || '');
-    const endpoint = String(body.endpoint || '');
-    const keys = body.keys || {};
-    if (!validSubscription(clientId, endpoint, keys)) {
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const { clientId, endpoint, keys } = body;
+    if (!validClient(clientId) || typeof endpoint !== 'string' || !endpoint.startsWith('https://')
+        || !keys || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string') {
         return json({ error: 'bad params' }, 400);
     }
 
@@ -331,9 +293,10 @@ async function handleDefsBatch(request, env, url, ctx) {
     const cache = devMode(env) ? null : caches.default;
     const rows = {};                                    // slovo -> řádek | null
     const misses = [];
-    for (const w of words) {
-        const hit = cache && await cache.match(defCacheKey(w));
-        if (hit) rows[w] = await hit.json();
+    // dotazy do cache naráz, ne po jednom (dávka má až BATCH_MAX slov)
+    const hits = await Promise.all(words.map(w => cache && cache.match(defCacheKey(w))));
+    for (const [i, w] of words.entries()) {
+        if (hits[i]) rows[w] = await hits[i].json();
         else misses.push(w);
     }
 
@@ -408,9 +371,9 @@ async function handleDefCreate(request, env, url, ctx) {
     if (!user) return json({ error: 'Významy může přidávat jen přihlášený hráč.' }, 401);
     if (!user.handle) return json({ error: 'Nejdřív si zvol přezdívku.' }, 400);
 
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { clientId, word, text } = body || {};
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const { clientId, word, text } = body;
     if (typeof word !== 'string' || !word.trim()) return json({ error: 'bad params' }, 400);
     const err = defTextError(text);
     if (err) return json({ error: err }, 400);
@@ -444,9 +407,9 @@ async function handleDefCreate(request, env, url, ctx) {
 async function handleDefEdit(request, env, url, ctx) {
     const me = await currentUser(request, env);
     if (!me) return json({ error: 'Upravovat může jen přihlášený hráč.' }, 401);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { id, text } = body || {};
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const { id, text } = body;
     if (typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
     const err = defTextError(text);
     if (err) return json({ error: err }, 400);
@@ -477,9 +440,9 @@ async function handleDefEdit(request, env, url, ctx) {
 async function handleDefVote(request, env, url, ctx) {
     const me = await currentUser(request, env);
     if (!me) return json({ error: 'Hlasovat může jen přihlášený hráč.' }, 401);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { id } = body || {};
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const { id } = body;
     if (typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
     const clientId = me.id;
 
@@ -509,9 +472,9 @@ async function handleDefVote(request, env, url, ctx) {
 async function handleDefReport(request, env, url, ctx) {
     const me = await currentUser(request, env);
     if (!me) return json({ error: 'Nahlásit může jen přihlášený hráč.' }, 401);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { id } = body || {};
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const { id } = body;
     if (typeof id !== 'string' || !id) return json({ error: 'bad params' }, 400);
     const clientId = me.id;
     await env.DB.batch([

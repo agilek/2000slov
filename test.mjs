@@ -12,6 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 import Avatar from './public/avatar.js';
 import Achievements from './public/achievements.js';
 import { stamp } from './tools/stamp.mjs';
+import worker from './worker/src/index.js';
 
 // words.js se spouští ve vm, takže pole z něj mají prototyp z jiného realmu
 // a deepStrictEqual by je odmítl. Proto se porovnává jen obsah.
@@ -29,8 +30,8 @@ const test = (name, fn) => {
 // /api/dev/login obchází e-mail — nesmí existovat mimo DEV=1 ani z veřejné
 // adresy. Stráž je před prvním dotazem do DB; prázdná DB pak ukáže, že prošla.
 const emptyDb = { prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }) };
-const devError = async (env, host) => (await devLogin(null, { DB: emptyDb, ...env },
-    new URL(`http://${host}/api/dev/login`), null, (o) => o)).error;
+const devError = async (env, host) => (await (await devLogin(null, { DB: emptyDb, ...env },
+    new URL(`http://${host}/api/dev/login`))).json()).error;
 const [prodLocal, devPublic, devLan] = await Promise.all([
     devError({}, 'localhost:8787'), devError({ DEV: '1' }, '20slov.cz'), devError({ DEV: '1' }, '192.168.1.5:8787')]);
 
@@ -94,12 +95,36 @@ run("INSERT INTO training_days VALUES ('ja', '2026-09-01', 25), ('ja', '2026-09-
 run("INSERT INTO definitions (id, word, text, user_id, votes, hidden, created_at) VALUES ('v1', 'a', 't', 'ja', 3, 0, 0), ('v2', 'b', 't', 'ja', 5, 1, 0)");
 for (let i = 0; i < 14; i++) run('INSERT INTO votes VALUES (?, ?, ?)', `x${i}`, 'ja', i < 12 ? i : 2 * DEN);
 run("INSERT INTO votes VALUES ('v1', 'cizi', 0)");
-const d1 = { prepare: (q) => ({ bind: (...a) => ({ all: async () => ({ results: sql.prepare(q).all(...a) }) }) }) };
+const d1 = {
+    prepare: (q) => ({ bind: (...a) => ({
+        all: async () => ({ results: sql.prepare(q).all(...a) }),
+        first: async () => sql.prepare(q).get(...a) ?? null,
+        run: async () => sql.prepare(q).run(...a),
+    }) }),
+    batch: async (stmts) => Promise.all(stmts.map(st => st.run())),
+};
 const [mojeBody, nikdo] = await Promise.all([points({ DB: d1 }, 'ja'), points({ DB: d1 }, 'nikdo')]);
 
 test('body: denní stropy a skryté významy', () => assert.deepEqual({ ...mojeBody },
     { total: 3 * 10 + 14 + 5 + 3 * 2 + 12, dny: 3, slovTreninku: 14, vyznamu: 1, ziskanychHlasu: 3, maxHlasu: 3, nejlepsi: 0, danychHlasu: 12 }));
 test('body: hráč bez aktivity má nulu', () => assert.equal(nikdo.total, 0));
+
+/* ---------------- percentil dne (worker) ---------------- */
+
+// Celou cestou přes fetch workeru: validace, zápis a jeden SQL dotaz na pořadí.
+// Den 366 je stejný den cyklu jako den 1, ale jiný rok — nesmí se míchat.
+const poslat = (day, score, clientId) => worker.fetch(new Request('https://x/api/result', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ day, score, clientId }),
+}), { DB: d1 }).then(r => r.json());
+for (let i = 0; i < 20; i++) await poslat(1, i, `hrac-${String(i).padStart(4, '0')}`);
+await poslat(366, 20, 'hrac-pristi-rok');
+const muj = await poslat(1, 15, 'hrac-ja-00001');
+const malo = await poslat(2, 20, 'hrac-ja-00001');
+const spatne = await poslat(1, 21, 'hrac-ja-00001');
+test('percentil: kolik hráčů dne má aspoň tolik slov', () =>
+    assert.deepEqual(muj, { real: true, total: 21, topPct: 29 }));   // 15–19 a já = 6 z 21
+test('percentil: pod 15 hráči jen odhad', () => assert.deepEqual(malo, { real: false, total: 1 }));
+test('percentil: nesmyslné skóre neprojde', () => assert.equal(spatne.error, 'bad params'));
 
 /* ---------------- úspěchy ---------------- */
 

@@ -12,6 +12,7 @@
 // člověka.
 
 import Avatar from '../../public/avatar.js';
+import { json, readJson, badJson } from './http.js';
 
 const SESSION_DAYS = 365;
 const REQUEST_TTL_MS = 15 * 60 * 1000;
@@ -102,12 +103,12 @@ async function sendLoginMail(env, email, link, code) {
 
 /* ---------------- endpointy ---------------- */
 
-export async function authStart(request, env, url, ctx, json) {
+export async function authStart(request, env, url) {
     if (!authEnabled(env)) return json({ error: 'Přihlášení zatím není spuštěné.' }, 503);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const body = await readJson(request);
+    if (!body) return badJson();
 
-    const email = normalizeEmail(body && body.email);
+    const email = normalizeEmail(body.email);
     if (!validEmail(email)) return json({ error: 'Zadej platný e-mail.' }, 400);
 
     const emailHash = await peppered(env, email);
@@ -131,7 +132,7 @@ export async function authStart(request, env, url, ctx, json) {
          (id, email_hash, approve_hash, code_hash, ip_hash, client_id, created_at, expires_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`
     ).bind(id, emailHash, await sha256(approveToken), await sha256(code), ipHash,
-           (body && body.clientId) || null, now(), now() + REQUEST_TTL_MS).run();
+           body.clientId || null, now(), now() + REQUEST_TTL_MS).run();
 
     const link = `${url.origin}/prihlaseni?t=${approveToken}`;
     try {
@@ -144,21 +145,21 @@ export async function authStart(request, env, url, ctx, json) {
 
 // Vyzvednutí session. Cookie se nastavuje JEN tady — v prohlížeči z e-mailu
 // žádná session nevzniká.
-export async function authPoll(request, env, url, ctx, json) {
+export async function authPoll(request, env, url) {
     const id = url.searchParams.get('id') || '';
     if (!id) return json({ error: 'bad params' }, 400);
     const { results } = await env.DB.prepare('SELECT * FROM login_requests WHERE id = ?1').bind(id).all();
     const req = results[0];
     if (!req || req.expires_at < now() || req.consumed_at) return json({ status: 'expired' }, 200);
     if (!req.approved_at) return json({ status: 'pending' }, 200);
-    return finishLogin(env, req, json);
+    return finishLogin(env, req);
 }
 
 // Návrat do aplikace dřív, než hráč doklikal odkaz.
-export async function authVerify(request, env, url, ctx, json) {
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const { loginId, code } = body || {};
+export async function authVerify(request, env, url) {
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const { loginId, code } = body;
     const { results } = await env.DB.prepare('SELECT * FROM login_requests WHERE id = ?1').bind(loginId || '').all();
     const req = results[0];
     if (!req || req.expires_at < now() || req.consumed_at) return json({ status: 'expired' }, 200);
@@ -167,10 +168,10 @@ export async function authVerify(request, env, url, ctx, json) {
         await env.DB.prepare('UPDATE login_requests SET attempts = attempts + 1 WHERE id = ?1').bind(req.id).run();
         return json({ status: 'badcode', left: MAX_CODE_ATTEMPTS - req.attempts - 1 }, 200);
     }
-    return finishLogin(env, req, json);
+    return finishLogin(env, req);
 }
 
-async function finishLogin(env, req, json) {
+async function finishLogin(env, req) {
     let { results: found } = await env.DB.prepare('SELECT * FROM users WHERE email_hash = ?1').bind(req.email_hash).all();
     let user = found[0];
     if (!user) {
@@ -219,10 +220,10 @@ catch(e){s.textContent='Něco se pokazilo. Zkus to znovu.';}};
 </script></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
-export async function authApprove(request, env, url, ctx, json) {
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const hash = await sha256(String((body && body.t) || ''));
+export async function authApprove(request, env, url) {
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const hash = await sha256(String(body.t || ''));
     const { results } = await env.DB.prepare(
         'SELECT id FROM login_requests WHERE approve_hash = ?1 AND expires_at > ?2 AND consumed_at IS NULL'
     ).bind(hash, now()).all();
@@ -231,24 +232,24 @@ export async function authApprove(request, env, url, ctx, json) {
     return json({ ok: true }, 200);
 }
 
-export async function authLogout(request, env, url, ctx, json) {
+export async function authLogout(request, env, url) {
     const raw = request.headers.get('Cookie') || '';
     const m = raw.match(/(?:^|;\s*)sid=([a-f0-9]+)/);
     if (m) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?1').bind(await sha256(m[1])).run();
     return json({ ok: true }, 200, { 'Set-Cookie': cookie(env, 'sid', '', 0) });
 }
 
-export async function meGet(request, env, url, ctx, json) {
+export async function meGet(request, env, url) {
     const u = await currentUser(request, env);
     return json({ auth: authEnabled(env), user: u ? publicUser(u) : null }, 200);
 }
 
-export async function meSetHandle(request, env, url, ctx, json) {
+export async function meSetHandle(request, env, url) {
     const u = await currentUser(request, env);
     if (!u) return json({ error: 'not logged in' }, 401);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const handle = String((body && body.handle) || '').trim();
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const handle = String(body.handle || '').trim();
     if (!HANDLE_RE.test(handle)) return json({ error: '3–20 znaků, bez mezer.' }, 400);
     try {
         await env.DB.prepare('UPDATE users SET handle = ?1, handle_lc = ?2 WHERE id = ?3')
@@ -260,18 +261,18 @@ export async function meSetHandle(request, env, url, ctx, json) {
     return json({ ok: true, user: publicUser({ ...u, handle }) }, 200);
 }
 
-export async function meSetAvatar(request, env, url, ctx, json) {
+export async function meSetAvatar(request, env, url) {
     const u = await currentUser(request, env);
     if (!u) return json({ error: 'not logged in' }, 401);
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
-    const avatar = String((body && body.avatar) || '');
+    const body = await readJson(request);
+    if (!body) return badJson();
+    const avatar = String(body.avatar || '');
     if (!Avatar.valid(avatar)) return json({ error: 'bad avatar' }, 400);
     await env.DB.prepare('UPDATE users SET avatar = ?1 WHERE id = ?2').bind(avatar, u.id).run();
     return json({ ok: true, user: publicUser({ ...u, avatar }) }, 200);
 }
 
-export async function meDelete(request, env, url, ctx, json) {
+export async function meDelete(request, env, url) {
     const u = await currentUser(request, env);
     if (!u) return json({ error: 'not logged in' }, 401);
     await env.DB.batch([
@@ -290,7 +291,7 @@ export async function meDelete(request, env, url, ctx, json) {
 // bez e-mailu — /api/dev/login?kdo=Tester. Mimo DEV=1, mimo lokální adresu
 // a pro jiné než seedované účty (id dev-…) neexistuje.
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/;
-export async function devLogin(request, env, url, ctx, json) {
+export async function devLogin(request, env, url) {
     if (!devMode(env) || !LOCAL_HOST.test(url.hostname)) return json({ error: 'not found' }, 404);
     const handle = (url.searchParams.get('kdo') || 'Tester').toLowerCase();
     const { results } = await env.DB.prepare(
