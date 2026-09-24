@@ -2077,6 +2077,10 @@ function openFeedbackModal() {
 // právě je (i z půlky tahu prstem nebo otevírání), pozadí se rozplyne a teprve
 // pak sheet zmizí — nikdy jen neblikne pryč.
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+// Čím se naposledy ovládalo — podle toho se po zavření sheetu vrací fokus.
+let lastInput = 'pointer';
+document.addEventListener('pointerdown', () => { lastInput = 'pointer'; }, true);
+document.addEventListener('keydown', () => { lastInput = 'key'; }, true);
 const SHEET_CLOSE_MS = 300;
 
 function openModal(id) {
@@ -2085,8 +2089,9 @@ function openModal(id) {
     modal.querySelector('.modal-content').style.cssText = '';
     modal.classList.add('active');
     // Fokus na sheet samotný (role=dialog), ne na tlačítko — čtečka se ocitne
-    // uvnitř, ale nic se nerozsvítí; Zavřít ukáže až Tab. Po zavření zpět.
-    if (!modal.contains(document.activeElement)) modal.opener = document.activeElement;
+    // uvnitř, ale nic se nerozsvítí; Zavřít ukáže až Tab. Na původní místo se
+    // fokus vrací jen klávesnici: po klepnutí by na kartě zůstal rámeček.
+    if (!modal.contains(document.activeElement)) modal.opener = lastInput === 'key' ? document.activeElement : null;
     modal.querySelector('.modal-content').focus({ preventScroll: true });
 }
 
