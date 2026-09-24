@@ -2,6 +2,19 @@
 
 ## 2026-09-24
 
+### Mezihra: víc hlášek, bez času, výzva k doplnění významu
+Hlášky po uhodnutí mají tři zásobníky po 6–8 (do 5 s, zbývalo ≤ 10 s, běžně),
+nikdy stejná dvakrát po sobě a všechny ≤ 12 znaků kvůli štítku série. Čas pod
+hláškou zmizel — dobu do dalšího slova ukazuje tlačítko. Když slovo nemá význam,
+je místo karty výzva „Víš, co znamená „…“?" s tužkou, která otevře sheet významů.
+
+**Root cause / approach:** Význam nebyl vidět vůbec, protože jsem „Přidat
+význam" schovával, když neběží účty (v produkci pořád chybí secrety,
+OTEVRENE 1.1), a lokální statický server nemá API. Výzva je teď vždy; co se
+stane po klepnutí, řeší sheet významů.
+
+→ *No new memory entries.*
+
 ### Mezihra v tréninku jako panel zdola, živý plamen
 Mezihra po slově byla všude stejná (text uprostřed, „Další slovo za 5 s"),
 nešlo z ní přejít dál ani odejít a klepnutí ji *pozastavilo*. Teď vyjede panel

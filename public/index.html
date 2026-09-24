@@ -20,8 +20,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=5">
-<link rel="stylesheet" href="designs/kostky.css?v=2">
+<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="designs/kostky.css?v=3">
 </head>
 <body>
 
@@ -149,6 +149,10 @@
                 </div>
                 <div class="wd-tiles" id="wdTiles" role="img"></div>
                 <div class="wd-card" id="wdCard" hidden></div>
+                <button class="wd-add" id="wdAddBtn" onclick="openDefs(event)" hidden>
+                    <span class="wd-add-title" id="wdAddTitle"></span>
+                    <span class="wd-add-sub">Napiš význam pro ostatní hráče</span>
+                </button>
                 <button class="btn wd-next" id="wdNextBtn" onclick="nextWord()"><span>Další slovo</span></button>
                 <button class="btn-tertiary wd-more" id="wdMoreBtn" onclick="openDefs(event)" hidden></button>
             </div>
@@ -236,6 +240,6 @@
     </div>
 
 <script src="words.js?v=4"></script>
-<script src="game.js?v=6"></script>
+<script src="game.js?v=7"></script>
 </body>
 </html>

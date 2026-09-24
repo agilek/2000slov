@@ -957,6 +957,7 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 .wd-title { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 24px; line-height: 1.1; color: var(--green-dark); }
 .word-done.missed .wd-title { color: var(--red); }
 .wd-sub { font-size: 14px; font-weight: 700; color: var(--muted-text); }
+.wd-sub:empty { display: none; }
 .wd-streak {
     flex-shrink: 0;
     padding: 6px 12px;
@@ -1000,6 +1001,26 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 }
 @keyframes wdFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .wd-more { margin-top: -4px; }
+/* Výzva k doplnění významu, když slovo žádný nemá. */
+.wd-add {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    padding: 12px 14px;
+    text-align: left;
+    color: var(--ink);
+    background: var(--card);
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.wd-add:focus { outline: none; }
+.wd-add:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.wd-add-title { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 16px; }
+.wd-add-sub { font-size: 13px; font-weight: 600; color: var(--muted-text); }
 .wd-card {
     background: var(--card);
     border: 2px solid var(--line);

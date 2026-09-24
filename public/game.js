@@ -356,7 +356,17 @@ function prefetchDefs() {
 // se mezitím vyplňuje), klepnutím kamkoli mimo kartu hned. Sáhnutí na kartu
 // s významem, otevření významů nebo odchod z aplikace odpočet zruší — kdo čte,
 // tomu obrazovka neuteče.
-const PRAISE = ['Paráda!', 'Výborně!', 'Super!', 'Skvělé!', 'Bomba!'];
+// Hlášky po uhodnutí; krátké (≤ 12 znaků), vedle bývá štítek série.
+const PRAISE = {
+    fast:  ['Bleskovka!', 'Jako blesk!', 'Turbo!', 'Fofr!', 'Raketa!', 'Rychlík!'],   // do 5 s
+    close: ['Tak tak!', 'O fous!', 'Na chlup!', 'Těsně!', 'Uf, těsně!', 'Na knap!'],   // zbývalo ≤ 10 s
+    ok:    ['Paráda!', 'Výborně!', 'Super!', 'Skvělé!', 'Bomba!', 'Pecka!', 'Trefa!', 'Přesně tak!'],
+};
+// Náhodná hláška, ale nikdy stejná dvakrát po sobě.
+function praise(kind) {
+    const pool = PRAISE[kind].filter(p => p !== state.lastPraise);
+    return (state.lastPraise = pool[Math.floor(Math.random() * pool.length)]);
+}
 const STREAK_MILESTONES = [5, 10, 20, 30, 50, 100];
 
 function showWordDone(word, gen, solved) {
@@ -370,10 +380,9 @@ function showWordDone(word, gen, solved) {
     ov.classList.add(solved ? 'solved' : 'missed');
     ov.querySelector('.wd-panel').style.cssText = '';
     $('wdTitle').textContent = !solved ? 'Čas vypršel'
-        : elapsed <= 5 ? 'Bleskovka!'
-        : state.time <= 10 ? 'Tak tak!'
-        : PRAISE[Math.floor(Math.random() * PRAISE.length)];
-    $('wdSub').textContent = solved ? `za ${elapsed} s`
+        : praise(elapsed <= 5 ? 'fast' : state.time <= 10 ? 'close' : 'ok');
+    // Čas do dalšího slova ukazuje tlačítko, podtitulek jen u chyby.
+    $('wdSub').textContent = solved ? ''
         : state.lostStreak >= 2 ? 'Série skončila' : 'Hledané slovo';
     renderWdStreak(solved);
     renderWdTiles(word, solved);
@@ -442,10 +451,10 @@ function renderWdTiles(word, solved) {
     box.classList.add('wd-unscramble');
 }
 
+// Význam slova, nebo místo něj výzva, ať ho hráč doplní.
 function renderWdCard(word) {
     const def = defCache.get(word);
     const card = $('wdCard');
-    const more = $('wdMoreBtn');
     card.hidden = !def;
     card.replaceChildren();
     if (def) {
@@ -453,9 +462,10 @@ function renderWdCard(word) {
         meta.append(authorEl(def.author), voteBtn(def));
         card.append(el('p', 'wd-text', def.text), meta);   // cizí text vždy přes textContent
     }
-    // Bez významu a bez účtů by „Přidat význam" vedlo do slepé uličky.
-    more.hidden = !def && !auth.enabled;
-    more.textContent = !def ? 'Přidat význam' : auth.enabled ? 'Významy a přidat vlastní' : 'Všechny významy';
+    $('wdAddBtn').hidden = !!def;
+    $('wdAddTitle').textContent = `Víš, co znamená „${word}“?`;
+    $('wdMoreBtn').hidden = !def;
+    $('wdMoreBtn').textContent = auth.enabled ? 'Významy a přidat vlastní' : 'Všechny významy';
 }
 
 function nextWord() {
@@ -1118,7 +1128,7 @@ function startPracticeGame() {
     state.mode = 'practice';
     $('game').classList.add('practice');
     $('closeGameBtn').style.display = 'flex';
-    refreshAuth();                       // mezihra podle něj nabízí „Přidat význam"
+    refreshAuth();                       // mezihra podle něj popisuje odkaz na významy
     state.pool = pool;
     state.practiceQueue = shuffleCopy(pool);
     state.words = [];
