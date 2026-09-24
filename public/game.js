@@ -1232,10 +1232,6 @@ function renderProfile() {
     $('profileSub').textContent = persist.bestStreak > 0
         ? `Nejdelší série: ${fmtNum(persist.bestStreak)}`
         : 'Zatím bez série';
-    $('profileNote').textContent = auth.user
-        ? 'Přezdívka se ukazuje u tvých významů a v odkazu na veřejný profil.'
-        : nick ? 'Přezdívka se ukazuje u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.'
-        : 'Přezdívkou se podepíšeš u významů, které přidáš. Přihlášení k účtu přijde později — zatím je všechno uložené jen v tomhle zařízení.';
 
     const tiles = [
         [fmtNum(liveStreak()), 'dní v řadě', liveStreak() ? '' : 'stat-tile--off'],

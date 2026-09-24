@@ -99,7 +99,7 @@
     // Tyhle prvky zůstanou v Safari s obyčejným zaoblením. Výplně ubývajících
     // pruhů mění šířku v každém snímku: ResizeObserver by jim pořád skládal
     // novou masku a Safari ji mezitím zahodí, pruh bliká. Ořízne je rodič.
-    var SKIP = '.ach, .ach-medal, .time-bar-fill, .ach-bar i, .ach-mini i';
+    var SKIP = '.ach, .ach-medal, .avatar-btn, .time-bar-fill, .ach-bar i, .ach-mini i';   // .avatar-btn: tužka vyčnívá přes kruh
 
     function candidates(root) {
         var out = [];

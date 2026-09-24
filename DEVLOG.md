@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+### Profil bez věty o přezdívce, zlatá ocenění bez retu, celá tužka u avataru
+Z profilu zmizela věta „Přezdívka se ukazuje u…“. Hláška „Top X % hráčů“
+na výsledku a bodová pilulka v profilu nemají spodní ret: jsou to ocenění,
+ne tlačítka. V Safari už clip-path neusekne tužku u avataru (`.avatar-btn`
+v `SKIP` squircle.js, tužka vyčnívá přes kruh).
+
+→ *No new memory entries.*
+
 ### Ret tlačítek zpět v Safari, hlavička hry, větší políčka, Přidat na plochu jako jedno tlačítko
 V Safari chyběl od prvního nasazení squircle.js (17:43) spodní ret všech
 tlačítek. Hlavička hry je jeden centrovaný řádek „🕐 Slovo 3/20 · Lehká“
