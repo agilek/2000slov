@@ -552,11 +552,11 @@
     border: 2px solid var(--line);
     border-bottom: 0;
 }
-.modal-header { border-bottom: 2px solid var(--line); background: var(--card); }
+.modal-header { background: var(--card); }
 .modal-header::before { background: var(--lip); opacity: 1; width: 42px; }
 .modal-header h2 { font-weight: 700; font-size: 22px; }
 .collection-count { font-weight: 600; color: var(--muted-text); }
-.close-modal { color: var(--muted); width: 44px; height: 44px; top: 14px; font-size: 30px; }
+.close-modal { font-family: var(--display); font-weight: 600; }
 .close-modal:focus-visible { outline: 3px solid var(--blue-soft); }
 
 .archive-item {
@@ -577,7 +577,6 @@
 
 /* Obtížnost tréninku: karty s retem jako dny ve sbírce, vlevo síla 1–3
    sloupků (zelená → oranžová → červená); naposledy zvolená je modrá. */
-.level-intro { font-family: var(--display); font-weight: 600; font-size: 17px; }
 .level-list { gap: 12px; }
 .level-option {
     display: grid;

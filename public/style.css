@@ -699,11 +699,18 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     align-items: flex-end;
     justify-content: center;
     padding: 0;
+    transition: background-color .3s ease, backdrop-filter .3s ease, -webkit-backdrop-filter .3s ease;
 }
-.modal.active { display: flex; }
-/* Sheet zdola, jak to dělá iOS: úchyt nahoře, přilepená hlavička, obsah
-   scrolluje pod ní. Jediný vzor pro všechny modály — i na desktopu, žádný
-   dialog na střed (na širokém displeji je sheet jen užší, max-width). */
+.modal.active { display: flex; animation: backdropIn .3s ease; }
+@keyframes backdropIn { from { background-color: transparent; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); } }
+/* Zavírání: pozadí se rozplyne a sheet sjede dolů (řídí closeSheet v game.js). */
+.modal.closing { background-color: transparent; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+/* Sheet zdola, jak to dělá iOS: úchyt nahoře, přilepený nadpis, obsah
+   scrolluje pod ním. Jediný vzor pro všechny modály — i na desktopu, žádný
+   dialog na střed (na širokém displeji je sheet jen užší, max-width).
+   Bez křížku a dělicí čáry: zavírá se klepnutím vedle, tažením dolů, Escapem
+   nebo tlačítkem v obsahu. Nadpis nese jen informaci (počet, slovo, otázku),
+   neopakuje tlačítko, kterým se sheet otevřel. */
 .modal-content {
     background: var(--card);
     border-radius: 22px 22px 0 0;
@@ -727,9 +734,19 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     top: 0;
     z-index: 1;
     background: var(--card);
-    margin-bottom: 18px;
-    padding: 22px 0 10px;
-    border-bottom: 1px solid var(--line);
+    margin-bottom: 12px;
+    padding: 26px 0 8px;
+}
+/* místo čáry měkký přechod: seznam pod nadpis zajíždí do ztracena */
+.modal-header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 14px;
+    background: linear-gradient(var(--card), transparent);
+    pointer-events: none;
 }
 .modal-header::before {
     content: '';
@@ -742,21 +759,31 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
     opacity: .5;
 }
 .modal-content::-webkit-scrollbar { display: none; }
+.modal-content:focus { outline: none; }
 .modal-header h2 { font-family: 'Baloo 2', sans-serif; font-size: 24px; font-weight: 800; margin: 0; }
 .collection-count { font-family: 'Baloo 2', sans-serif; font-size: 15px; font-weight: 700; color: var(--muted); }
+/* Zavírací tlačítko jen pro čtečky a klávesnici: je v DOM, ale vidět je
+   teprve, když na něj dojde Tab. */
 .close-modal {
-    position: absolute; right: 0; top: 18px;
-    background: none;
+    position: absolute; right: 0; top: 20px;
+    width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    padding: 0;
     border: none;
-    font-size: 26px;
-    line-height: 1;
+    background: var(--chip-bg);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 999px;
     cursor: pointer;
-    color: var(--muted);
-    width: 36px; height: 36px; border-radius: 50%;
-    outline: none;
-    transition: background .12s, color .12s;
 }
-@media (hover: hover) { .close-modal:hover { color: var(--ink); background: var(--hover-tint); } }
+.close-modal:focus { outline: none; }
+.close-modal:focus-visible {
+    width: auto; height: auto; overflow: visible; clip-path: none;
+    padding: 6px 12px;
+    outline: 2px solid var(--blue); outline-offset: 2px;
+}
 .archive-list { list-style: none; }
 .archive-item {
     display: flex;
@@ -799,7 +826,6 @@ html:has(#profile.active), body:has(#profile.active) { overflow-y: auto; height:
 }
 
 /* Výběr obtížnosti tréninku (sheet) */
-.level-intro { font-size: 16px; font-weight: 600; color: var(--muted-text); text-align: center; margin: -4px 0 16px; }
 .level-list { display: flex; flex-direction: column; gap: 10px; }
 .level-option {
     display: flex;

@@ -2,6 +2,24 @@
 
 ## 2026-09-24
 
+### Sheety: čisté záhlaví a zavírání vždy animací
+Ze sheetů zmizel křížek i dělicí čára; zůstal úchyt a nadpis, který nese
+informaci — v tréninku rovnou otázka „Jak těžká slova chceš?", ve zpětné vazbě
+„Jak se ti hraje?" (dřív opakovaly tlačítko, kterým se sheet otevřel). Zavírá
+se klepnutím do pozadí, tažením dolů, Escapem nebo tlačítkem v obsahu —
+a vždy animací: sheet sjede dolů z místa, kde právě je, pozadí se rozplyne.
+Místo čáry pod nadpisem měkký přechod, pod který seznam zajíždí.
+
+**Root cause / approach:** Dřív `closeModal()` jen sundal `.active`, takže sheet
+zmizel naráz. `closeSheet()` vezme aktuální `transform` (i z půlky tahu nebo
+otevírací animace), dotáhne ho na `translateY(100%)` a sheet schová až po
+300 ms. Konec hlídá časovač, ne `transitionend` — ten probublává z přechodů
+uvnitř sheetu (karty, položky sbírky) a zavřel by ho předčasně. Fokus jde na
+`.modal-content` (`role=dialog`), ne na skryté „Zavřít" — programový fokus
+tlačítka ho rozsvítil i po klepnutí prstem.
+
+→ *Memory updated: `modals_are_bottom_sheets.md`*
+
 ### Lehká obtížnost jen do 5 písmen
 Lehká bere z 3000 nejběžnějších slov jen ta do 5 písmen (1215 slov, třeba
 *hotel, nákup, beton*). Střední a Těžká beze změny.

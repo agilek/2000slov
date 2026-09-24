@@ -143,10 +143,10 @@
 
     <!-- Významy slova -->
     <div class="modal" id="defsModal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="defsTitle" tabindex="-1">
             <div class="modal-header">
                 <h2 id="defsTitle">Významy</h2>
-                <button class="close-modal" onclick="closeDefs()">&times;</button>
+                <button class="close-modal" onclick="closeDefs()">Zavřít</button>
             </div>
             <ul class="defs-list" id="defsList"></ul>
             <div id="defsGate" style="display:none;"></div>
@@ -161,10 +161,10 @@
 
     <!-- Collection Modal -->
     <div class="modal" id="collectionModal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="collectionTitle" tabindex="-1">
             <div class="modal-header">
-                <h2>Sbírka slov <span id="collectionCount" class="collection-count"></span></h2>
-                <button class="close-modal" onclick="closeModal()">&times;</button>
+                <h2 id="collectionTitle">Sbírka slov <span id="collectionCount" class="collection-count"></span></h2>
+                <button class="close-modal" onclick="closeModal()">Zavřít</button>
             </div>
             <ul class="archive-list" id="collectionList"></ul>
         </div>
@@ -172,12 +172,11 @@
 
     <!-- Obtížnost tréninku: klepnutí na úroveň trénink rovnou spustí -->
     <div class="modal" id="practiceModal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="practiceTitle" tabindex="-1">
             <div class="modal-header">
-                <h2>Trénink</h2>
-                <button class="close-modal" onclick="closeModal()">&times;</button>
+                <h2 id="practiceTitle">Jak těžká slova chceš?</h2>
+                <button class="close-modal" onclick="closeModal()">Zavřít</button>
             </div>
-            <p class="level-intro">Jak těžká slova chceš?</p>
             <div class="level-list">
                 <button class="level-option" data-level="lehka" onclick="pickPracticeLevel('lehka')">
                     <span class="level-name">Lehká</span>
@@ -197,10 +196,10 @@
 
     <!-- Feedback Modal -->
     <div class="modal" id="feedbackModal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle" tabindex="-1">
             <div class="modal-header">
-                <h2>Zpětná vazba</h2>
-                <button class="close-modal" onclick="closeModal()">&times;</button>
+                <h2 id="feedbackTitle">Jak se ti hraje?</h2>
+                <button class="close-modal" onclick="closeModal()">Zavřít</button>
             </div>
             <form class="feedback-form" id="feedbackForm" action="https://formsubmit.co/m@acler.cz" method="POST" onsubmit="submitFeedback(event)">
                 <input type="hidden" name="_subject" value="20 slov — zpětná vazba" />

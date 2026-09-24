@@ -460,7 +460,7 @@ function openDefs(e) {
     $('defsError').style.display = 'none';
     $('defsText').value = '';
     $('defsList').innerHTML = '';
-    $('defsModal').classList.add('active');
+    openModal('defsModal');
     renderDefsForm();
     loadDefsList(word);
     refreshAuth().then(renderDefsForm);
@@ -486,7 +486,7 @@ function renderDefsForm() {
 }
 
 function closeDefs() {
-    $('defsModal').classList.remove('active');
+    closeSheet($('defsModal'));
     pauseWordDone(false);                                 // a zase se rozjede
 }
 
@@ -1026,7 +1026,7 @@ const practiceLevel = () => PRACTICE_LEVELS[persist.practiceLevel] || PRACTICE_L
 function openPracticePicker() {
     $$('#practiceModal .level-option').forEach(b =>
         b.classList.toggle('current', b.dataset.level === persist.practiceLevel));
-    $('practiceModal').classList.add('active');
+    openModal('practiceModal');
 }
 
 function pickPracticeLevel(level) {
@@ -1959,7 +1959,7 @@ function showCollection() {
         }
         list.appendChild(li);
     }
-    $('collectionModal').classList.add('active');
+    openModal('collectionModal');
     // aktuální den nascrollovat do záběru
     const cur = list.children[today];
     if (cur) cur.scrollIntoView({ block: 'center' });
@@ -1971,11 +1971,53 @@ function openFeedbackModal() {
     $('feedbackForm').style.display = 'flex';
     $('feedbackSuccess').style.display = 'none';
     $('feedbackError').style.display = 'none';
-    $('feedbackModal').classList.add('active');
+    openModal('feedbackModal');
+}
+
+/* ---------------- sheety ---------------- */
+
+// Sheet se otevírá i zavírá animací. Zavření ho nechá sjet dolů z místa, kde
+// právě je (i z půlky tahu prstem nebo otevírání), pozadí se rozplyne a teprve
+// pak sheet zmizí — nikdy jen neblikne pryč.
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+const SHEET_CLOSE_MS = 300;
+
+function openModal(id) {
+    const modal = $(id);
+    modal.classList.remove('closing');                    // otevřený během zavírání zůstane
+    modal.querySelector('.modal-content').style.cssText = '';
+    modal.classList.add('active');
+    // Fokus na sheet samotný (role=dialog), ne na tlačítko — čtečka se ocitne
+    // uvnitř, ale nic se nerozsvítí; Zavřít ukáže až Tab. Po zavření zpět.
+    if (!modal.contains(document.activeElement)) modal.opener = document.activeElement;
+    modal.querySelector('.modal-content').focus({ preventScroll: true });
+}
+
+function closeSheet(modal) {
+    if (!modal.classList.contains('active') || modal.classList.contains('closing')) return;
+    const sheet = modal.querySelector('.modal-content');
+    modal.classList.add('closing');
+    const finish = () => {
+        if (!modal.classList.contains('closing')) return; // mezitím se znovu otevřel
+        modal.classList.remove('active', 'closing');
+        sheet.style.cssText = '';
+        if (modal.opener && modal.opener.isConnected) modal.opener.focus({ preventScroll: true });
+        modal.opener = null;
+    };
+    if (REDUCED_MOTION.matches) return finish();
+    const from = getComputedStyle(sheet).transform;
+    sheet.style.animation = 'none';
+    sheet.style.transition = 'none';
+    sheet.style.transform = from;
+    sheet.getBoundingClientRect();                        // zapsat výchozí polohu, než se rozjede
+    sheet.style.transition = `transform ${SHEET_CLOSE_MS}ms cubic-bezier(.32,.72,0,1)`;
+    sheet.style.transform = 'translateY(100%)';
+    // časovač, ne transitionend — ten probublává i z přechodů uvnitř sheetu
+    setTimeout(finish, SHEET_CLOSE_MS);
 }
 
 function closeModal() {
-    $$('.modal').forEach(m => m.classList.remove('active'));
+    $$('.modal.active').forEach(closeSheet);
     pauseWordDone(false);   // trénink pokračuje, i když se zavřelo Escapem nebo klikem vedle
 }
 
@@ -2022,10 +2064,10 @@ document.addEventListener('pointerdown', e => {
     const end = () => {
         if (!box) return;
         const el = box; box = null;
+        // Dost daleko → sheet dojede dolů z místa, kam ho prst dotáhl; jinak se vrátí.
+        if (dy > Math.min(120, el.offsetHeight * 0.25)) return closeModal();
         el.style.transition = 'transform .25s cubic-bezier(.32,.72,0,1)';
         el.style.transform = '';
-        // Zavírá se buď po dostatečném tahu, nebo po rychlém švihnutí.
-        if (dy > Math.min(120, el.offsetHeight * 0.25)) closeModal();
     };
     document.addEventListener('pointerup', end);
     document.addEventListener('pointercancel', end);
