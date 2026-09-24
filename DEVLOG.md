@@ -2,6 +2,17 @@
 
 ## 2026-09-24
 
+### Pauza s animovaným obrázkem
+Nad „Pauza" jsou spící stopky v jazyce Kostek (`pauza-ziva.svg`): pohupují se,
+symbol pauzy na ciferníku dýchá a stoupají písmena Z. Pod omezeným pohybem
+statická verze `pauza.svg`.
+
+**Root cause / approach:** Stejná technika jako živý plamen — SVG s CSS
+animací uvnitř jako background-image, statická kopie pro reduced motion
+z vnějšího CSS. Obě verze generuje jeden skript, ať se nerozjedou.
+
+→ *Memory updated: `kostky_live_icons.md`*
+
 ### Nadpisy v Capriole, tlačítka zpět ve Fredoce
 Pokus s Grandstanderem na tlačítkách je vrácený (revert). Problém s háčky byl
 u nadpisů, ty jsou teď v Capriole: „20 slov", nadpisy obrazovek, sekcí

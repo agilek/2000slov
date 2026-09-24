@@ -671,6 +671,14 @@
 
 /* ---- Pauza ---- */
 .pause-overlay h2 { font-weight: 700; font-size: 36px; }
+/* spící stopky: pohupují se, pauza na ciferníku dýchá, stoupají písmena Z */
+.pause-art {
+    width: 140px;
+    height: 140px;
+    margin-bottom: -8px;
+    background: url(kostky/pauza-ziva.svg) center / contain no-repeat;
+    animation: wdTileIn .45s var(--spring) both;
+}
 .pause-overlay .pause-buttons { width: min(400px, 100% - 44px); }
 .pause-overlay .btn-primary { background: var(--green); box-shadow: 0 4px 0 var(--green-lip); min-height: 58px; font-size: 20px; }
 
@@ -936,6 +944,7 @@
 /* ---- Omezený pohyb: pryč s vlnami, pulzy i vyjížděním ---- */
 @media (prefers-reduced-motion: reduce) {
     .emoji[data-emoji="plamen"], .stat-tile:nth-child(1)::before { background-image: url(kostky/plamen.svg); }
+    .pause-art { background-image: url(kostky/pauza.svg); }
     .wd-next.counting::before { display: none; }
     *, *::before, *::after {
         animation-duration: .01ms !important;
