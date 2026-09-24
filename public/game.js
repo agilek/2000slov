@@ -480,6 +480,17 @@ const NAV_MS = 380, NAV_EASE = 'cubic-bezier(.32, .72, 0, 1)';
 const navKey = (id) => id === 'result' ? 'welcome' : id;
 let navStack = [];
 const navScroll = {};
+// Historie prohlížeče kopíruje zásobník: hlouběji = pushState, zpět v appce
+// = history.go(-n). Díky tomu funguje gesto i tlačítko zpět a reload vrátí
+// hráče na stejnou obrazovku (adresa za #, server ani SW nic neřeší).
+let navFromPop = false;      // obrazovku přepíná popstate: historie už se pohnula
+let navIgnorePops = 0;       // popstate, které vyvolalo naše history.go
+let navInstant = false;      // start aplikace: bez animace
+const NAV_HASH = { profile: '#profil', achievements: '#uspechy', myDefs: '#moje-vyznamy', profileEdit: '#upravit-profil', game: '#hra' };
+// záznam v historii nese celý zásobník, ať reload nic nepřidává
+const navState = (id) => ({ s: id, h: state.profileHandle, stack: navStack.slice() });
+const navUrl = (id) => id === 'publicProfile' ? '#hrac/' + encodeURIComponent(state.profileHandle || '')
+    : NAV_HASH[id] || location.pathname + location.search;
 
 function showScreen(id) {
     const from = document.querySelector('.screen.active');
@@ -487,7 +498,10 @@ function showScreen(id) {
     // Profil a trénink v rozích patří domovu — a ten je po dohrání dne výsledek.
     if (id === 'welcome' || id === 'result') to.prepend($('topBar'));
     if (!navStack.length) navStack = [navKey(id)];
-    if (from === to) return;
+    if (from === to) {
+        if (id === 'publicProfile' && !navFromPop) history.replaceState(navState(id), '', navUrl(id));
+        return;
+    }
     const fromId = from && from.id, key = navKey(id);
     let kind;
     if (!from) kind = 'none';
@@ -498,9 +512,15 @@ function showScreen(id) {
     else kind = 'push';
 
     if (from) navScroll[navKey(fromId)] = scrollY;
+    const depth = navStack.length;
     if (kind === 'pop') navStack = navStack.slice(0, navStack.indexOf(key) + 1);
     else if (kind === 'dismiss' || key === 'welcome') navStack = key === 'welcome' ? ['welcome'] : navStack.filter(k => k !== 'game').concat(key);
     else if (kind !== 'pop') navStack.push(key);
+    if (!navFromPop) {
+        if (navStack.length > depth) history.pushState(navState(id), '', navUrl(id));
+        else if (navStack.length < depth) { navIgnorePops++; history.go(navStack.length - depth); }
+    }
+    if (navInstant) kind = 'none';
 
     // odcházející obrazovka zůstane na chvíli vidět tam, kde byla
     if (from && kind !== 'none' && !REDUCED_MOTION.matches) {
@@ -511,6 +531,66 @@ function showScreen(id) {
     if (kind === 'pop' || kind === 'dismiss') scrollTo(0, navScroll[key] || 0);
     if (from) navAnimate(from, to, kind);
     if (id === 'welcome' || id === 'profile' || id === 'achievements') whenCalm();   // výsledek čeká na konec odhalení
+}
+
+// Zpět z prohlížeče (gesto, tlačítko): obrazovka podle záznamu v historii.
+// Ve hře zpět = jako křížek: trénink skončí, denní výzva se zeptá.
+window.addEventListener('popstate', e => {
+    if (navIgnorePops) { navIgnorePops--; return; }
+    const cur = document.querySelector('.screen.active');
+    if (cur && cur.id === 'game') {
+        if (state.mode === 'practice') return navPop(exitPractice);
+        history.pushState(navState('game'), '', navUrl('game'));   // zůstat ve hře, pokud potvrzení zruší
+        return openQuit();
+    }
+    closeModal();
+    const s = e.state || parseHash();                     // ručně přepsaná adresa za # nemá stav
+    navPop(() => openRoute(s.s || 'welcome', s.h));
+});
+
+function parseHash() {
+    const m = location.hash.match(/^#([\w-]+)(?:\/(.*))?$/);
+    const s = m && (Object.keys(NAV_HASH).find(k => NAV_HASH[k] === '#' + m[1]) || (m[1] === 'hrac' && m[2] && 'publicProfile'));
+    return { s: s || null, h: m && m[2] ? decodeURIComponent(m[2]) : null };
+}
+
+function navPop(fn) {
+    navFromPop = true;
+    try { fn(); } finally { navFromPop = false; }
+}
+
+function openRoute(id, handle) {
+    if (id === 'profile') return showProfile();
+    if (id === 'achievements') return showAchievements();
+    if (id === 'myDefs') return showMyDefs(0);
+    if (id === 'profileEdit') return showProfileEdit();
+    if (id === 'publicProfile' && handle) return showPublicProfile(handle, state.profileHandle === handle ? state.profileBack : null);
+    if (id === 'game' && state.profileBack) return leavePublicProfile();   // z profilu autora zpátky do tréninku
+    showWelcome();
+}
+
+// Reload: z adresy obrazovka, kde hráč byl. Pod ní domov, ať zpět vede domů
+// a ne pryč z hry. Hru obnovit nejde, reload v ní skončí doma.
+function restoreRoute() {
+    const saved = history.state;
+    const { s: id, h } = saved && saved.s ? saved : parseHash();
+    if (!id || id === 'game') {
+        if (location.hash) history.replaceState(null, '', navUrl('welcome'));
+        return;
+    }
+    navInstant = true;
+    try {
+        if (saved && saved.stack) {
+            // reload: zásobník je uložený v záznamu, historie už ho obsahuje
+            navStack = saved.stack.slice(0, -1);
+            navPop(() => openRoute(id, h));
+        } else {
+            // odkaz s # z venku: pod obrazovku domov (a u Úspěchů atd. Profil)
+            history.replaceState(null, '', navUrl('welcome'));
+            if (id !== 'profile' && id !== 'publicProfile') showProfile();
+            openRoute(id, h);
+        }
+    } finally { navInstant = false; }
 }
 
 function navAnimate(from, to, kind) {
@@ -3423,5 +3503,6 @@ document.addEventListener('dblclick', e => e.preventDefault(), { passive: false 
     addHapticOverlays();
     registerServiceWorker();
     showWelcome();
+    restoreRoute();
     syncAchievements();   // tečka na Profilu, i pro úspěchy z dřívějška
 })();

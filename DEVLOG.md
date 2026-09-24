@@ -2,6 +2,22 @@
 
 ## 2026-09-24
 
+### Obrazovky v historii prohlížeče: zpět gestem a reload na stejné místo
+Reload vracel hráče vždy na úvod a gesto zpět z Profilu opustilo hru.
+Každá obrazovka má teď adresu za # a historie prohlížeče kopíruje zásobník
+navigace. Popsané v GAME_DESIGN.md u navigace.
+
+**Root cause / approach:** Jen v `showScreen`: když zásobník roste,
+`pushState`, když se zkrátí (zpět v appce, návrat domů), `history.go(-n)`
+a výsledný popstate se spolkne (`navIgnorePops`). Popstate zvenku přepne
+obrazovku přes `openRoute` s `navFromPop`, aby se historie nehnula podruhé.
+Záznam nese celý zásobník (`navState`). Bez toho reload znovu pushoval
+a historie rostla o duplikáty. Ručně přepsaný # nemá `state`, obrazovku
+dá `parseHash`. Ověřeno ve WebKitu: reload ×2, zpět, šipka, trénink,
+ruční #, nová karta s #.
+
+→ *Memory saved: `ios_native_feel_gotchas.md` (doplněno)*
+
 ### Přechody obrazovek jako v mobilních appkách (push/pop, hra jako vrstva)
 Místo stejného náběhu zespodu pro všechno mají přechody směr podle
 hierarchie. Hlouběji přijede nová obrazovka zprava, zpět odjede doprava
