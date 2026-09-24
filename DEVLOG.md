@@ -2,6 +2,12 @@
 
 ## 2026-09-24
 
+### Hra bez ikony hodin
+Ikona hodin před „Slovo N · obtížnost“ je pryč, i s pravidlem, které ji
+v posledních sekundách barvilo červeně. Nahoře zůstal jen text, pod ním čas.
+
+→ *No new memory entries.*
+
 ### Mezihra po slově: symbol, nadpis, slovo pod sebou na střed
 Panel po slově (uhodnuté i „Čas vypršel“) má každou část na vlastním řádku
 na střed: velký symbol ✓/✗ (88 px), nadpis s podtitulkem, kostky slova,

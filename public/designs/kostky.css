@@ -390,29 +390,15 @@
 @keyframes segPop { 45% { scale: 1.12 1.5; } }
 
 .game-progress { margin-top: auto; gap: 2px; }
-/* Nahoře jeden centrovaný řádek „🕐 Slovo 3/20 · Lehká“, pod ním velký čas. */
+/* Nahoře „Slovo 3/20 · Lehká“, pod ním velký čas. */
 .gp-headline {
     order: -1;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     font-weight: 300;
     font-size: 16px;
     letter-spacing: .08em;
     color: var(--muted-text);
     opacity: 1;
 }
-.gp-headline::before {
-    content: '';
-    width: 22px;
-    height: 22px;
-    background: currentColor;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center / contain no-repeat;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E") center / contain no-repeat;
-    flex-shrink: 0;
-}
-/* hodiny zčervenají s časem */
-#progress:has(.gp-timer.low, .gp-timer.zero) .gp-headline::before { background: var(--red); }
 .gp-timer {
     display: inline-flex;
     align-items: baseline;
