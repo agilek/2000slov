@@ -2,15 +2,14 @@
 
 ## 2026-09-24
 
-### Pokus: tlačítka v písmu Grandstander
-Tlačítka a ovládací prvky (odkazová tlačítka, štítek data, hlasování, volby
-obtížnosti, výzva k významu, stránkování) jsou pokusně v Grandstanderu —
-Fredoka má nepovedené háčky u verzálek (ZMĚNIT, PŘEZDÍVKU). Nadpisy, čas a
-kostky zůstaly ve Fredoce.
+### Nadpisy v Capriole, tlačítka zpět ve Fredoce
+Pokus s Grandstanderem na tlačítkách je vrácený (revert). Problém s háčky byl
+u nadpisů, ty jsou teď v Capriole: „20 slov", nadpisy obrazovek, sekcí
+a sheetů, výsledek dne, hláška v mezihře, „Pauza", „Další kandidáti".
 
-**Root cause / approach:** Jedna proměnná `--ui-font` v `designs/kostky.css`;
-návrat = `var(--display)`. Pár pozdějších pravidel nastavovalo `var(--display)`
-přímo na tytéž prvky a nové pravidlo by přebila — přepnutá na `--ui-font`.
+**Root cause / approach:** Capriola má jen řez 400 — s `font-synthesis: none`,
+jinak by prohlížeč nadpisy uměle ztučnil (pozdější pravidla chtějí 700).
+Pravidlo je na konci `kostky.css`, ať přebije dřívější Fredoku u týchž prvků.
 
 → *No new memory entries.*
 
