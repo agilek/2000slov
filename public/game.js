@@ -632,7 +632,7 @@ function el(tag, cls, text) {
 }
 
 // Emoji v textu UI obalí do <span class="emoji" data-emoji="…">, ať ho design
-// může vyměnit za vlastní ikonu (designs/kostky); bez designu zůstane emoji.
+// může vyměnit za vlastní ikonu (designs/kostky/); bez CSS zůstane emoji.
 // \n se převede na <br>. Staví DOM, ne HTML — text může přijít i z backendu.
 const EMOJI_NAMES = { '👍': 'palec', '🏆': 'trofej', '👑': 'koruna', '🏅': 'medaile', '💔': 'srdce', '🔓': 'odemceno', '🔒': 'zamceno', '🔥': 'plamen' };
 const EMOJI_RE = new RegExp(`(${Object.keys(EMOJI_NAMES).join('|')}|\n)`, 'u');
@@ -1453,8 +1453,6 @@ function updateUI() {
         ? `Slovo ${state.wordIdx + 1}`
         : `Slovo ${state.wordIdx + 1}/${WORDS_PER_DAY}`;
     $('progress').innerHTML = `<div class="gp-headline">${label}</div><div class="gp-timer${low}">${state.time}<span class="gp-timer-unit">s</span></div>`;
-    // zbývající čas 0–1 pro CSS (kroužek, ubývající lišta v designs/)
-    $('game').style.setProperty('--t', state.time / START_TIME);
 }
 
 /* ---------------- časovač ---------------- */
@@ -1717,7 +1715,7 @@ function launchConfetti() {
     ctx.scale(devicePixelRatio, devicePixelRatio);
     canvas.classList.add('on');
 
-    // barvy konfet si může určit design přes --confetti (mezerou oddělené)
+    // barvy konfet určuje vzhled přes --confetti (mezerou oddělené)
     const themed = getComputedStyle(document.documentElement).getPropertyValue('--confetti').trim();
     const colors = themed ? themed.split(/\s+/) : ['#2e9e5b', '#4169f1', '#f59e0b', '#e0524a', '#9b59b6'];
     const parts = [];

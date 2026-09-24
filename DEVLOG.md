@@ -2,6 +2,20 @@
 
 ## 2026-09-24
 
+### Větev kostky-trenink: Kostky jako jediný vzhled
+Z průzkumu šesti směrů zůstaly Kostky. `designs/kostky.css` se načítá natrvalo
+za `style.css`; ostatních pět směrů, nástěnka `/designs.html` a přepínací
+skript `?design=` jsou pryč (zůstávají na `design/genz-directions`). Fredoka
+se stahuje v hlavním odkazu na Google Fonts místo `@import` (bez řetězení),
+service worker má Kostky v shellu (`slov2000-v4`), `theme-color` a manifest
+mají barvy Kostek. Z `game.js` zmizel hák `--t`, Kostky ho nepoužívají.
+
+**Root cause / approach:** Kostky zůstaly vrstvou nad `style.css`, ne sloučené
+do něj — sloučení by byl velký přepis bez viditelného rozdílu a změny
+v tréninku se dají dělat hned.
+
+→ *Memory updated: `design_directions_board.md`*
+
 ### Kostky: vlastní ikony místo systémových emoji
 Čtrnáct SVG v `public/designs/kostky/` ve stylu směru (ploché barvy z palety,
 spodní ret, světlý pruh, žádné obrysy): statistiky v profilu, trofej / koruna /

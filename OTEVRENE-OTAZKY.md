@@ -58,22 +58,6 @@ Teď je vidí jen ten, kdo hraje trénink. Kdo hraje jen denní výzvu, o funkci
 nikdy nezjistí. Dřív jsi zvolil „jen trénink", ale to bylo předtím, než významy
 vůbec existovaly — stojí za přehodnocení, aspoň pro výsledkovou obrazovku.
 
-### 1.6 Který vizuální směr?
-**Stav:** čeká na rozhodnutí (větev `design/genz-directions`).
-Šest kůží nad stejnou hrou, srovnání vedle sebe na `/designs.html`, jednotlivě
-`/?design=<název>`:
-
-- *Kostky* — Duolingo nativně: klávesy s rtem, otisk po použitém písmenu, panel zdola.
-- *Sešit* — samolepky na čtverečkovaném papíře, zvýrazňovač, červená propiska; tmavý = tabule.
-- *Záře* — tmavá, barva světla je zbývající čas (azurová → bílá → jantar → červená).
-- *Plakát* (podle Spotify Wrapped) — dvoubarevné plochy, každé slovo nová barva, číslo času se zužuje.
-- *Cvak* (podle Snapchatu) — žlutá a černá, písmena jako spoušť, záblesk závěrky.
-- *Smyčka* (podle TikToku) — černá, azurovo-červený posun, lišta vpravo, srdíčko a glitch.
-
-Můj názor: Kostky nebo Záře. Ze směrů podle aplikací bych bral jednotlivé
-nápady, ne celou kůži — žlutá Snapchatu i azurovo-červený posun TikToku jsou
-jejich poznávací znamení a v produkci by hra působila jako napodobenina.
-
 ---
 
 ## 2. Chybí, ale rozhodnutí nepotřebuju
@@ -121,3 +105,4 @@ Můžu udělat, až řekneš.
 | Ukládání e-mailu | jen `sha256(adresa + pepř)` | cena: hráčům nejde nic poslat mimo přihlášení |
 | Veřejný profil | HTML z workeru, ne SPA | kvůli náhledu při sdílení |
 | Název hry | **20 slov** (2026-09-21) | přejmenováno jen v textech pro hráče; identifikátory (`slov2000`, `slov2000_v2`, repo, workers.dev URL) zůstaly — změna by znamenala nový worker a ztrátu postupu všech hráčů |
+| Vizuální směr | **Kostky** (2026-09-24, větev `kostky-trenink`) | ze šesti průzkumných směrů (`design/genz-directions`, `/designs.html`); ostatní na téhle větvi smazané |

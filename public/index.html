@@ -10,7 +10,7 @@
 <meta property="og:description" content="Denní výzva: 20 českých podstatných jmen, každý den pro všechny stejných. Kolik jich stihneš?">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#131f24" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -19,28 +19,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap&subset=latin-ext" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=4">
-<script>
-// Průzkum vizuálních směrů (větev design/genz-directions): ?design=kostky|sesit|zare|plakat|cvak|smycka
-// přidá přes style.css vrstvu z designs/. Volba se pamatuje, ?design=off ji vypne.
-// document.write, ať styl blokuje vykreslení jako statický <link> — bez probliknutí.
-(function () {
-    var DESIGNS = {
-        kostky: ['#ffffff', '#131f24'], sesit: ['#f4f8fd', '#1c3a2e'], zare: ['#0a0f24', '#0a0f24'],
-        plakat: ['#3d3bf3', '#3d3bf3'], cvak: ['#fffc00', '#000000'], smycka: ['#000000', '#000000'],
-    };
-    var d = new URLSearchParams(location.search).get('design');
-    try {
-        if (d && self === top) localStorage.setItem('design', d);
-        if (!d) d = localStorage.getItem('design');
-    } catch (e) {}
-    if (!DESIGNS[d]) return;
-    document.documentElement.dataset.design = d;
-    document.querySelectorAll('meta[name="theme-color"]').forEach(function (m, i) { m.content = DESIGNS[d][i]; });
-    document.write('<link rel="stylesheet" href="designs/' + d + '.css">');
-})();
-</script>
+<link rel="stylesheet" href="designs/kostky.css?v=1">
 </head>
 <body>
 

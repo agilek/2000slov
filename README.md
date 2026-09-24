@@ -51,7 +51,8 @@ a úplnost přesmyček.
 |---|---|
 | `wrangler.toml` | konfigurace Workeru: statika z `public/`, `/api/*` do workeru, D1, cron |
 | `public/index.html` | struktura aplikace (obrazovky, modaly) |
-| `public/style.css` | světlý design po vzoru originálu (Baloo 2 + Nunito) |
+| `public/style.css` | základní rozvržení a styly (Baloo 2 + Nunito) |
+| `public/designs/kostky.css` | vzhled „Kostky“ nad `style.css`: klávesy s retem, Fredoka, vlastní ikony z `designs/kostky/` místo emoji |
 | `public/game.js` | herní logika, časovač, stav v localStorage, sdílení |
 | `public/words.js` | 7300 podstatných jmen denní výzvy (`PACKED`, jeden zamíchaný blob na den, rozbaluje `unpackDay`) + širší pool 15 000 pro trénink (`PRACTICE_WORDS`, řazeno podle frekvence) + mapa uznávaných přesmyček |
 | `tools/` | generátor slovníku (`build_words.py`) + prověřený pool — **neservíruje se** |
