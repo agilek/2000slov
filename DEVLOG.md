@@ -2,6 +2,19 @@
 
 ## 2026-09-24
 
+### Profil: „všech 20“ zeleně s fajfkou, záložky Denní výzvy / Významy
+Zlatá kostka za všech 20 v kalendáři mátla, působila jako jiná kategorie. Teď
+je to plná zelená s bílou fajfkou na konci stejné zelené řady. Kalendář
+a významy jsou v záložkách, protože po roce má kalendář ~53 řádků a významy
+by odjely úplně dolů.
+
+**Root cause / approach:** Záložky jsou dvě rádia + `:checked ~` v CSS,
+bez JS. Obsah profilu se do hry vkládá přes `innerHTML` (skripty by neběžely)
+a sdílená stránka JS nemá vůbec. Rádia zůstávají v DOM (průhledná), takže
+přepínání šipkami na klávesnici funguje samo.
+
+→ *No new memory entries.*
+
 ### Veřejný profil v podobě hry, otevírá se uvnitř aplikace
 Profil `/u/<přezdívka>` měl vlastní starý vzhled (Baloo, béžová, zelená škála)
 a otevíral se v nové kartě. Teď používá markup a styly hry: avatar, dlaždice

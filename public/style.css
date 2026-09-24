@@ -937,12 +937,39 @@ body:has(#profile.active, #myDefs.active, #publicProfile.active) { overflow: vis
 .yc-day { display: block; aspect-ratio: 1; border-radius: 9px; background: var(--ghost); box-shadow: 0 3px 0 var(--lip); }
 .yc-day.s1 { background: color-mix(in srgb, var(--green) 30%, var(--ghost)); box-shadow: 0 3px 0 color-mix(in srgb, var(--green-lip) 30%, var(--lip)); }
 .yc-day.s2 { background: color-mix(in srgb, var(--green) 62%, var(--ghost)); box-shadow: 0 3px 0 color-mix(in srgb, var(--green-lip) 62%, var(--lip)); }
-.yc-day.s3 { background: var(--green); box-shadow: 0 3px 0 var(--green-lip); }
-.yc-day.s4 { background: var(--gold); box-shadow: 0 3px 0 var(--gold-lip); }
+.yc-day.s3 { background: color-mix(in srgb, var(--green) 82%, var(--ghost)); box-shadow: 0 3px 0 color-mix(in srgb, var(--green-lip) 82%, var(--lip)); }
+/* Všech 20: plná zelená a fajfka — stejná barevná řada, jen s potvrzením navíc */
+.yc-day.s4 { position: relative; background: var(--green); box-shadow: 0 3px 0 var(--green-lip); }
+.yc-day.s4::after {
+    content: '';
+    position: absolute;
+    inset: 22%;
+    background: #fff;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5l9.5 -10'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5l9.5 -10'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 .yc-day.yc-today { outline: 2px solid var(--blue); outline-offset: 2px; }
 .yc-day.yc-future { visibility: hidden; }
 #publicProfile .yc-legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 4px 0 0; font-size: 12px; font-weight: 700; color: var(--muted-text); }
 #publicProfile .yc-legend .yc-day { width: 16px; border-radius: 5px; box-shadow: none; }
+#publicProfile .yc-legend .yc-day.s4::after { inset: 18%; }
+/* Záložky Denní výzvy / Významy: segmentový přepínač, vybraná půlka je
+   kostka s retem. Rádia zůstávají v DOM kvůli klávesnici (šipky přepínají). */
+.ptab-input { position: absolute; opacity: 0; pointer-events: none; }
+.ptab-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 6px; background: var(--chip-bg); border-radius: 16px; }
+.ptab-bar label {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 44px; padding: 6px 8px; border: 2px solid transparent; border-radius: 12px;
+    font-family: var(--display); font-weight: 700; font-size: 16px; color: var(--muted-text);
+    cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.ptab-count { font-size: 13px; padding: 1px 7px; border-radius: 999px; background: var(--ghost); color: var(--muted-text); }
+#ptabRok:checked ~ .ptab-bar [for="ptabRok"], #ptabVyznamy:checked ~ .ptab-bar [for="ptabVyznamy"] {
+    background: var(--card); border-color: var(--line); box-shadow: 0 3px 0 var(--lip); color: var(--ink);
+}
+#ptabRok:focus-visible ~ .ptab-bar [for="ptabRok"], #ptabVyznamy:focus-visible ~ .ptab-bar [for="ptabVyznamy"] { outline: 3px solid var(--blue-soft); outline-offset: 2px; }
+.ptab-panel { display: none; flex-direction: column; gap: 10px; }
+#ptabRok:checked ~ .ptab-panel--rok, #ptabVyznamy:checked ~ .ptab-panel--vyznamy { display: flex; }
 #publicProfile .yc-legend span + .yc-day { margin-left: 8px; }
 #publicProfile .yc-legend { line-height: 1; }   /* .screen p má jinak 20px a margin 34px */
 

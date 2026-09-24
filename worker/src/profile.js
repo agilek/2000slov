@@ -147,17 +147,26 @@ function profileBody(data) {
           ${statTile(`${s.uspesnost} %`, 'úspěšnost')}
         </div>
       </div>
-      <div class="profile-section">
-        <h3 class="profile-section-title">Rok denních výzev</h3>
-        <div class="year-cal" role="img" aria-label="Rok denních výzev: ${num(s.dny)} odehraných dní, ${num(s.perfektnich)}× všech 20 slov">${calendar(data.rows)}</div>
-        <p class="yc-legend" aria-hidden="true"><span>méně</span>${[0, 1, 2, 3].map(n => `<i class="yc-day s${n}"></i>`).join('')}<span>více</span><i class="yc-day s4"></i><span>všech 20</span></p>
-      </div>
-      <div class="profile-section">
-        <h3 class="profile-section-title">Významy slov</h3>
-        ${data.defs.length
+      <!-- Záložky bez JS (rádio + :checked): fungují na sdílené stránce
+           i ve hře, kam se obsah vkládá přes innerHTML. Rok může být dlouhý,
+           významy by jinak odjely úplně dolů. -->
+      <div class="profile-section profile-tabs">
+        <input type="radio" name="ptab" id="ptabRok" class="ptab-input" checked>
+        <input type="radio" name="ptab" id="ptabVyznamy" class="ptab-input">
+        <div class="ptab-bar">
+          <label for="ptabRok">Denní výzvy</label>
+          <label for="ptabVyznamy">Významy <span class="ptab-count">${num(data.defsTotal)}</span></label>
+        </div>
+        <div class="ptab-panel ptab-panel--rok">
+          <div class="year-cal" role="img" aria-label="Rok denních výzev: ${num(s.dny)} odehraných dní, ${num(s.perfektnich)}× všech 20 slov">${calendar(data.rows)}</div>
+          <p class="yc-legend" aria-hidden="true"><span>méně</span>${[0, 1, 2, 3].map(n => `<i class="yc-day s${n}"></i>`).join('')}<span>více</span><i class="yc-day s4"></i><span>všech 20</span></p>
+        </div>
+        <div class="ptab-panel ptab-panel--vyznamy">
+          ${data.defs.length
             ? `<ul class="defs-list">${data.defs.map(defItem).join('')}</ul>`
               + (zbyva > 0 ? `<p class="profile-note">…a ${plural(zbyva, 'další', 'další', 'dalších')} ${num(zbyva)} ${plural(zbyva, 'význam', 'významy', 'významů')}.</p>` : '')
             : '<div class="empty-card">Zatím žádný význam.</div>'}
+        </div>
       </div>`;
 }
 
