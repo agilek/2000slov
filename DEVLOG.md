@@ -2,6 +2,14 @@
 
 ## 2026-09-24
 
+### Mezihra po slově: symbol, nadpis, slovo pod sebou na střed
+Panel po slově (uhodnuté i „Čas vypršel“) má každou část na vlastním řádku
+na střed: velký symbol ✓/✗ (88 px), nadpis s podtitulkem, kostky slova,
+pak série „N v řadě“, význam a tlačítka. Série se v markupu přesunula za
+slovo (`#wdStreak` za `#wdTiles`), `.wd-head` je sloupec.
+
+→ *No new memory entries.*
+
 ### Hra: políčka pod časem, víc místa dole
 Políčka odpovědi jsou hned pod časem (`margin-top: 14px`) a volné místo
 jde nad písmena (`#game .letter-row { margin-top: auto }`). Spodní okraj hry

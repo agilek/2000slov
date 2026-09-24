@@ -1081,6 +1081,11 @@
     80% { rotate: -6deg; }
     100% { rotate: 0deg; }
 }
+/* Každé na svém řádku, na střed: symbol, nadpis, slovo, pak zbytek. */
+.wd-head { flex-direction: column; gap: 8px; }
+.wd-titles { flex: none; text-align: center; }
+.wd-badge { width: 88px; height: 88px; background-size: 88px; }
+.wd-streak { align-self: center; }
 .wd-title { font-weight: 700; font-size: clamp(22px, 6.8vw, 26px); color: var(--ok-ink); }
 .wd-sub { font-weight: 600; font-size: 15px; color: var(--ok-ink); opacity: .8; }
 .word-done.missed .wd-title, .word-done.missed .wd-sub { color: var(--bad-ink); }
