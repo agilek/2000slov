@@ -2,6 +2,22 @@
 
 ## 2026-09-24
 
+### Ret tlačítek zpět v Safari, hlavička hry, větší políčka, Přidat na plochu jako jedno tlačítko
+V Safari chyběl od prvního nasazení squircle.js (17:43) spodní ret všech
+tlačítek. Hlavička hry je jeden centrovaný řádek „🕐 Slovo 3/20 · Lehká“
+a pod ním velký čas; hodiny zčervenají spolu s časem. Políčka odpovědi jsou
+větší (až 54 px, mezera 8) a o 30 px dál od písmen. Přidat na plochu je
+jedno tlačítko přes celou šířku: akce | křížek, oddělené svislou čárou.
+
+**Root cause / approach:** Maska ve WebKitu kreslí jen uvnitř boxu,
+`mask-clip: no-clip` neumí a `box-shadow` (ret) padne pod ořez. squircle.js
+proto používá `clip-path: path()`: cesta smí z boxu vyčnívat, takže je v ní
+tvar a stejný tvar posunutý o každý ostrý stín. Prvky s rozostřeným stínem
+se nechají s obyčejným zaoblením. Ověřeno barvou pod tlačítkem ve WebKitu.
+Ret „zmizel“ jen v Safari, v Chromu (nativní corner-shape) byl vždycky.
+
+→ *Memory saved: `squircle_corners.md` (přepsáno na clip-path)*
+
 ### Nadpisy obrazovek se zpětným tlačítkem uprostřed
 Profil, Moje významy, Úspěchy, Upravit profil a Veřejný profil mají nadpis
 uprostřed obrazovky, ne hned vedle šipky zpět. `.screen-bar` je mřížka

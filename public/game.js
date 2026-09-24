@@ -1838,7 +1838,7 @@ function renderSlots(container, target, animate) {
     const n = chars.length;
     const avail = Math.min(window.innerWidth - 48, 420);
     const perRow = Math.min(n, 10);
-    const size = Math.max(24, Math.min(46, Math.floor((avail - (perRow - 1) * 6) / perRow)));
+    const size = Math.max(24, Math.min(54, Math.floor((avail - (perRow - 1) * 8) / perRow)));   // mezera 8 = .word-display gap
     chars.forEach((ch, i) => {
         const s = document.createElement('div');
         const locked = !LETTER_RE.test(ch);

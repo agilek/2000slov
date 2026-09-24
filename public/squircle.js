@@ -5,14 +5,9 @@
 //
 // Squircle = superellipse |x/r|^n + |y/r|^n = 1 na každém rohu. Cesta se pro
 // každý prvek vypočítá v jeho skutečných pixelech (šířka/výška/rádius každého
-// rohu zvlášť) a použije jako SVG maska — na rozdíl od natažení jedné
-// univerzální SVG masky přes celý prvek (`mask-size:100% 100%`, které by na
-// široko-úzkých tlačítkách zkreslilo zakřivení) je křivka vždycky přesná.
-//
-// Známé omezení: CSS maska je čistě vizuální — na rozdíl od `corner-shape`
-// (skutečný ořez geometrie) neovlivní hit-testing, takže těsně u rohu jde
-// prvek „proklinout" i pár px mimo viditelný tvar. Pro dotykové cíle v téhle
-// appce (min. 34–58px) je to neznatelné.
+// rohu zvlášť) a použije jako `clip-path: path()` (dřív maska, ta ale
+// ve WebKitu usekla spodní ret tlačítek, viz apply). Křivka je vždy přesná,
+// i na široko-úzkých tlačítkách.
 (function () {
     if (typeof CSS !== 'undefined' && CSS.supports && CSS.supports('corner-shape', 'squircle')) return;
 
@@ -35,7 +30,7 @@
 
     // Čtyři rohy po směru hodin, od tečny na horní hraně u levého rohu.
     // Odvození (proč cos/sin a znaménka) je v DEVLOGu z 2026-09-24.
-    function pathFor(w, h, rTL, rTR, rBR, rBL) {
+    function pathFor(w, h, rTL, rTR, rBR, rBL, ox, oy) {
         rTL = Math.min(rTL, w / 2, h / 2);
         rTR = Math.min(rTR, w / 2, h / 2);
         rBR = Math.min(rBR, w / 2, h / 2);
@@ -49,7 +44,8 @@
         if (rBL > 0.5) pts = pts.concat(corner(rBL, h - rBL, rBL, 'sin', -1, 1));
         pts.push([0, rTL]);
         if (rTL > 0.5) pts = pts.concat(corner(rTL, rTL, rTL, 'cos', -1, -1));
-        var d = 'M' + pts.map(function (p) { return p[0].toFixed(2) + ',' + p[1].toFixed(2); }).join('L') + 'Z';
+        ox = ox || 0; oy = oy || 0;
+        var d = 'M' + pts.map(function (p) { return (p[0] + ox).toFixed(2) + ',' + (p[1] + oy).toFixed(2); }).join('L') + 'Z';
         return d;
     }
 
@@ -61,25 +57,45 @@
         for (var i = 0; i < entries.length; i++) apply(entries[i].target);
     });
 
+    // Vnější ostré stíny (box-shadow bez rozostření = spodní „ret" tlačítek).
+    // Barva může mít čárky uvnitř závorek, proto dělit jen mimo ně.
+    function hardShadows(cs) {
+        var v = cs.boxShadow;
+        if (!v || v === 'none') return [];
+        return v.split(/,(?![^(]*\))/).map(function (part) {
+            var n = part.replace(/(rgba?|hsla?|color|oklch|lab|lch)\([^)]*\)/g, '').match(/-?[\d.]+px/g) || [];
+            return { x: parseFloat(n[0]) || 0, y: parseFloat(n[1]) || 0, blur: parseFloat(n[2]) || 0, inset: /inset/.test(part) };
+        }).filter(function (s) { return !s.inset && (s.x || s.y); });
+    }
+
+    function clear(el) {
+        el.style.clipPath = el.style.webkitClipPath = '';
+    }
+
+    // clip-path, ne mask: maska se ve WebKitu vždy ořízne na okraj boxu
+    // (mask-clip: no-clip neumí), takže by spolkla spodní ret tlačítek.
+    // Cesta clip-path smí z boxu vyčnívat: tvar + stejný tvar posunutý o každý
+    // ostrý stín. Rozostřený stín by se usekl, takový prvek zůstane s obyčejným
+    // zaoblením. Vedlejší zisk: clip-path platí i pro klepnutí.
     function apply(el) {
         var cs = getComputedStyle(el);
         var rTL = radiusOf(cs, 'borderTopLeftRadius');
         var rTR = radiusOf(cs, 'borderTopRightRadius');
         var rBR = radiusOf(cs, 'borderBottomRightRadius');
         var rBL = radiusOf(cs, 'borderBottomLeftRadius');
-        if (!rTL && !rTR && !rBR && !rBL) { el.style.webkitMaskImage = ''; return; }
+        if (!rTL && !rTR && !rBR && !rBL) return clear(el);
         var w = el.offsetWidth, h = el.offsetHeight;
         if (!w || !h) return;
-        var d = pathFor(w, h, rTL, rTR, rBR, rBL);
-        var svg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='" + w + "' height='" + h + "'%3E%3Cpath d='" + encodeURIComponent(d) + "' fill='%23000'/%3E%3C/svg%3E";
-        el.style.webkitMaskImage = "url(\"" + svg + "\")";
-        el.style.maskImage = "url(\"" + svg + "\")";
-        el.style.webkitMaskSize = el.style.maskSize = '100% 100%';
-        el.style.webkitMaskRepeat = el.style.maskRepeat = 'no-repeat';
+        var shadows = hardShadows(cs);
+        if (shadows.some(function (s) { return s.blur > 0; })) return clear(el);
+        var d = [pathFor(w, h, rTL, rTR, rBR, rBL)].concat(shadows.map(function (s) {
+            return pathFor(w, h, rTL, rTR, rBR, rBL, s.x, s.y);
+        })).join(' ');
+        el.style.clipPath = el.style.webkitClipPath = "path('" + d + "')";
     }
 
     var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, SVG: 1, PATH: 1, CIRCLE: 1, LINK: 1, HEAD: 1, TITLE: 1, META: 1 };
-    // Maska ořízne i to, co z prvku přesahuje (číslo pod odznakem, oslí uši).
+    // Ořez usekne i to, co z prvku přesahuje (číslo pod odznakem, oslí uši).
     // Tyhle prvky zůstanou v Safari s obyčejným zaoblením. Výplně ubývajících
     // pruhů mění šířku v každém snímku: ResizeObserver by jim pořád skládal
     // novou masku a Safari ji mezitím zahodí, pruh bliká. Ořízne je rodič.
