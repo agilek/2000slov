@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Slovka One: Fredoka One s doplněnými českými znaky na nadpisech
+Fredoka One (2011) sedí hře nejvíc, ale chybělo jí 14 českých znaků
+(ů č ď ě ň ř ť, Ů Č Ď Ě Ň Ř Ť). `tools/cz_font.py` je doplní a uloží kopii jako
+**Slovka One**; hra ji má na nadpisech místo Capriole (`public/fonts/`, preload,
+v shellu service workeru). Kopie OTF je i vedle originálu ve složce s fonty.
+
+**Root cause / approach:** Hotové Š/š/Å jsou ve fontu slité obrysy, ne složeniny,
+takže polohy znamének se musely *změřit* z kontur nad písmenem: háček stejný
+tvar všude, velká o +200, vystředěný (+5); kroužek převzatý z å; ď/ť apostrof
+×0,55 vpravo od dříku, u ť nad příčkou. Nové znaky jsou složeniny s převzatým
+kerningem (Ť+o = T+o = −240), u ď/ť jen zprava. OFL vyhrazuje jméno „Fredoka",
+proto jiné jméno; copyright autorky a text OFL jdou s fontem.
+
+→ *Memory saved: `slovka_font.md`*
+
 ### Pauza s animovaným obrázkem
 Nad „Pauza" jsou spící stopky v jazyce Kostek (`pauza-ziva.svg`): pohupují se,
 symbol pauzy na ciferníku dýchá a stoupají písmena Z. Pod omezeným pohybem

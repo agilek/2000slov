@@ -8,8 +8,9 @@
 
 :root {
     --display: 'Fredoka', 'Nunito', system-ui, sans-serif;
-    /* Nadpisy v Capriole — Fredoka má u nich nepovedené háčky (ZMĚNIT, Ř). */
-    --heading: 'Capriola', var(--display);
+    /* Nadpisy ve Slovka One = Fredoka One s doplněnými českými znaky
+       (tools/cz_font.py) — Fredoka z Google Fonts má u nich nepovedené háčky. */
+    --heading: 'Slovka One', var(--display);
     --bg: #ffffff;
     --ink: #2b3a42;
     --muted-text: #66747c;
@@ -931,9 +932,14 @@
     box-shadow: 0 4px 0 rgba(0, 0, 0, .18), 0 12px 30px var(--shadow-card);
 }
 
-/* ---- Nadpisy: Capriola ----
-   Až na konci souboru, ať přebije dřívější Fredoku u týchž prvků. Capriola
-   má jen řez 400, bez umělého ztučnění by jinak zbytněla. */
+/* ---- Nadpisy: Slovka One ----
+   Až na konci souboru, ať přebije dřívější Fredoku u týchž prvků. Písmo má
+   jediný (tučně vyhlížející) řez 400 — bez umělého ztučnění by zbytnělo. */
+@font-face {
+    font-family: 'Slovka One';
+    src: url(../fonts/SlovkaOne-Regular.woff2) format('woff2');
+    font-display: swap;
+}
 .screen h1, .screen h2, .screen-title, .profile-name, .profile-section-title,
 .modal-header h2, .pause-overlay h2, .wd-title, .def-group {
     font-family: var(--heading);

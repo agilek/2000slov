@@ -39,3 +39,19 @@ ať to nesklouzne k „co zrovna vypadá jako slovo".
 Pokud `words.js` přegeneruješ, **změní se i rozdělení slov do dnů** — hráči
 dostanou v daný den jiná slova než předtím. Seed (`SEED = 20260921`) drží
 rozdělení stabilní, dokud se nezmění vstupní pool.
+
+## `cz_font.py` — české znaky do Fredoka One
+
+Fredoka One (2011, OFL) má Š/Ž a čárky, ale chybí ů č ď ě ň ř ť a Ů Č Ď Ě Ň Ř Ť.
+Skript je doplní jako TrueType složeniny písmeno + znaménko (polohy změřené z hotových
+Š/š a å, u ď/ť zmenšený apostrof), převezme kerning a uloží kopii jako **Slovka One**
+— licence OFL vyhrazuje jméno „Fredoka", upravená verze ho nést nesmí.
+
+```bash
+python -m venv /tmp/fontenv && /tmp/fontenv/bin/pip install fonttools brotli
+/tmp/fontenv/bin/python tools/cz_font.py FredokaOne-Regular.otf SlovkaOne-Regular.otf public/fonts/SlovkaOne-Regular.woff2
+```
+
+Hra používá `public/fonts/SlovkaOne-Regular.woff2` na nadpisy (`designs/kostky.css`),
+licence je vedle v `public/fonts/OFL.txt`.
+
