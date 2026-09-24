@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { clean, defTextError, validClient, DEF_MIN, DEF_MAX } from './worker/src/validate.js';
 import { authEnabled, devLogin } from './worker/src/auth.js';
-import { points } from './worker/src/profile.js';
+import { points, profilePage } from './worker/src/profile.js';
 import { DatabaseSync } from 'node:sqlite';
 import Avatar from './public/avatar.js';
 import Achievements from './public/achievements.js';
@@ -111,6 +111,15 @@ test('úspěchy: prahy a veřejný stav', () => {
     const st = Achievements.publicState({ dny: 7, nejdelsi: 7, perfektnich: 0 }, autor, true);
     const got = Achievements.LIST.filter(a => Achievements.done(a, st)).map(a => a.id);
     assert.deepEqual(got, ['prvni-kolo', 'nova-tvar', 'rozjezd', 'tyden', 'sto-slov', 'pisalek', 'palec', 'nejlepsi']);
+});
+// Veřejný profil: odznaky, které zná jen klient (tajné, sdílení), přijdou
+// z user_achievements; ostatní server dopočítá sám (autor má význam = Pisálek).
+run("INSERT INTO users (id, email_hash, handle, handle_lc, created_at) VALUES ('autor', 'h', 'Autor', 'autor', 0)");
+run("INSERT INTO user_achievements VALUES ('autor', 'nocni-sova', 0), ('autor', 'chlouba', 0)");
+const verejny = await (await profilePage(null, { DB: d1 }, new URL('https://x/u/Autor?cast=1'))).text();
+test('úspěchy: veřejný profil ukáže i odznaky z klienta', () => {
+    for (const jmeno of ['Noční sova', 'Chlouba', 'Pisálek']) assert.ok(verejny.includes(`ach-name">${jmeno}<`), jmeno);
+    assert.ok(!verejny.includes('ach-name">Bleskovka<'));
 });
 test('úspěchy: unikátní id a každá ikona existuje', () => {
     assert.equal(new Set(Achievements.LIST.map(a => a.id)).size, Achievements.LIST.length);

@@ -126,8 +126,10 @@ async function handleBackfill(request, env) {
     return json({ ok: true, added: rows.length }, 200);
 }
 
-// Získané úspěchy zařízení (i bez účtu). Slouží jen k „Má ho X % hráčů“.
-// Klient si je tvrdí sám jako /api/result. Proto nic víc než tahle čísla.
+// Získané úspěchy zařízení (i bez účtu) pro „Má ho X % hráčů“. U přihlášeného
+// se zapíšou i k účtu, ať je veřejný profil ukáže i ty, které zná jen klient
+// (sdílení, Bleskovka, tajné). Klient si je tvrdí sám jako /api/result.
+// Proto jen tahle čísla a odznaky na profilu, nic, co by šlo zneužít.
 const ACH_IDS = new Set(Achievements.LIST.map(a => a.id));
 async function handleAchievements(request, env) {
     let body;
@@ -135,9 +137,14 @@ async function handleAchievements(request, env) {
     if (!validClient(body && body.clientId) || !Array.isArray(body.ids)) return json({ error: 'bad params' }, 400);
     const ids = [...new Set(body.ids)].filter(id => ACH_IDS.has(id));
     if (!ids.length) return json({ ok: true }, 200);
-    await env.DB.batch(ids.map(id => env.DB.prepare(
-        'INSERT INTO achievements (client_id, ach, created_at) VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING'
-    ).bind(body.clientId, id, Date.now())));
+    const user = await currentUser(request, env);
+    const now = Date.now();
+    await env.DB.batch(ids.flatMap(id => [
+        env.DB.prepare('INSERT INTO achievements (client_id, ach, created_at) VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING')
+            .bind(body.clientId, id, now),
+        ...(user ? [env.DB.prepare('INSERT INTO user_achievements (user_id, ach, created_at) VALUES (?1, ?2, ?3) ON CONFLICT DO NOTHING')
+            .bind(user.id, id, now)] : []),
+    ]));
     return json({ ok: true }, 200);
 }
 

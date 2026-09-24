@@ -89,7 +89,7 @@ async function loadProfile(env, handle) {
     ).bind(String(handle || '').toLowerCase()).all();
     const user = users[0];
     if (!user || user.hide_profile) return null;
-    const [{ results: rows }, { results: defs }, { results: cnt }, body] = await Promise.all([
+    const [{ results: rows }, { results: defs }, { results: cnt }, body, { results: ach }] = await Promise.all([
         env.DB.prepare(
             'SELECT played_on, day_idx, score FROM profile_days WHERE user_id = ?1 AND played_on >= ?2 ORDER BY played_on'
         ).bind(user.id, dayBefore(iso(new Date()), DAYS)).all(),
@@ -103,8 +103,9 @@ async function loadProfile(env, handle) {
             ORDER BY d.votes DESC, d.created_at DESC LIMIT ?2`).bind(user.id, DEFS_SHOWN).all(),
         env.DB.prepare('SELECT COUNT(*) AS n FROM definitions WHERE user_id = ?1 AND hidden = 0').bind(user.id).all(),
         points(env, user.id),
+        env.DB.prepare('SELECT ach FROM user_achievements WHERE user_id = ?1').bind(user.id).all(),
     ]);
-    return { user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n, points: body };
+    return { user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n, points: body, ach: new Set(ach.map(r => r.ach)) };
 }
 
 export async function apiProfile(request, env, url, ctx, json) {
@@ -120,10 +121,12 @@ export async function apiProfile(request, env, url, ctx, json) {
 
 const num = (n) => n.toLocaleString('cs-CZ');
 
-// Úspěchy na veřejném profilu: jen získané, které zná server (odznaky jen
-// z klienta, třeba za sdílení, tu chybí). Neklikací, stránka je bez JS.
+// Úspěchy na veřejném profilu: co server spočítá sám, plus co hra nahlásila
+// k účtu (user_achievements: sdílení, Bleskovka, tajné, …). Neklikací, bez JS.
 function achievementsSection(data) {
     const st = Achievements.publicState(data.stats, data.points, Avatar.valid(data.user.avatar));
+    // nahlášený odznak zvedne svůj klíč na práh, ať se vykreslí jako získaný
+    for (const a of Achievements.LIST) if (data.ach.has(a.id)) st[a.v] = Math.max(st[a.v] || 0, a.goal);
     const got = Achievements.LIST.filter(a => Achievements.done(a, st));
     if (!got.length) return '';
     const avatar = Avatar.svg(data.user.avatar);

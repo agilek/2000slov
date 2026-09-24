@@ -131,3 +131,11 @@ CREATE TABLE IF NOT EXISTS achievements (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (client_id, ach)
 );
+
+-- Totéž k účtu (ze všech zařízení hráče), pro veřejný profil /u/.
+CREATE TABLE IF NOT EXISTS user_achievements (
+  user_id    TEXT NOT NULL,
+  ach        TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, ach)
+);

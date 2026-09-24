@@ -279,6 +279,7 @@ export async function meDelete(request, env, url, ctx, json) {
         env.DB.prepare("UPDATE definitions SET user_id = NULL, author = NULL, client_id = 'deleted' WHERE user_id = ?1").bind(u.id),
         env.DB.prepare('DELETE FROM votes WHERE client_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM training_days WHERE user_id = ?1').bind(u.id),
+        env.DB.prepare('DELETE FROM user_achievements WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM sessions WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM users WHERE id = ?1').bind(u.id),
     ]);

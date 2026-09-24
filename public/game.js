@@ -64,7 +64,8 @@ function defaultPersist() {
         achGot: {},         // { [id úspěchu]: datum získání } — získaný úspěch už nezmizí
         achUnseen: [],      // získané, ale ještě neotevřené (červená tečka)
         achQueue: [],       // čekají na oznámení, až hráč dohraje (announceAchievements)
-        achSent: [],        // už nahlášené serveru (jen pro „Má ho X % hráčů")
+        achSent: [],        // už nahlášené serveru („Má ho X % hráčů", u účtu i veřejný profil)
+        achSentFor: '',     // komu se hlásilo: id účtu, '' = anonymně; po přihlášení se pošle všechno znovu
         nick: '',           // přezdívka u přidaných významů
         avatar: '',         // kód avatara „tvar-barva-oči-pusa", viz avatar.js
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
@@ -1289,8 +1290,11 @@ function syncAchievements() {
     return st;
 }
 
-// Serveru jen id získaných, kvůli „Má ho X % hráčů". Neodeslané se zkusí příště.
+// Serveru jen id získaných: „Má ho X % hráčů" a u účtu odznaky na veřejném
+// profilu. Neodeslané se zkusí příště, po přihlášení se pošle všechno znovu.
 function reportAchievements() {
+    const who = (auth.user && auth.user.id) || '';
+    if (persist.achSentFor !== who && auth.user) { persist.achSent = []; persist.achSentFor = who; }
     const ids = Object.keys(persist.achGot).filter(id => !persist.achSent.includes(id));
     if (!ids.length || state.achPosting) return;
     state.achPosting = true;
@@ -2506,11 +2510,12 @@ function showResult(instant) {
         ? 'Máš všech 20 slov!'
         : `Máš ${survived} z 20 slov!`;
     setEmojiText($('percentile'), percentileDisplayText(survived, persist.day.realTopPct));
-    const dayNum = persist.day.dayIdx + 1;
-    const nextNum = (persist.day.dayIdx + 1) % TOTAL_LEVELS + 1;
-    setEmojiText($('progressLine'), perfect
-        ? `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.\nZítra tě čeká den ${nextNum}!`
-        : `Den ${dayNum} ti utekl — zítra čeká den ${nextNum}, nová slova!`);
+    // Ne „den N": číslo dne hráči nic neřekne. Důvod přijít zítra je série.
+    const streak = liveStreak();
+    setEmojiText($('progressLine'), (perfect ? `🔓 Odkryto ${fmtNum(uncoveredCount())}/${fmtNum(TOTAL_WORDS)} slov.\n` : '')
+        + (streak >= 2
+            ? `🔥 ${fmtNum(streak)} ${plural(streak, 'den', 'dny', 'dní')} v řadě. Zítra v tom pokračuj!`
+            : 'Zítra čeká 20 nových slov. Přijď a rozjeď sérii!'));
     updateNotifyPrompt();
     renderStreakNudge();
     prepareShareCard();
@@ -2664,11 +2669,17 @@ function getTrophyShareLine(survived) {
     return '🏆 ' + clean;
 }
 
+// Při sdílení datum, ne „den N": podle data si hráči porovnají výsledky
+// (ten den hráli všichni stejná slova), pořadové číslo dne nic neřekne.
+function shareDate(day) {
+    const [y, m, d] = ((day && day.date) || todayStr()).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 function buildShareMessage() {
     const survived = (persist.day && persist.day.marks) ? persist.day.marks.filter(Boolean).length : 0;
-    const dayNum = (persist.day ? persist.day.dayIdx : dayIndex()) + 1;
     const grid = buildEmojiGrid();
-    let msg = `⏳ 20 slov — den #${dayNum}\n\n🔥 Získáno ${survived}/20 slov`;
+    let msg = `⏳ 20 slov — ${shareDate(persist.day)}\n\n🔥 Získáno ${survived}/20 slov`;
     if (grid) msg += `\n\n${grid}`;
     const trophy = getTrophyShareLine(survived);
     if (trophy) msg += `\n\n${trophy}`;
@@ -2795,7 +2806,7 @@ async function drawShareCard() {
     }
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     g.fillStyle = t.ink; g.font = `56px ${CARD_DISPLAY}`;
-    g.fillText(`Den ${day.dayIdx + 1}`, X, 392);
+    g.fillText(shareDate(day), X, 392);
     // série od dvou dní, s jakýmkoli skóre
     if (streak >= 2) cardSticker(g, W - X, 372, 4, 50, `${fmtNum(streak)} ${plural(streak, 'den', 'dny', 'dní')} v řadě`, flame, STICKERS.streak);
 
@@ -2852,7 +2863,7 @@ function prepareShareCard() {
     if (shareCard && shareCard.url) URL.revokeObjectURL(shareCard.url);
     const card = { key, file: null, url: null };
     card.ready = drawShareCard().then(blob => {
-        card.file = new File([blob], `20-slov-den-${day.dayIdx + 1}.png`, { type: 'image/png' });
+        card.file = new File([blob], `20-slov-${day.date}.png`, { type: 'image/png' });
         card.url = URL.createObjectURL(blob);
         return card.file;
     });
@@ -2880,8 +2891,8 @@ async function shareScore() {
     const ready = prepareShareCard();
     const day = persist.day;
     const img = $('sharePreview'), btn = $('shareCardBtn');
-    $('shareTitle').textContent = `Karta dne ${day.dayIdx + 1}`;
-    img.alt = `Karta ke sdílení: ${day.marks.filter(Boolean).length} z 20 slov, den ${day.dayIdx + 1}`;
+    $('shareTitle').textContent = `Karta ze dne ${shareDate(day)}`;
+    img.alt = `Karta ke sdílení: ${day.marks.filter(Boolean).length} z 20 slov, ${shareDate(day)}`;
     img.removeAttribute('src');
     btn.textContent = canShareCard() ? 'Sdílet obrázek' : 'Stáhnout obrázek';
     btn.disabled = true;

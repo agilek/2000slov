@@ -627,12 +627,14 @@
 /* počet vpravo v nadpisu sekce („12 z 27") */
 .profile-section-title:has(small) { display: flex; justify-content: space-between; align-items: baseline; }
 .profile-section-title small { font-family: 'Nunito', system-ui, sans-serif; font-size: 15px; font-weight: 700; color: var(--muted-text); }
-/* nový, ještě neotevřený úspěch: červená tečka na Profilu vlevo nahoře */
-.icon-btn--dot .icon-btn-circle { position: relative; }
-.icon-btn--dot .icon-btn-circle::after {
+/* nový, ještě neotevřený úspěch: červená tečka na Profilu vlevo nahoře.
+   Na tlačítku, ne na kostce: squircle.js v Safari maskuje kostku a tečka
+   přes její roh by se usekla. */
+.icon-btn--dot { position: relative; }
+.icon-btn--dot::after {
     content: '';
     position: absolute;
-    top: -5px; right: -5px;
+    top: -5px; left: 43px;
     width: 14px; height: 14px;
     border-radius: 50%;
     background: var(--red);

@@ -79,13 +79,16 @@
     }
 
     var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, SVG: 1, PATH: 1, CIRCLE: 1, LINK: 1, HEAD: 1, TITLE: 1, META: 1 };
+    // Maska ořízne i to, co z prvku přesahuje (číslo pod odznakem, oslí uši).
+    // Tyhle prvky zůstanou v Safari s obyčejným zaoblením.
+    var SKIP = '.ach, .ach-medal';
 
     function candidates(root) {
         var out = [];
         var all = root.querySelectorAll('*');
         for (var i = 0; i < all.length; i++) {
             var el = all[i];
-            if (SKIP_TAGS[el.tagName]) continue;
+            if (SKIP_TAGS[el.tagName] || el.matches(SKIP)) continue;
             var cs = getComputedStyle(el);
             if (radiusOf(cs, 'borderTopLeftRadius') || radiusOf(cs, 'borderTopRightRadius') ||
                 radiusOf(cs, 'borderBottomRightRadius') || radiusOf(cs, 'borderBottomLeftRadius')) {

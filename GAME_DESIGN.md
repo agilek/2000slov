@@ -119,7 +119,7 @@ a Facebooku). Kreslí ji `drawShareCard()` do canvasu a existuje pro každé sk�
 | bez trofeje (0–8) | fialová | Zítra to dám! 👍 | Dáš to líp? |
 
 Od série 2 má každá karta vpravo nahoře nálepku „N dní v řadě 🔥“.
-Vždy je tam nápis „20 SLOV“ z kostek písmen, den, obří skóre „N z 20 slov“,
+Vždy je tam nápis „20 SLOV“ z kostek písmen, datum (ne „den N“: podle data si hráči porovnají výsledky), obří skóre „N z 20 slov“,
 mřížka dne na tmavé desce a adresa hry.
 
 Pochlubit se → sheet s náhledem karty → „Sdílet obrázek“ (mobil:
@@ -179,6 +179,9 @@ Stejný soubor používá hra, worker (veřejný profil) i `dev-uspechy.html`.
 - **„Má ho X % hráčů“:** klient hlásí id získaných na `POST /api/achievements`
   (podle `clientId`, i bez účtu). `GET /api/achievements/stats` vrací procenta
   z počtu zařízení, hodinová cache na edge, pod 15 zařízeními nic.
+  U přihlášeného se id zapíšou i k účtu (`user_achievements`). Veřejný profil
+  tak ukáže i odznaky, které zná jen klient (sdílení, Bleskovka, tajné).
+  Po přihlášení klient pošle všechny znovu (`achSentFor`).
 - **Data:** klient skládá stav v `achState()` z `persist` a z
   `/api/me/points`. Server přidal `maxHlasu` a `nejlepsi`. Co jinak nejde
   dopočítat, drží příznaky `persist.ach` (sdílení, rychlost, noc, přesmyčka,

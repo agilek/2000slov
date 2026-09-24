@@ -89,10 +89,10 @@ Můžu udělat, až řekneš.
   významů, kterým smazaný hráč dal hlas. Autoři tak mají v počtu hlasů
   (a v bodech) i hlasy, které už neexistují. Oprava je v `meDelete` o dva řádky.
 - **Úspěchy (běží, 2026-09-24):** 27 odznaků, seznam v `public/achievements.js`,
-  náhled v `public/dev-uspechy.html`. Zbývá:
-  1. Seznam a prahy: přidat, škrtnout, přejmenovat?
-  2. Veřejný profil ukazuje jen odznaky, které zná server. Odznaky jen
-     z klienta (sdílení, Bleskovka, tajné, …) tam chybí.
+  náhled v `public/dev-uspechy.html`. Zbývá: seznam a prahy (přidat,
+  škrtnout, přejmenovat?).
+- **„Den N/365“ na úvodu a v profilu** (čip Sbírky): stejný problém jako u
+  sdílení, hráči číslo dne nic neřekne. Nahradit datem, nebo jen „N/7300 slov“?
 - **Dvě mrtvé větve** `claude/button-haptic-feedback-8kgxkn` a
   `claude/czech-word-game-f2hnia` na originu, dávno zmergované.
 

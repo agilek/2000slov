@@ -2,6 +2,21 @@
 
 ## 2026-09-24
 
+### Datum místo „den N“, odznaky z klienta na veřejném profilu, ořez v Safari
+Karta, text sdílení a nadpis náhledu ukazují datum („24. září 2026“), ne
+pořadí dne. Podle data si hráči porovnají výsledky. Řádek pod skóre místo
+„Den 4 ti utekl, zítra den 5“ ukazuje sérii. Veřejný profil ukáže i odznaky,
+které zná jen klient: přihlášenému se zapíšou do `user_achievements`. V Safari
+se useklo číslo pod odznakem a tečka na Profilu.
+
+**Root cause / approach:** Ořez dělá `squircle.js`: ve WebKitu kreslí squircle
+SVG maskou a maska ořízne všechno, co přesahuje box prvku (pseudoprvky,
+vyčnívající děti). `.ach` a `.ach-medal` jsou teď v `SKIP` a tečka je na
+`.icon-btn`, ne na maskované kostce. V Chromu (nativní `corner-shape`) se
+chyba neprojeví, ověřit jde jen ve WebKitu.
+
+→ *Memory saved: `squircle_corners.md` (doplněno)*
+
 ### Jedna série (odehrané dny), oznámení úspěchů až po aktivitě, „Má ho X % hráčů“
 Série je teď všude „odehrané dny v kuse“, dřív lokálně jen dny 20/20.
 Starý stav se jednou přepočítá z `results`. Nálepka série je na kartě
