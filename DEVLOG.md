@@ -2,6 +2,18 @@
 
 ## 2026-09-25
 
+### Pauza: větší stopky, Pokračovat dole u palce
+Obrázek spících stopek je o polovinu větší (140 → 210 px). Tlačítko Pokračovat
+sedí dole jako Hrát na úvodu: stejná šířka a 30 px nad spodním okrajem
+(+ safe area). Stopky s nadpisem jsou uprostřed zbylého místa.
+
+**Root cause / approach:** Jen CSS. `.pause-overlay` dostal odsazení jako
+`.screen`. Auto marginy nad stopkami a nad tlačítky rozdělí volné místo, takže
+nadpis zůstane u obrázku a tlačítko u palce. Změřeno v Chromiu na iPhonu 13
+i SE: tlačítko má stejnou polohu i šířku jako Hrát.
+
+→ *No new memory entries.*
+
 ### Písmena v Safari už nezůstávají dole useknutá; klepnutí na slovo bere poslední písmeno
 Na iPhonu zůstávalo písmeno po vybrání a odebrání bez spodního retu, jako
 by bylo useknuté. Klepnutí do skládaného slova teď odebere jen poslední
