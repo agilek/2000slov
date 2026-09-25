@@ -1379,11 +1379,10 @@ function renderProfile() {
         ? `Nejdelší série: ${fmtNum(persist.bestStreak)}`
         : 'Zatím bez série';
 
-    // Celkový počet uhodnutých slov sám o sobě nic neřekne (kdo hraje dýl, má
-    // ho víc, bez ohledu na to, jak mu to jde) — rozpis dává smysl jen jako
-    // podklad úspěšnosti, proto obojí v jedné dlaždici.
+    // Kolik toho bylo uhodnuto, řekne procento samo — z kolika slov je počítané
+    // (roste s odehranými dny), sem jen jako rozsah, ne jako druhé číslo.
     const total = days * WORDS_PER_DAY;
-    const successLabel = total ? `úspěšnost — ${fmtNum(words)} z ${fmtNum(total)} slov v denní výzvě` : 'úspěšnost';
+    const successLabel = total ? `úspěšnost z ${fmtNum(total)} slov v denní výzvě` : 'úspěšnost';
     const tiles = [
         [fmtNum(liveStreak()), 'dní v řadě', liveStreak() ? '' : 'stat-tile--off'],
         [fmtNum(days), 'odehraných dní'],

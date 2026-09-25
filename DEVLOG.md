@@ -6,8 +6,9 @@
 Dlaždice „slov v denní výzvě“ ukazovala celkový počet uhodnutých slov ze
 všech odehraných dní — číslo samo o sobě nic neříkalo (kdo hraje déle, má
 ho víc, bez ohledu na to, jak mu to jde). Teď je to jen rozpis v popisku
-dlaždice úspěšnosti: „82 % — 640 z 780 slov v denní výzvě“. Bez odehraného
-dne zůstane jen „úspěšnost“.
+dlaždice úspěšnosti: „82 % — úspěšnost z 780 slov v denní výzvě“. Kolik toho bylo
+uhodnuto, řekne procento samo, druhé číslo navíc by bylo zbytečné — jen z
+kolika slov se počítá. Bez odehraného dne zůstane jen „úspěšnost“.
 
 **Root cause / approach:** V `renderProfile` zmizela samostatná dlaždice
 `words`, `pct` dostala širokou dlaždici s popisem podle vzoru tréninkové
