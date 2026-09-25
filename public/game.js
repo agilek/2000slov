@@ -1509,8 +1509,7 @@ function renderAchievements() {
     const pick = [...got.filter(a => persist.achUnseen.includes(a.id)), ...byDate, ...near, ...L.filter(a => !done(a))];
     $('achProfileGrid').innerHTML = [...new Set(pick)].slice(0, 8).map(a => achTile(a, st)).join('');
 
-    $('achSumCount').innerHTML = `${got.length} <small>z ${L.length}</small>`;
-    $('achSumBar').style.width = got.length / L.length * 100 + '%';
+    $('achSumCount').textContent = `${got.length}/${L.length}`;
     $('achNearSection').hidden = !near.length;
     $('achNear').innerHTML = near.slice(0, 3).map(a => {
         const left = a.goal - Achievements.val(a, st);

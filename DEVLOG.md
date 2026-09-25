@@ -2,6 +2,20 @@
 
 ## 2026-09-25
 
+### Obrazovka Úspěchy: počet v záhlaví místo velkého bloku pod ním
+Pod záhlavím „Úspěchy" byl samostatný řádek s velkým číslem „5 z 27" a
+širokým pruhem — zabíral místo, než začaly první úspěchy. Teď je počet
+rovnou v záhlaví: „Úspěchy 5/27", pruh pryč.
+
+**Root cause / approach:** `#achSumCount` přesunuté z vlastního
+`.profile-section` do `<span class="screen-title">` jako `<small>`,
+`#achSumBar` (a jeho `.profile-section`/`.ach-sum` obal) smazané —
+sdílené třídy `.ach-sum`/`.ach-bar` pro velký blok s pruhem zůstávají,
+používá je i sheet Denní výzvy (`challenge-sum`). Ověřeno v Chromiu:
+záhlaví „Úspěchy 27/27", starý blok v DOM není.
+
+→ *No new memory entries.*
+
 ### Statistiky profilu: dlaždice vedle sebe, ne pod sebou; smazání účtu bez čáry
 Dvě „široké" dlaždice (úspěšnost, trénink) na soukromém profilu stály pod
 sebou přes celou šířku — teď sedí vedle sebe jako ostatní, čistá mřížka
