@@ -2,6 +2,19 @@
 
 ## 2026-09-25
 
+### Výzva ke zpětné vazbě říká, s čím a proč psát
+V profilu místo „Díky za hru! Můžeš mi poslat zpětnou vazbu.“ stojí: „Něco
+nefunguje, slovo ti nesedí, nebo tě napadlo, co přidat? **Napiš mi.** Každou
+zprávu čtu a hru podle hráčů ladím.“ Odkaz je „Napiš mi.“ a otevírá stejný
+formulář.
+
+**Root cause / approach:** Jen text v index.html. Tři konkrétní důvody
+(chyba, slovo, nápad) napoví, o čem psát. Druhá věta říká, proč to má smysl.
+Věta „Díky za hru“ je pryč. Formulář (nadpis „Jak se ti hraje?“, placeholder)
+zůstal beze změny.
+
+→ *No new memory entries.*
+
 ### Zpět do hry drží u spodního okraje na zásadách, profilu i 404
 Na dlouhých stránkách (zásady soukromí, veřejný profil /u/) bylo tlačítko
 zpět do hry až na konci pod textem a nebylo vidět. Teď drží u spodního okraje
