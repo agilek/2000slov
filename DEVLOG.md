@@ -2,6 +2,25 @@
 
 ## 2026-09-25
 
+### Stránka 404: sova nad kostkami 4 0 4
+Neznámá adresa už nevrací holou chybu Cloudflaru, ale stránku ve stylu hry:
+„Slovo 404 · neexistuje", sova se zdviženým obočím kouká přes kostky 4 0 4
+a nula je červená a spadlá na bok jako nestihnuté slovo. Klepnutím se kostky
+zamíchají a pod nimi se střídají hlášky („Víc přesmyček tři kostky nemají.").
+
+**Root cause / approach:** `public/404.html` na sdíleném `style.css`, všechno
+z kořene, protože cesta může být libovolně hluboká. Ve `wrangler.toml`
+`not_found_handling = "404-page"`, takže ji assets vrátí se stavem 404.
+`/api/*` a `/u/*` jdou dál přes worker a svoje 404 si řeší samy.
+
+→ *No new memory entries.*
+
+### Mezihra: podržení palcem už panel nezmenšuje
+Při podržení se panel mezihry nepatrně zmáčkl (scale .985). Zbytečné, pauzu
+ukazuje tlačítko Další. Odstraněno i s třídou `holding`.
+
+→ *No new memory entries.*
+
 ### Trénink: mezihra ukazuje složenou přesmyčku a její význam
 Když hráč v tréninku složí jiné platné slovo ze stejných písmen (ocet místo
 otec, okr místo rok), hra ho uzná jako dřív. Mezihra teď ukáže kostky

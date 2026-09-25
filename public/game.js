@@ -867,7 +867,7 @@ function hideWordDone(animated) {
     if (!ov.classList.contains('active')) return;
     const panel = ov.querySelector('.wd-panel');
     const finish = () => {
-        ov.classList.remove('active', 'closing', 'holding');
+        ov.classList.remove('active', 'closing');
         panel.style.cssText = '';
         state.wdPaused = false;
         $('wdNextBtn').classList.remove('counting', 'paused');
@@ -3358,7 +3358,6 @@ $('wordDoneOverlay').addEventListener('pointerdown', e => {
         if (!press.paused) press.paused = pauseCountdown();
         if (!press.paused) return;
         $('wdNextBtn').classList.add('paused');
-        $('wordDoneOverlay').classList.add('holding');
         haptic('tap');
     }, HOLD_MS);
 });
@@ -3373,7 +3372,6 @@ const wdRelease = (e) => {
     const offNext = wdPress.onNext && !(under && under.closest('#wdNextBtn'));
     state.wdSkipClick = (wdPress.long && !wdPress.onNext) || offNext;
     wdPress = null;
-    $('wordDoneOverlay').classList.remove('holding');
     resumeCountdown();
 };
 document.addEventListener('pointerup', wdRelease);
