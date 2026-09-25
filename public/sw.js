@@ -11,7 +11,7 @@
 //
 // CACHE a SHELL skládá `node tools/stamp.mjs` z index.html — ručně je neupravuj.
 
-const CACHE = '20slov-26b10538';
+const CACHE = '20slov-6527e662';
 const SHELL = [
     '/',
     '/icons/icon.svg',
@@ -22,7 +22,7 @@ const SHELL = [
     '/fonts/Nunito-latin-ext.woff2',
     '/fonts/SlovkaOne-Regular.woff2',
     '/fonts/SlovkaOne-Light.woff2',
-    '/style.css?v=77f315d8',
+    '/style.css?v=af3ec2f7',
     '/designs/kostky/profil.svg',
     '/designs/kostky/cinka.svg',
     '/designs/kostky/zpet.svg',

@@ -2,6 +2,15 @@
 
 ## 2026-09-25
 
+### Odkazy stylované jako tlačítko byly podtržené
+`.btn` nikdy neresetoval `text-decoration`, takže `<a class="btn …">` (např.
+„Všechny úspěchy" na veřejném profilu) dostal od prohlížeče výchozí
+podtržení odkazu. Dvě cílené záplaty (`.page-cta > .btn-play`, `#accountBox
+a.btn`) to řešily jen pro konkrétní místa — teď má `text-decoration: none`
+rovnou `.btn` a obě záplaty jsou (teď zbytečné) pryč.
+
+→ *No new memory entries.*
+
 ### Obrazovka Úspěchy: víc odstupu kolem Na dosah; Denní výzva: počet v hlavičce
 „Na dosah" mělo od první skupiny úspěchů pod sebou jen 22 px místo 26 px,
 které mají skupiny mezi sebou — teď `#achievements` používá stejných 26 px,
