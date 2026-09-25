@@ -5,13 +5,21 @@
 ### Stránka 404: duch z avatarů hry místo sovy
 Na stránce 404 je místo sovy avatar ze hry: levandulový duch (`17-9-6-5`,
 tvar duch, oči stranou, zmatená vlnka), jak hledá stránku, která není.
-Vznáší se nad kostkami 4 0 4 a otazníky zůstaly.
+Vznáší se nad kostkami 4 0 4 a kolébá se. Spodní vlnky vlají, panenky se
+rozhlížejí a po zamíchání kostek na ně kouknou dolů. Otazníky se střídavě
+nafukují a naklánějí.
 
 **Root cause / approach:** Avatar se kreslí přes `public/avatar.js`
 (`Avatar.svg`), takže mrká stejně jako v profilu. Vlnitý spodek, podle
 kterého je to duch, by kostky zakryly. Proto duch nekouká zpoza dlaždic
 jako sova, ale vznáší se nad nimi (`nfFloat`). Texty se sovou přepsané
-na ducha.
+na ducha. Animace jsou jen na téhle stránce, avatar.js se nemění. Vlnky
+jsou SMIL `<animate attributeName="d">` na výplni i retu těla, mezi tvarem
+z avatar.js a tvarem s prohozenými řídicími body vln (82 ↔ 95). CSS `d`
+Safari animovat neumí. Kdyby se tvar ducha změnil, náhrada nic nenajde
+a vlnky jen stojí. Panenky (tmavé tečky v `.av-eye`) mají CSS `nfLook`.
+Při `prefers-reduced-motion` se nic z toho nespustí. Ověřeno v Chromiu
+vzorkováním hodnot v čase a snímky vln ve dvou fázích (`setCurrentTime`).
 
 → *No new memory entries.*
 

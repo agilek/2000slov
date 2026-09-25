@@ -26,8 +26,12 @@
     .nf-scene { position: relative; display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
     /* Duch z avatarů hry se vznáší nad kostkami. Vlnitý spodek, podle kterého
        je to duch, zůstává vidět, proto nekouká zpoza dlaždic. */
-    .nf-avatar { width: 140px; height: 140px; margin-bottom: 14px; animation: nfPeek .6s .25s var(--spring) both, nfFloat 3.2s .9s ease-in-out infinite; }
+    .nf-avatar { width: 140px; height: 140px; margin-bottom: 14px; animation: nfPeek .6s .25s var(--spring) both, nfFloat 4s .9s ease-in-out infinite; }
     .nf-avatar svg { display: block; width: 100%; height: 100%; }
+    /* Panenky se rozhlížejí (hledá stránku). Při zamíchání kostek na ně kouknou
+       dolů. Jednotky jsou SVG body obličeje, panenka se vejde do bělma r=7. */
+    .nf-pupil { animation: nfLook 5s 1.2s ease-in-out infinite; }
+    .nf-avatar.nf-peek .nf-pupil { animation: nfPeekDown .9s ease-out; }
     .nf-q {
         position: absolute;
         top: -6px;
@@ -35,9 +39,9 @@
         font-family: var(--display);
         font-size: 40px;
         color: var(--gold);
-        animation: nfBob 2.4s 1s ease-in-out infinite, nfPop .4s .8s var(--spring) both;
+        animation: nfPop .4s .8s var(--spring) both, nfAsk 2.8s 1.2s ease-in-out infinite;
     }
-    .nf-q--2 { left: calc(50% + 82px); top: 18px; font-size: 26px; color: #ce82ff; animation-delay: 1.6s, 1s; }
+    .nf-q--2 { left: calc(50% + 82px); top: 18px; font-size: 26px; color: #ce82ff; animation-delay: 1s, 2.6s; }   /* otazníky se střídají */
     .nf-tiles {
         position: relative;
         display: flex;
@@ -70,11 +74,28 @@
 
     @keyframes nfPeek { from { translate: 0 40px; opacity: 0; } }
     @keyframes nfPop { from { scale: 0; opacity: 0; } }
-    @keyframes nfBob { 50% { translate: 0 -6px; rotate: 8deg; } }
+    @keyframes nfAsk {
+        0%, 60%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
+        15% { translate: 0 -10px; rotate: -14deg; scale: 1.2; }
+        30% { translate: 0 -4px; rotate: 10deg; scale: 1; }
+        45% { translate: 0 0; rotate: -4deg; }
+    }
+    @keyframes nfLook {
+        0%, 18%, 100% { transform: translate(0, 0); }
+        28%, 46% { transform: translate(5.6px, 0); }
+        56%, 72% { transform: translate(2.8px, -2.2px); }
+        82%, 92% { transform: translate(0, 1.4px); }
+    }
+    @keyframes nfPeekDown { 20%, 75% { transform: translate(2.8px, 2.6px); } }
     @keyframes nfTip { from { rotate: 0deg; translate: 0 0; } }
-    @keyframes nfFloat { 50% { translate: 0 -8px; } }
+    /* vznáší se a lehce se kolébá ze strany na stranu */
+    @keyframes nfFloat {
+        25% { translate: 0 -8px; rotate: -3deg; }
+        50% { translate: 0 -3px; rotate: 0deg; }
+        75% { translate: 0 -8px; rotate: 3deg; }
+    }
     @media (prefers-reduced-motion: reduce) {
-        .nf-avatar, .nf-q, .nf-tiles .letter, .nf-tiles .letter.nf-zero { animation: none; }
+        .nf-avatar, .nf-q, .nf-pupil, .nf-tiles .letter, .nf-tiles .letter.nf-zero { animation: none; }
     }
 </style>
 </head>
@@ -98,7 +119,25 @@
 <script src="/avatar.js"></script>
 <script>
 (() => {
-    document.getElementById('nfAvatar').innerHTML = Avatar.svg('17-9-6-5');
+    const avatar = document.getElementById('nfAvatar');
+    avatar.innerHTML = Avatar.svg('17-9-6-5');
+    avatar.addEventListener('animationend', e => { if (e.animationName === 'nfPeekDown') avatar.classList.remove('nf-peek'); });
+    // Panenky = tmavé tečky v očích (bělmo je bílý kruh pod nimi).
+    avatar.querySelectorAll('.av-eye circle:not([fill="#fff"])').forEach(c => c.classList.add('nf-pupil'));
+    // Vlnky dole: tělo (výplň i tmavší ret) přechází mezi tvarem avataru a tvarem
+    // s prohozenými vlnami, sukně vlaje. SMIL, protože CSS `d` Safari animovat
+    // neumí. Kdyby se tvar ducha v avatar.js změnil, B = A a vlnky jen stojí.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        avatar.querySelectorAll('svg > g:not([transform*="scale"]) > path').forEach(path => {
+            const a = path.getAttribute('d');
+            const b = a.replace(/Q(\d+) (82|95)/g, (m, x, y) => `Q${x} ${y === '82' ? 95 : 82}`);
+            if (a === b) return;
+            const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+            for (const [k, v] of Object.entries({ attributeName: 'd', values: `${a};${b};${a}`, dur: '1.4s',
+                repeatCount: 'indefinite', calcMode: 'spline', keyTimes: '0;.5;1', keySplines: '.45 0 .55 1;.45 0 .55 1' })) anim.setAttribute(k, v);
+            path.append(anim);
+        });
+    }
     const row = document.getElementById('nfTiles');
     const hint = document.getElementById('nfHint');
     // Víc než tři přesmyčky 404 nemá — a žádná z nich není slovo.
@@ -125,6 +164,9 @@
         hint.classList.remove('pulse');
         void hint.offsetWidth;
         hint.classList.add('pulse');
+        avatar.classList.remove('nf-peek');                // duch kouká, co se na kostkách stalo
+        void avatar.offsetWidth;
+        avatar.classList.add('nf-peek');
         if (navigator.vibrate) navigator.vibrate(8);
     });
 })();
