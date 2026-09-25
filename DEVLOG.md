@@ -2,6 +2,31 @@
 
 ## 2026-09-25
 
+### Úspěch z denní výzvy až po ní, ne uprostřed
+Na iPhonu v Safari (neregistrovaný hráč, první hra) po návratu z jiné
+aplikace čekal uprostřed rozehrané denní výzvy sheet „Nový úspěch!“
+s Bleskovkou. Úspěchy získané v denní výzvě (Bleskovka, Na chlup) teď
+čekají u dne a oznámí se až po jejím konci, po odhalení výsledku.
+
+**Root cause / approach:** Oznámení během hry nikdy nešlo, `announceAchievements`
+hru hlídá a `syncAchievements` se během denní výzvy nevolá. Jenže `checkWord`
+zapisoval příznak rovnou do `persist.ach` a `saveDayProgress` ho každou
+vteřinu uložil. Safari po návratu z jiné aplikace stránku znovu načetl
+(proces stránky na pozadí skončil). Start (`init` → `syncAchievements`) příznak
+našel a `showWelcome` → `whenCalm` úspěch oznámil na úvodu, přestože den
+ještě běžel. Po zavření sheetu šlo hrát dál z uloženého stavu. Nově jdou
+příznaky z denní výzvy do `persist.day.ach` a do `persist.ach` se přelijí
+ve `finishDay` (i po křížku). Když start zahazuje nedohraný den z minulosti,
+úspěch z něj zůstane a oznámí se na úvodu. Ověřeno v Chromiu: stejný scénář
+(slovo do 3 s, reload, dohrát) ukazoval před opravou Bleskovku na úvodu,
+po opravě přijde až po výsledku za Prvním kolem.
+
+Poznámka k černé obrazovce níž: reload po návratu ukazuje, že Safari proces
+stránky ukončuje. Černá obrazovka ve hře může být totéž v popředí (konec
+procesu stránky), ne gesto zpět. Na zařízení to pořád není ověřené.
+
+→ *No new memory entries.*
+
 ### Denní výzva: černá obrazovka po gestu zpět
 Během denní výzvy občas na telefonu zčernala obrazovka, zmizela všechna
 tlačítka a hra přestala reagovat, třeba u posledního slova. V denní výzvě

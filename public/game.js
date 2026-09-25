@@ -70,7 +70,7 @@ function defaultPersist() {
         avatar: '',         // kód avatara „tvar-barva-oči-pusa", viz avatar.js
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
         nudgedAt: 0,        // série, u které jsme naposled připomněli účet
-        day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct }
+        day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct, wrong, ach }
         clientId: genClientId(), // náhodné ID zařízení pro percentily a úspěchy; po přihlášení se uloží k účtu
         a2hsPromptDismissed: false, // "přidej na plochu" nabídka na iOS se ukáže jen do prvního zavření
     };
@@ -2111,8 +2111,12 @@ function checkWord() {
     state.wordIdx++;
     state.solved++;
     state.marks.push(true);
-    if (START_TIME - state.time <= 3) persist.ach.blesk = 1;
-    if (state.time <= 1) persist.ach.chlup = 1;
+    // Úspěch z denní výzvy se oznamuje až po ní. Do konce dne čeká u dne:
+    // v persist.ach by ho po reloadu uprostřed hry (iOS Safari po návratu
+    // z jiné aplikace) našel start a oznámil na úvodu dřív, než hráč dohraje.
+    const ach = state.mode === 'daily' && persist.day ? (persist.day.ach ||= {}) : persist.ach;
+    if (START_TIME - state.time <= 3) ach.blesk = 1;
+    if (state.time <= 1) ach.chlup = 1;
     if (state.mode === 'practice') {
         state.practiceCount++;
         persist.practiceWords++;   // trénink se jinak nikam neukládá
@@ -2546,6 +2550,7 @@ function finishDay() {
         persist.lastPlayDate = todayStr();
     }
     persist.bestStreak = Math.max(persist.bestStreak, persist.streak);
+    Object.assign(persist.ach, persist.day.ach);          // co čekalo na konec dne (checkWord)
     if (perfect && !persist.day.wrong) persist.ach.cisty = 1;
     if (new Date().getHours() < 4) persist.ach.sova = 1;
     savePersist();
@@ -3445,8 +3450,10 @@ document.addEventListener('dblclick', e => e.preventDefault(), { passive: false 
 /* ---------------- start ---------------- */
 
 (function init() {
-    // rozehraný, ale nedokončený den z minulosti zahodit (hraje se znovu)
+    // rozehraný, ale nedokončený den z minulosti zahodit (hraje se znovu);
+    // úspěchy z něj ale platí a oznámí se na úvodu
     if (persist.day && !persist.day.done && persist.day.date !== todayStr()) {
+        Object.assign(persist.ach, persist.day.ach);
         persist.day = null;
         savePersist();
     }
