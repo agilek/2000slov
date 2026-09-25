@@ -165,9 +165,11 @@
     // Ořez se počítá z aktuálního stínu. Po změně třídy ale stín často teprve
     // dojíždí přechodem (písmeno po odebrání: z none na ret za 0,08 s), takže
     // by zůstal ořez bez retu a dlaždice by byla dole useknutá. Po doběhnutí
-    // přechodu stínu se ořez přepočítá z konečné hodnoty.
+    // přechodu stínu se ořez přepočítá z konečné hodnoty. Při stisku (:active)
+    // ne: ret se jen schová pod tlačítko a ořez s retem může zůstat, jinak by
+    // po puštění ret do konce přechodu chyběl a pak doskočil.
     document.addEventListener('transitionend', function (e) {
-        if (e.propertyName === 'box-shadow' && watched.has(e.target)) apply(e.target);
+        if (e.propertyName === 'box-shadow' && watched.has(e.target) && !e.target.matches(':active')) apply(e.target);
     }, true);
 
     function start() {

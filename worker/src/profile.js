@@ -276,5 +276,6 @@ function page(title, body, meta) {
 <link rel="preload" href="/fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 </head><body><div class="screen active public-page" id="publicProfile">${body}
-<a class="btn btn-play" href="/">Zahrát si taky</a></div></body></html>`;
+<a class="btn btn-play" href="/">Zahrát si taky</a></div>
+<script src="/squircle.js"></script><script src="/page.js"></script></body></html>`;
 }

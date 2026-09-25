@@ -2,6 +2,25 @@
 
 ## 2026-09-25
 
+### Tlačítka na 404, zásadách soukromí a veřejném profilu se zamáčknou jako ve hře
+„Zpět do hry“ (404, zásady soukromí) a „Zahrát si taky“ (profil /u/) na
+iPhonu při stisku nic neukazovaly. Teď se zamáčknou o ret jako tlačítka
+ve hře a v Safari mají stejné squircle rohy.
+
+**Root cause / approach:** Styly byly stejné (`.btn:active`), ale iOS Safari
+ukáže `:active` jen na stránce, která poslouchá dotyk. Hra má posluchače
+v game.js, samostatné stránky žádné neměly a nenačítaly ani squircle.js.
+Nový `public/page.js` přidá prázdný pasivní `touchstart` a spolu se
+squircle.js je na 404.html, soukromi.html i ve `page()` v profile.js.
+Při ověřování se ukázala slabina opravy useknutého retu: `transitionend`
+při stisku přepočítal ořez bez retu, takže ret po puštění do konce přechodu
+chyběl. Během `:active` se proto ořez nepřepočítává. Ověřeno v Chromiu
+s vynuceným squircle fallbackem: stisk posune tlačítko o 4 px a schová stín,
+ořez s retem zůstává a písmena ve hře jsou po odebrání dál s retem.
+Skutečné `:active` na iOS se v Chromiu ověřit nedá.
+
+→ *No new memory entries.*
+
 ### Stránka 404 se na webu opravdu ukáže
 Po nasazení vracela neznámá adresa na 20slov.cz holé `{"error":"not found"}`
 místo stránky s duchem. Teď dostane `public/404.html` se stavem 404.
