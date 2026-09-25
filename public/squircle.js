@@ -162,6 +162,14 @@
         dirty.clear();
     }
 
+    // Ořez se počítá z aktuálního stínu. Po změně třídy ale stín často teprve
+    // dojíždí přechodem (písmeno po odebrání: z none na ret za 0,08 s), takže
+    // by zůstal ořez bez retu a dlaždice by byla dole useknutá. Po doběhnutí
+    // přechodu stínu se ořez přepočítá z konečné hodnoty.
+    document.addEventListener('transitionend', function (e) {
+        if (e.propertyName === 'box-shadow' && watched.has(e.target)) apply(e.target);
+    }, true);
+
     function start() {
         scan(document.body);
         mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });

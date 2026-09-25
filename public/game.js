@@ -414,13 +414,6 @@ function playUrgentSound(left) {
         setTimeout(() => { if (counting()) playHeartbeat(k, gap); }, beatAt - now);
     }
 }
-// Smazání celého slova: vybraná písmena se rychle „odťukají“ pozpátku dolů.
-function playClearSound(count) {
-    const step = Math.min(0.03, 0.24 / count);
-    for (let i = count; i >= 1; i--) {
-        playTone(letterNote(i), { dur: 0.08, peak: 0.06, delay: (count - i) * step, bend: 1.2, bright: 0.4, dry: true });
-    }
-}
 function playRemoveSound() { playTone(392.00, { dur: 0.2, peak: 0.1, bend: 1.3, bright: 0.3 }); }
 // Durový rozklad E–G–C, nad posledním tónem tichá tercie jako jiskra.
 function playSuccessSound() {
@@ -2053,12 +2046,17 @@ function handleTap(el) {
     if (!state.processing) updateUI();
 }
 
-// Klepnutí na skládané slovo ho celé smaže.
-function clearWord() {
+// Klepnutí na skládané slovo (i Backspace) odebere poslední písmeno.
+// Špatně složené slovo se stejně celé maže samo, klepnutí jen nečeká.
+function removeLastLetter() {
     if (state.processing || !state.selected.length) return;
+    if (state.incorrectTimeout) { clearIncorrectState(); updateUI(); return; }
     haptic('tap');
-    playClearSound(state.selected.length);
-    resetSelection();
+    playRemoveSound();
+    const idx = state.selected.pop();
+    const tile = $('letterRow').querySelector(`.letter[data-index="${idx}"]`);
+    if (tile) tile.classList.remove('selected');
+    updateUI();
 }
 
 function resetSelection() {
@@ -3413,12 +3411,7 @@ document.onkeydown = e => {
 
     if (e.key === 'Backspace' && state.selected.length > 0) {
         e.preventDefault();
-        const idx = state.selected.pop();
-        playRemoveSound();
-        const tile = $('letterRow').querySelector(`.letter[data-index="${idx}"]`);
-        if (tile) tile.classList.remove('selected');
-        updateUI();
-        return;
+        return removeLastLetter();
     }
 
     if (e.key === 'Enter' && state.selected.length === state.letters.length) {

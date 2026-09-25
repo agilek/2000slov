@@ -2,6 +2,22 @@
 
 ## 2026-09-25
 
+### Písmena v Safari už nezůstávají dole useknutá; klepnutí na slovo bere poslední písmeno
+Na iPhonu zůstávalo písmeno po vybrání a odebrání bez spodního retu, jako
+by bylo useknuté. Klepnutí do skládaného slova teď odebere jen poslední
+písmeno, stejně jako Backspace, místo celého slova.
+
+**Root cause / approach:** V Safari kreslí rohy i ret `squircle.js` jako
+`clip-path` spočítaný z aktuálního `box-shadow`. Po odebrání písmena změna
+třídy spustí přepočet hned, ale stín v tu chvíli teprve dojíždí přechodem
+(`box-shadow .08s` z `none`). Ořez se proto spočítal bez retu a už se nezměnil.
+Nově se ořez přepočítá i po `transitionend` stínu. Reprodukováno v Chromiu
+s vynuceným squircle fallbackem: před opravou měla dlaždice po odebrání
+ořez bez retu, po opravě s ním. Klepnutí na slovo i Backspace sdílí
+`removeLastLetter`, `playClearSound` (zvuk smazání celého slova) zmizel.
+
+→ *No new memory entries.*
+
 ### Správa hry na /admin
 Nová stránka `/admin` (`public/admin.html`, API `worker/src/admin.js`) nahrazuje
 ruční SQL. Přehled ukazuje čísla, posledních 7 dní denní výzvy a nahlášené
