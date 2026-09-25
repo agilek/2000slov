@@ -2,6 +2,26 @@
 
 ## 2026-09-25
 
+### Hlavička profilu (soukromého i veřejného) fixní při scrollu
+`.screen-bar` (šipka zpět, název obrazovky) se dřív scrollovala pryč s
+obsahem — teď zůstává nahoře. Dokud se nescrolluje, plave nad obsahem beze
+změny; jakmile scroll začne, dostane pozadí a linku dole, ať je vidět, kde
+hlavička končí a obsah pod ní začíná.
+
+**Root cause / approach:** `.screen-bar` byla `position: absolute` uvnitř
+`.screen` — ten ale při delším obsahu neroste do fixní výšky, takže se
+absolutně umístěný prvek posouval s ním. `position: fixed` řeší scroll, ale
+`.screen-bar` musí sama nahradit centrování, které dřív dědila od `.screen`
+(`max-width: 440px; margin: auto`), jinak by na širším viewportu neseděla
+nad obsahem. `html.scrolled` (nový scroll listener v game.js, `scrollY > 0`)
+přepíná pozadí/linku; `.screen-bar` je jen na pěti obrazovkách, co se vůbec
+scrollují (`#profile`, `#myDefs`, `#achievements`, `#publicProfile`,
+`#profileEdit`), takže se to týká všech stejně. Veřejný profil jako
+samostatná sdílená stránka (`/u/<přezdívka>`, jen `page.js`) `.screen-bar`
+nemá — tam je hlavička jiný vzor (`.profile-head`), beze změny.
+
+→ *No new memory entries.*
+
 ### Odkazy stylované jako tlačítko byly podtržené
 `.btn` nikdy neresetoval `text-decoration`, takže `<a class="btn …">` (např.
 „Všechny úspěchy" na veřejném profilu) dostal od prohlížeče výchozí

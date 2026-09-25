@@ -257,6 +257,12 @@ document.addEventListener('click', e => {
     e.stopImmediatePropagation();
 }, true);
 
+// .screen-bar (profil, veřejný profil, …) je fixní přes celý scroll; pozadí
+// a linka dole (viz style.css) se zapnou, až se opravdu scrolluje.
+document.addEventListener('scroll', () => {
+    document.documentElement.classList.toggle('scrolled', scrollY > 0);
+}, { passive: true });
+
 const NEEDS_SWITCH = !('vibrate' in navigator) && COARSE_POINTER;
 function hapticSwitch(el, css = '') {
     const sw = document.createElement('input');

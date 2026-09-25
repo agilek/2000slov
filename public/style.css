@@ -302,17 +302,29 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
 .avatar-stage svg { width: min(70vw, 280px); height: auto; }
 .profile-edit-form { width: 100%; max-width: 400px; margin: 0 auto; }
 .swipe-actions { display: flex; justify-content: center; gap: 48px; margin-top: 14px; }
+/* Fixní, ne absolutní: při scrollu profilu/veřejného profilu (jediné
+   obrazovky s .screen-bar) zůstane nahoře. Vlastní pozadí a linka dole se
+   zapnou, jen když se opravdu scrolluje (html.scrolled, viz scroll listener
+   v game.js), ať zprvu hlavička jen plave nad obsahem jako dřív. */
 .screen-bar {
-    position: absolute;
-    top: max(10px, env(safe-area-inset-top));
-    left: 16px;
-    right: 16px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    z-index: 1;
     /* zpět vlevo, nadpis uprostřed obrazovky, akce vpravo */
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 6px;
+    padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+    border-bottom: 1px solid transparent;
+    transition: background .2s ease, border-color .2s ease;
 }
+html.scrolled .screen-bar { background: var(--bg); border-bottom-color: var(--line); }
 .screen-title { grid-column: 2; text-align: center; }
 .screen-bar > :first-child { justify-self: start; }
 .screen-title {
