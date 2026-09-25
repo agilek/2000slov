@@ -2,6 +2,20 @@
 
 ## 2026-09-25
 
+### Trénink: mezihra ukazuje složenou přesmyčku a její význam
+Když hráč v tréninku složí jiné platné slovo ze stejných písmen (ocet místo
+otec, okr místo rok), hra ho uzná jako dřív. Mezihra teď ukáže kostky
+i význam toho, co složil, ne hledaného slova.
+
+**Root cause / approach:** `isAcceptedWord` vracel jen ano/ne, takže
+`showWordDone` dostal hledané slovo a načetl jeho význam. Nově `acceptedWord`
+vrací složené slovo (hledané, nebo přesmyčku z `ALTS` i s mezerami a
+interpunkcí) a mezihra, význam, přidání významu i úspěch Přesmyčkář jedou
+podle něj. Do „už padlo“ se dál zapisuje hledané slovo. Ověřeno v Chromiu:
+otec → ocet, rok → okr, dotaz na význam jde na složené slovo.
+
+→ *No new memory entries.*
+
 ### Pauza: větší stopky, Pokračovat dole u palce
 Obrázek spících stopek je o polovinu větší (140 → 210 px). Tlačítko Pokračovat
 sedí dole jako Hrát na úvodu: stejná šířka a 30 px nad spodním okrajem

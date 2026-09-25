@@ -2067,21 +2067,24 @@ function resetSelection() {
     updateUI();
 }
 
-function isAcceptedWord(word, target) {
-    if (word === lettersOf(target)) return true;
+// Které slovo hráč složil: hledané, uznaná přesmyčka, nebo null. Mezihra
+// ukazuje kostky i význam právě toho, co složil, ne hledaného slova.
+function acceptedWord(word, target) {
+    if (word === lettersOf(target)) return target;
     // Přesmyčky uznává jen trénink. Denní výzva je soutěž — všichni mají dnes
     // stejných 20 slov, takže musí padnout přesně to hledané.
-    if (state.mode !== 'practice') return false;
+    if (state.mode !== 'practice') return null;
     const alts = (typeof ALTS !== 'undefined' && ALTS[target]) || [];
-    return alts.some(a => lettersOf(a) === word);
+    return alts.find(a => lettersOf(a) === word) || null;
 }
 
 function checkWord() {
     if (state.processing) return;
     const word = state.selected.map(i => state.letters[i]).join('');
     const target = state.words[state.wordIdx] || '';
+    const solved = word.length === state.letters.length && acceptedWord(word, target);
 
-    if (word.length !== state.letters.length || !isAcceptedWord(word, target)) {
+    if (!solved) {
         if (state.mode === 'daily' && persist.day) persist.day.wrong = (persist.day.wrong || 0) + 1;   // úspěch Čistá práce
         haptic('error');
         playErrorSound();
@@ -2120,7 +2123,7 @@ function checkWord() {
         persist.practiceWords++;   // trénink se jinak nikam neukládá
         persist.practiceBestRun = Math.max(persist.practiceBestRun, state.practiceCount);
         if (persist.practiceLevel === 'tezka') persist.practiceHard++;
-        if (word !== lettersOf(target)) persist.ach.presmycka = 1;
+        if (solved !== target) persist.ach.presmycka = 1;
         if (auth.user) apiPost('/api/training', { playedOn: todayStr() });   // body v profilu
         markPracticeSeen(target);
         savePersist();
@@ -2153,7 +2156,7 @@ function checkWord() {
 
     const genOk = state.gen;
     // V tréninku vyjede panel mezihry hned po zeleném bliknutí.
-    if (state.mode === 'practice') setTimeout(() => showWordDone(target, genOk, true), 450);
+    if (state.mode === 'practice') setTimeout(() => showWordDone(solved, genOk, true), 450);
     setTimeout(() => {
         if (state.gen !== genOk) return;
         $('wordDisplay').classList.remove('found');
