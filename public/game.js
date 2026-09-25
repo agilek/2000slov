@@ -1280,7 +1280,13 @@ function renderSignedIn(box) {
         renderProfile();
         showToast('Odhlášeno.');
     };
-    const del = el('button', 'btn btn-danger', 'Smazat účet');
+    // Smazání účtu je nevratné a hráč po něm nepátrá — proto ne další velké
+    // tlačítko vedle Odhlásit se, ale prostý odkaz pod čarou, spolu se
+    // Zásadami soukromí. Zůstává to <button> (spouští potvrzení a mazání,
+    // nikam nevede), jen bez chlopně a pozadí, jako .feedback-link výš —
+    // zásady dál mluví o „tlačítku Smazat účet" a to platí beze změny.
+    const del = el('button', 'account-danger-link', 'Smazat účet');
+    del.type = 'button';
     del.onclick = async () => {
         if (!confirm('Opravdu smazat účet? Tvoje významy zůstanou ostatním, jen se z nich sundá tvoje jméno.')) return;
         await apiPost('/api/me/delete', {});
@@ -1290,10 +1296,9 @@ function renderSignedIn(box) {
         renderProfile();
         showToast('Účet smazán.');
     };
-    // Odhlášení a nevratné smazání úplně dole na profilu, ne mezi běžnými akcemi.
-    const note = el('p', 'profile-note');
-    note.append(privacyLink());
-    $('accountEnd').replaceChildren(out, del, note);
+    const fine = el('p', 'account-fine');
+    fine.append(del, ' · ', privacyLink());
+    $('accountEnd').replaceChildren(out, el('hr', 'account-divider'), fine);
     $('accountEnd').hidden = false;
 }
 

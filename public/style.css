@@ -70,9 +70,25 @@ body:has(#result.active, #profile.active, #myDefs.active, #achievements.active, 
 }
 .btn:focus { outline: none; }
 @media (hover: hover) { .btn-danger:hover { background: color-mix(in srgb, var(--red) 88%, black); } }
-.account-end { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.account-end { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 10px; }
 .account-end[hidden] { display: none; }
 .account-end .btn { width: 100%; max-width: 400px; }
+/* Čára nad Smazat účet: od hlavních akcí profilu (Odhlásit se) odděluje
+   nevratné a řídce hledané, ne zvýrazňuje jako další tlačítko. */
+.account-divider { width: 100%; max-width: 400px; height: 2px; border: none; background: var(--line); margin: 4px 0; }
+.account-fine { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--muted-text); }
+.account-fine a { color: inherit; }
+.account-danger-link {
+    font: inherit;
+    font-weight: 700;
+    color: var(--bad-ink);
+    background: none;
+    border: none;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
 
 .screen .welcome-instruction {
     color: var(--ink);
@@ -142,7 +158,6 @@ body:has(#result.active, #profile.active, #myDefs.active, #achievements.active, 
 }
 @media (hover: hover) { .btn-tertiary:hover { border-color: var(--blue); } }
 .feedback-line {
-    margin-top: 40px;
     margin-bottom: 0 !important;
     font-size: 16px !important;
     font-weight: 700 !important;

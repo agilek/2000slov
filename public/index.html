@@ -28,7 +28,7 @@
 <link rel="preload" href="fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <!-- Light: „Top X %", nadpisy sheetů, podtitulek po slově; bez preloadu by se první vykreslení na chvíli ukázalo Nunitem -->
 <link rel="preload" href="fonts/SlovkaOne-Light.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=d52c1f34">
+<link rel="stylesheet" href="style.css?v=fd37e7c0">
 </head>
 <body>
 
@@ -101,7 +101,7 @@
             <div class="empty-card" id="profileDefs"></div>
         </div>
 
-        <p id="feedbackLine" class="feedback-line">Něco nefunguje, slovo ti nesedí, nebo tě napadlo, co přidat? <span class="feedback-link" role="button" tabindex="0" onclick="openFeedbackModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeedbackModal();}">Napiš mi.</span> Každou zprávu čtu a hru podle hráčů ladím.</p>
+        <p id="feedbackLine" class="feedback-line">Něco nefunguje, slovo ti nesedí, nebo tě napadlo, co přidat? <span class="feedback-link" role="button" tabindex="0" onclick="openFeedbackModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFeedbackModal();}">Napiš nám.</span> Každou zprávu čteme a hru podle hráčů ladíme.</p>
 
         <!-- Odhlášení a nevratné smazání úplně dole, jen pro přihlášeného -->
         <div class="account-end" id="accountEnd" hidden></div>
@@ -354,7 +354,7 @@
                 <label for="feedbackEmail">E-mail (nepovinný)</label>
                 <input id="feedbackEmail" name="email" type="email" autocomplete="email" placeholder="ty@priklad.cz" />
                 <label for="feedbackMessage">Zpráva</label>
-                <textarea id="feedbackMessage" name="message" required placeholder="Napiš, co se ti líbilo nebo co mám zlepšit…"></textarea>
+                <textarea id="feedbackMessage" name="message" required placeholder="Napiš, co se ti líbilo nebo co zlepšit…"></textarea>
                 <p id="feedbackError" class="feedback-error" style="display:none;">Něco se pokazilo. Zkus to prosím znovu.</p>
                 <button type="submit" class="btn btn-primary">Odeslat</button>
             </form>
@@ -370,6 +370,6 @@
 <script src="words.js?v=726cd556"></script>
 <script src="avatar.js?v=5bda5401"></script>
 <script src="achievements.js?v=04a11446"></script>
-<script src="game.js?v=990e1d99"></script>
+<script src="game.js?v=6521185d"></script>
 </body>
 </html>

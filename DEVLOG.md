@@ -2,6 +2,23 @@
 
 ## 2026-09-25
 
+### Profil: méně mezery pod Moje významy, obecnější výzva, smazání účtu jako odkaz
+Mezera mezi prázdnou kartou „Moje významy" a řádkem zpětné vazby byla dvojitá
+(22 px mezera sekcí + 40 px vlastní `margin-top`) — teď jen 22 px jako mezi
+ostatními sekcemi. Výzva ke zpětné vazbě mluví v množném čísle („Napiš nám.
+Každou zprávu čteme…"), ať není znát, že hru dělá jeden člověk — stejně
+upravený placeholder ve formuláři samotném. Odhlášení a smazání účtu už
+nejsou dvě stejně velká tlačítka pod sebou: mezi nimi je tenká čára,
+„Smazat účet" je pod ní prostý červený textový odkaz vedle Zásad soukromí.
+
+**Root cause / approach:** Zbylé dvě věci jen CSS. „Smazat účet" zůstává
+`<button>` (spouští potvrzení a mazání, nikam nevede), jen bez chlopně,
+pozadí a rámečku — zásady soukromí dál mluví o „tlačítku Smazat účet" a
+platí to beze změny, i vizuálně je to teď spíš odkaz. Ověřeno v Chromiu:
+mezera 22 px, klik na smazání pořád funguje (potvrzovací dialog).
+
+→ *No new memory entries.*
+
 ### Tlačítko Denní výzva: uhodnutá slova, a otevírá se rychleji
 Tlačítko v profilu ukazovalo „Odehráno N dní“. Teď ukazuje „N uhodnutých
 slov“ (celkem ze všech dní, stejné číslo jako v dlaždici úspěšnosti).
