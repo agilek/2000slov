@@ -83,6 +83,7 @@ neporušitelné vlastnosti slovníku (počty, podmnožina, frekvenční pásma),
 | `public/style.css` | celý vzhled „Kostky“: klávesy s retem, písma Slovka One + Nunito (obě v `public/fonts/`), vlastní ikony z `designs/kostky/` místo emoji |
 | `public/squircle.js` | squircle rohy v Safari, které `corner-shape` ještě neumí |
 | `tools/stamp.mjs` | otisky `?v=` v `index.html` a `CACHE`/`SHELL` v `sw.js` — spustit po každé změně statiky |
+| `public/admin.html` | správa na `/admin`: nahlášené významy, hráči, čísla (API `worker/src/admin.js`, jen pro `ADMIN_EMAILS`) |
 | `public/game.js` | herní logika, časovač, stav v localStorage, sdílení |
 | `public/words.js` | 7300 podstatných jmen denní výzvy (`PACKED`: na každý den zamíchaná pořadí jeho 20 slov v `PRACTICE_WORDS`, rozbaluje `unpackDay`) + širší pool 15 000 pro trénink (`PRACTICE_WORDS`, řazeno podle frekvence) + mapa uznávaných přesmyček |
 | `tools/` | generátor slovníku (`build_words.py`) + prověřený pool — **neservíruje se** |

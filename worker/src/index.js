@@ -12,6 +12,8 @@ import {
     authLogout, meGet, meSetHandle, meSetAvatar, meDelete, currentUser, purgeAuth, devMode, devLogin,
 } from './auth.js';
 import { apiProfile, profilePage, validPlayedOn, points } from './profile.js';
+import { defCacheKey, dropDefCache } from './defcache.js';
+import { ADMIN_ROUTES } from './admin.js';
 import Achievements from '../../public/achievements.js';
 
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
@@ -54,6 +56,8 @@ const ROUTES = {
     'POST /api/achievements': handleAchievements,
     'GET /api/achievements/stats': handleAchievementStats,
     'GET /api/dev/login': devLogin,   // jen DEV=1, viz auth.js
+    // Správa (/admin): jen pro účty z ADMIN_EMAILS, ostatním 404, viz admin.js.
+    ...ADMIN_ROUTES,
 };
 
 // Limity na významy. Drží se v D1 dotazech, žádné nové úložiště.
@@ -274,10 +278,6 @@ async function votedSet(env, me, ids) {
     return new Set(results.map(r => r.definition_id));
 }
 
-// Klíč do edge cache. Staví se ručně, NIKDY z příchozího requestu — ten nese
-// cookies a dotaz clientId a cache by se roztříštila (nebo prosákla mezi hráče).
-const defCacheKey = (w) => new Request(`https://cache.local/def/${encodeURIComponent(w)}`);
-
 // Nejlépe hodnocený význam pro až BATCH_MAX slov naráz — hra si je natahuje
 // dopředu, aby přechodová obrazovka nikdy nečekala na síť.
 // Cachuje se po jednotlivých slovech, ne po dávce: fronty jsou u každého hráče
@@ -326,14 +326,6 @@ async function handleDefsBatch(request, env, url, ctx) {
     const defs = {};
     for (const w of words) defs[w] = rows[w] ? defRow(rows[w], me && me.id, voted) : null;
     return json({ defs }, 200);
-}
-
-// Po zápisu je uložené slovo neplatné. Purge je per-kolo, takže v jiném regionu
-// může být až max-age (300 s) stará odpověď — u hobby hry přijatelné.
-async function dropDefCache(word, ctx) {
-    if (!word) return;
-    const p = caches.default.delete(defCacheKey(word));
-    if (ctx) ctx.waitUntil(p); else await p;
 }
 
 async function handleDefsForWord(request, env, url) {

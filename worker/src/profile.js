@@ -86,10 +86,10 @@ const DEFS_SHOWN = 10;
 
 async function loadProfile(env, handle) {
     const { results: users } = await env.DB.prepare(
-        'SELECT id, handle, hide_profile, avatar FROM users WHERE handle_lc = ?1'
+        'SELECT id, handle, hide_profile, banned, avatar FROM users WHERE handle_lc = ?1'
     ).bind(String(handle || '').toLowerCase()).all();
     const user = users[0];
-    if (!user || user.hide_profile) return null;
+    if (!user || user.hide_profile || user.banned) return null;   // zablokovaný nemá veřejný profil
     const [{ results: rows }, { results: defs }, { results: cnt }, body, { results: ach }] = await Promise.all([
         env.DB.prepare(
             'SELECT played_on, day_idx, score FROM profile_days WHERE user_id = ?1 AND played_on >= ?2 ORDER BY played_on'

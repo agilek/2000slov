@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Správa — 20 slov</title>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131f24" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="stylesheet" href="/style.css">
+<style>
+    /* Správa (worker/src/admin.js). Z herního stylu jen barvy a písma:
+       stránka scrolluje celým viewportem a text jde označit a kopírovat. */
+    html, body { overflow-y: auto; height: auto; min-height: 100dvh; overscroll-behavior-y: contain; touch-action: auto; }
+    * { -webkit-user-select: text; user-select: text; }
+    body { padding: max(16px, env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+    main { max-width: 760px; margin: 0 auto; }
+    h1 { font-family: var(--display); font-size: 26px; margin: 4px 0 2px; }
+    .who { color: var(--muted-text); font-size: 14px; margin-bottom: 16px; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 2px solid var(--line); }
+    .tabs button { font: inherit; font-weight: 800; font-size: 15px; background: none; border: none; color: var(--muted-text);
+        padding: 10px 12px; border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; }
+    .tabs button[aria-selected="true"] { color: var(--blue-ink); border-bottom-color: var(--blue); }
+    .badge { display: inline-block; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--red); color: #fff; font-size: 12px; margin-left: 4px; }
+    .badge:empty { display: none; }
+    section[hidden] { display: none; }
+    h2 { font-family: var(--display); font-size: 18px; margin: 22px 0 10px; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .tile { border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+    .tile b { display: block; font-family: var(--display); font-size: 24px; }
+    .tile span { color: var(--muted-text); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted-text); font-weight: 700; }
+    td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+    .search { display: flex; gap: 8px; margin-bottom: 12px; }
+    .search input { flex: 1; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 12px;
+        border: 2px solid var(--line); background: var(--tile); color: var(--ink); min-width: 0; }
+    .card { border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+    .card.is-hidden { border-style: dashed; opacity: .85; }
+    .card.is-reported { border-color: var(--gold); }
+    .card .head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+    .card .word { font-family: var(--display); font-size: 18px; }
+    .card .meta { color: var(--muted-text); font-size: 13px; }
+    .card .text { margin: 6px 0 8px; line-height: 1.45; overflow-wrap: anywhere; }
+    .card a { color: var(--blue-ink); }
+    .tag { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--chip-bg); color: var(--muted-text); }
+    .tag.bad { background: var(--bad-bg); color: var(--bad-ink); }
+    .tag.warn { background: var(--gold-bg); color: var(--gold-ink); }
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .a-btn { font: inherit; font-weight: 800; font-size: 14px; padding: 8px 14px; border-radius: 10px; cursor: pointer;
+        border: 2px solid var(--line); background: var(--tile); color: var(--ink); }
+    a { color: var(--blue-ink); }
+    a.a-btn { text-decoration: none; display: inline-block; color: var(--ink); }
+    .a-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .a-btn.danger { color: var(--bad-ink); border-color: var(--bad-line); }
+    .a-btn[disabled] { opacity: .5; cursor: default; }
+    .empty, .note { color: var(--muted-text); }
+    .more { margin: 6px 0 20px; }
+    .gate { text-align: center; padding: 60px 10px; }
+    .gate p { color: var(--muted-text); line-height: 1.5; margin: 10px auto 20px; max-width: 420px; }
+    .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); translate: -50% 0;
+        background: var(--toast-bg); color: var(--toast-ink); padding: 10px 16px; border-radius: 12px; font-weight: 700;
+        opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
+    .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<main id="app">
+    <p class="empty">Načítám…</p>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+// Správa 20 slov. Data a oprávnění hlídá worker/src/admin.js, tahle stránka
+// jen ukazuje, co dostane. Texty hráčů jdou do DOM výhradně přes textContent.
+const app = document.getElementById('app');
+const PAGE = 50;
+
+function h(tag, props, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+        if (v == null || v === false) continue;
+        if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+        else if (k === 'class') el.className = v;
+        else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
+    return el;
+}
+
+const fmtDate = (ms) => new Date(ms).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const fmtDay = (iso) => iso ? iso.split('-').reverse().map(Number).join('. ') : '—';
+
+let toastTimer;
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+async function api(path, body) {
+    const res = await fetch('/api/admin/' + path, body ? {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    } : {});
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || 'Chyba ' + res.status), { status: res.status });
+    return data;
+}
+
+// Akce s potvrzením; po ní se aktuální záložka načte znovu.
+async function act(btn, path, body, confirmText, done) {
+    if (confirmText && !confirm(confirmText)) return;
+    btn.disabled = true;
+    try {
+        await api(path, body);
+        toast('Hotovo.');
+        await done();
+    } catch (e) {
+        toast(e.message);
+        btn.disabled = false;
+    }
+}
+
+/* ---------------- významy ---------------- */
+
+function defCard(d, reload) {
+    const reported = !d.hidden && d.reports > 0;
+    const author = d.author
+        ? h('a', { href: '/u/' + encodeURIComponent(d.author), target: '_blank', rel: 'noopener' }, d.author)
+        : h('span', {}, 'bez autora');
+    return h('div', { class: 'card' + (d.hidden ? ' is-hidden' : '') + (reported ? ' is-reported' : '') },
+        h('div', { class: 'head' },
+            h('span', { class: 'word' }, d.word),
+            d.hidden ? h('span', { class: 'tag bad' }, 'skrytý') : null,
+            reported ? h('span', { class: 'tag warn' }, 'nahlášený') : null,
+            d.author_banned ? h('span', { class: 'tag bad' }, 'autor zablokovaný') : null),
+        h('p', { class: 'text' }, d.text),
+        h('p', { class: 'meta' }, author, ` · ${fmtDate(d.created_at)} · 👍 ${d.votes} · nahlášení ${d.reports}`,
+            d.reporters ? ` (${d.reporters})` : ''),
+        h('div', { class: 'actions' },
+            d.hidden || d.reports > 0
+                ? h('button', { class: 'a-btn primary', onclick: e => act(e.currentTarget, 'def', { id: d.id, action: 'show' }, null, reload) },
+                    d.hidden ? 'Vrátit' : 'V pořádku')
+                : null,
+            !d.hidden ? h('button', { class: 'a-btn', onclick: e => act(e.currentTarget, 'def', { id: d.id, action: 'hide' }, null, reload) }, 'Skrýt') : null,
+            h('button', { class: 'a-btn danger', onclick: e => act(e.currentTarget, 'def', { id: d.id, action: 'delete' },
+                `Smazat význam slova „${d.word}“? Smažou se i jeho hlasy a nejde to vrátit.`, reload) }, 'Smazat')));
+}
+
+// Seznam se stránkováním „Další“: načte stránku a přidá ji pod předchozí.
+function pagedList(box, load, render, emptyText) {
+    let offset = 0;
+    const more = h('button', { class: 'a-btn more', hidden: true, onclick: () => page() }, 'Další');
+    const list = h('div');
+    box.replaceChildren(list, more);
+    async function page(reset) {
+        if (reset) { offset = 0; list.replaceChildren(); }
+        more.disabled = true;
+        try {
+            const { items, more: hasMore } = await load(offset);
+            offset += items.length;
+            items.forEach(it => list.append(render(it)));
+            if (!list.children.length) list.append(h('p', { class: 'empty' }, emptyText));
+            more.hidden = !hasMore;
+        } catch (e) {
+            list.append(h('p', { class: 'empty' }, e.message));
+        }
+        more.disabled = false;
+    }
+    return page;
+}
+
+// afterAction: co obnovit po akci na kartě (Přehled obnoví i čísla nahoře).
+function defsView(params, emptyText, afterAction) {
+    const box = h('div');
+    const reload = () => page(true);
+    const page = pagedList(box,
+        async (offset) => {
+            const q = new URLSearchParams({ ...params(), offset });
+            const r = await api('defs?' + q);
+            return { items: r.defs, more: r.more };
+        },
+        d => defCard(d, afterAction || reload), emptyText);
+    return { box, reload };
+}
+
+/* ---------------- hráči ---------------- */
+
+function userCard(u, reload, openDefs) {
+    const btn = (label, action, extra, cls, confirmText) => h('button', {
+        class: 'a-btn' + (cls ? ' ' + cls : ''),
+        onclick: e => act(e.currentTarget, 'user', { id: u.id, action, ...extra }, confirmText, reload),
+    }, label);
+    return h('div', { class: 'card' + (u.banned ? ' is-hidden' : '') },
+        h('div', { class: 'head' },
+            h('span', { class: 'word' }, u.handle || '(bez přezdívky)'),
+            u.banned ? h('span', { class: 'tag bad' }, 'zablokovaný') : null,
+            u.hide_profile ? h('span', { class: 'tag' }, 'profil skrytý') : null),
+        h('p', { class: 'meta' },
+            `účet od ${fmtDate(u.created_at)} · naposledy hrál ${fmtDay(u.lastPlayed)} · významů ${u.defs}`,
+            u.hidden ? ` (skrytých ${u.hidden})` : '',
+            ` · nahlášení jeho významů ${u.reports} · sám nahlásil ${u.reportsMade}`),
+        h('div', { class: 'actions' },
+            u.defs ? h('button', { class: 'a-btn', onclick: () => openDefs(u) }, 'Jeho významy') : null,
+            u.handle && !u.banned && !u.hide_profile
+                ? h('a', { class: 'a-btn', href: '/u/' + encodeURIComponent(u.handle), target: '_blank', rel: 'noopener' }, 'Profil')
+                : null,
+            h('button', { class: 'a-btn', onclick: e => {
+                const handle = prompt('Nová přezdívka (3–20 znaků, bez mezer):', u.handle || '');
+                if (handle && handle.trim() !== u.handle) act(e.currentTarget, 'user', { id: u.id, action: 'rename', handle: handle.trim() }, null, reload);
+            } }, 'Přejmenovat'),
+            u.hide_profile ? btn('Ukázat profil', 'showProfile') : btn('Skrýt profil', 'hideProfile'),
+            u.banned
+                ? btn('Odblokovat', 'unban', null, 'primary')
+                : btn('Zablokovat', 'ban', null, 'danger',
+                    `Zablokovat ${u.handle || 'hráče'}? Odhlásí se ze všech zařízení a všechny jeho významy se skryjí.`)));
+}
+
+/* ---------------- záložky ---------------- */
+
+function tiles(c) {
+    const t = (n, label) => h('div', { class: 'tile' }, h('b', {}, String(n)), h('span', {}, label));
+    return h('div', { class: 'tiles' },
+        t(c.reported, 'nahlášených ke kontrole'), t(c.hidden, 'skrytých významů'), t(c.defs, 'významů celkem'),
+        t(c.users, 'účtů'), t(c.banned, 'zablokovaných'), t(c.votes, 'hlasů'),
+        t(c.devices, 'zařízení s výsledkem'), t(c.subscriptions, 'odběrů připomínky'));
+}
+
+function daysTable(days) {
+    if (!days.length) return h('p', { class: 'empty' }, 'Zatím žádné výsledky.');
+    return h('table', {},
+        h('thead', {}, h('tr', {}, h('th', {}, 'Den'), h('th', { class: 'n' }, 'Hráčů'), h('th', { class: 'n' }, 'Průměr'), h('th', { class: 'n' }, '20/20'))),
+        h('tbody', {}, days.map(d => h('tr', {},
+            h('td', {}, `${fmtDay(d.date)} (den ${d.day})`), h('td', { class: 'n' }, String(d.players)),
+            h('td', { class: 'n' }, String(d.avg)), h('td', { class: 'n' }, String(d.perfect))))));
+}
+
+function searchBox(placeholder, onSearch) {
+    const input = h('input', { type: 'search', placeholder, enterkeyhint: 'search', autocapitalize: 'off' });
+    let timer;
+    input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(onSearch, 300); });
+    return { input, el: h('form', { class: 'search', onsubmit: e => { e.preventDefault(); onSearch(); } }, input) };
+}
+
+async function start() {
+    let ov;
+    try {
+        ov = await api('overview');
+    } catch (e) {
+        app.replaceChildren(h('div', { class: 'gate' },
+            h('h1', {}, 'Správa 20 slov'),
+            h('p', {}, e.status === 404
+                ? 'Sem se dostane jen správce. Přihlas se ve hře účtem, jehož e-mail je v ADMIN_EMAILS, a pak tuhle stránku obnov.'
+                : 'Správu se nepodařilo načíst: ' + e.message),
+            h('a', { class: 'a-btn primary', href: '/#profil' }, 'Přihlásit se ve hře')));
+        return;
+    }
+
+    const badge = h('span', { class: 'badge' });
+    const tabsEl = h('div', { class: 'tabs', role: 'tablist' });
+    const sections = {};
+    const show = (key) => {
+        for (const [k, s] of Object.entries(sections)) s.el.hidden = k !== key;
+        for (const b of tabsEl.children) b.setAttribute('aria-selected', String(b.dataset.key === key));
+        try { sessionStorage.setItem('adminTab', key); } catch (e) {}
+        sections[key].open();
+    };
+    const tab = (key, label, extra) => h('button', { role: 'tab', 'data-key': key, onclick: () => show(key) }, label, extra);
+
+    // Přehled: čísla, dny a všechno, co čeká na kontrolu.
+    const review = defsView(() => ({ filter: 'review' }), 'Nic nečeká na kontrolu.', () => sections.overview.open());
+    const overviewEl = h('section', {});
+    const renderOverview = async () => {
+        const o = await api('overview').catch(() => ov);
+        badge.textContent = o.counts.reported || '';
+        overviewEl.replaceChildren(tiles(o.counts), h('h2', {}, 'Denní výzva, posledních 7 dní'), daysTable(o.days),
+            h('h2', {}, 'Ke kontrole'),
+            h('p', { class: 'note' }, 'Nahlášené a skryté významy. „Vrátit“ i „V pořádku“ smažou nahlášení, jinak by ho další jedno zase skrylo.'),
+            review.box);
+        review.reload();
+    };
+    sections.overview = { el: overviewEl, open: renderOverview };
+
+    // Významy: nejnovější, hledání ve slově, autorovi i textu; případně jednoho hráče.
+    let defsUser = null;
+    const defsSearch = searchBox('Hledat slovo, autora nebo text…', () => defsList.reload());
+    const defsFor = h('p', { class: 'note' });
+    const defsList = defsView(() => ({ q: defsSearch.input.value.trim(), ...(defsUser ? { user: defsUser.id } : {}) }), 'Žádné významy.');
+    const defsEl = h('section', {}, defsSearch.el, defsFor, defsList.box);
+    sections.defs = { el: defsEl, open: () => {
+        defsFor.replaceChildren(...(defsUser ? [`Významy hráče ${defsUser.handle || defsUser.id}. `,
+            h('button', { class: 'a-btn', onclick: () => { defsUser = null; sections.defs.open(); } }, 'Všechny')] : []));
+        defsList.reload();
+    } };
+
+    // Hráči s účtem.
+    const usersSearch = searchBox('Hledat přezdívku…', () => usersPage(true));
+    const usersBox = h('div');
+    const usersPage = pagedList(usersBox,
+        async (offset) => {
+            const r = await api('users?' + new URLSearchParams({ q: usersSearch.input.value.trim(), offset }));
+            return { items: r.users, more: r.more };
+        },
+        u => userCard(u, () => usersPage(true), (user) => { defsUser = user; defsSearch.input.value = ''; show('defs'); }),
+        'Žádní hráči s účtem.');
+    const usersEl = h('section', {}, usersSearch.el, usersBox);
+    sections.users = { el: usersEl, open: () => usersPage(true) };
+
+    tabsEl.append(tab('overview', 'Přehled', badge), tab('defs', 'Významy'), tab('users', 'Hráči'));
+    app.replaceChildren(
+        h('h1', {}, 'Správa 20 slov'),
+        h('p', { class: 'who' }, 'Přihlášený správce: ' + (ov.me || '(bez přezdívky)') + ' · ', h('a', { href: '/' }, 'zpět do hry')),
+        tabsEl, overviewEl, defsEl, usersEl);
+    let first = 'overview';
+    try { first = sections[sessionStorage.getItem('adminTab')] ? sessionStorage.getItem('adminTab') : first; } catch (e) {}
+    show(first);
+}
+
+start();
+</script>
+</body>
+</html>

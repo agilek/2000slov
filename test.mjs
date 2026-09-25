@@ -173,6 +173,51 @@ test('úspěchy: unikátní id a každá ikona existuje', () => {
     for (const a of Achievements.LIST) if (a.icon !== 'avatar') readFileSync(`public/designs/kostky/${a.icon}.svg`);
 });
 
+/* ---------------- správa (/admin) ---------------- */
+
+// Správce = účet, jehož e-mail (hash s pepřem) je v ADMIN_EMAILS. Ostatním
+// /api/admin/* neexistuje. Vrácení významu musí smazat i nahlášení a blokace
+// odhlásit, skrýt významy a veřejný profil.
+globalThis.caches ??= { default: { delete: async () => true } };
+const hash = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))]
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+run("INSERT INTO users (id, email_hash, handle, handle_lc, created_at) VALUES ('sef', ?, 'Sef', 'sef', 0), ('hrac', 'x', 'Hrac', 'hrac', 0), ('zly', 'y', 'Zly', 'zly', 0)",
+    await hash('boss@20slov.cz' + 'pepr'));
+run('INSERT INTO sessions VALUES (?, ?, 0, ?), (?, ?, 0, ?), (?, ?, 0, ?)',
+    await hash('aa01'), 'sef', Date.now() + DEN, await hash('aa02'), 'hrac', Date.now() + DEN, await hash('aa03'), 'zly', Date.now() + DEN);
+run("INSERT INTO definitions (id, word, text, user_id, author, votes, reports, hidden, created_at) VALUES ('n1', 'pes', 'nahlášený', 'hrac', 'Hrac', 0, 3, 1, 0), ('z1', 'kocka', 'zlý', 'zly', 'Zly', 0, 0, 0, 0)");
+run("INSERT INTO reports VALUES ('n1', 'a', 0), ('n1', 'b', 0), ('n1', 'c', 0)");
+const envAdmin = { DB: d1, RESEND_KEY: 'x', MAIL_FROM: 'x', HASH_PEPPER: 'pepr', ADMIN_EMAILS: 'nekdo@jiny.cz, Boss@20slov.cz ' };
+const spravce = (path, sid, body, env = envAdmin) => worker.fetch(new Request('https://x/api/admin/' + path, body ? {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: 'sid=' + sid }, body: JSON.stringify(body),
+} : { headers: { Cookie: 'sid=' + sid } }), env);
+const [bezSeznamu, cizi, prehled] = await Promise.all([
+    spravce('overview', 'aa01', null, { ...envAdmin, ADMIN_EMAILS: '' }), spravce('overview', 'aa02'), spravce('overview', 'aa01')]);
+test('správa: bez ADMIN_EMAILS a pro ostatní neexistuje', () => assert.deepEqual([bezSeznamu.status, cizi.status], [404, 404]));
+test('správa: správce vidí přehled', () => assert.equal(prehled.status, 200));
+const kKontrole = await (await spravce('defs?filter=review', 'aa01')).json();
+test('správa: ke kontrole jsou nahlášené a skryté, ne čisté', () => {
+    const ids = kKontrole.defs.map(d => d.id);
+    assert.ok(ids.includes('n1') && !ids.includes('z1'), ids.join());
+});
+await spravce('def', 'aa01', { id: 'n1', action: 'show' });
+test('správa: vrácení smaže i nahlášení', () => assert.deepEqual(
+    { ...sql.prepare("SELECT hidden, reports, (SELECT COUNT(*) FROM reports WHERE definition_id = 'n1') AS zbylo FROM definitions WHERE id = 'n1'").get() },
+    { hidden: 0, reports: 0, zbylo: 0 }));
+const sebe = await spravce('user', 'aa01', { id: 'sef', action: 'ban' });
+await spravce('user', 'aa01', { id: 'zly', action: 'ban' });
+const profilZleho = await profilePage(null, { DB: d1 }, new URL('https://x/u/Zly'));
+test('správa: blokace odhlásí, skryje významy i profil, sebe ne', () => assert.deepEqual({
+    sebe: sebe.status, banned: sql.prepare("SELECT banned FROM users WHERE id = 'zly'").get().banned,
+    sessions: sql.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = 'zly'").get().n,
+    hidden: sql.prepare("SELECT hidden FROM definitions WHERE id = 'z1'").get().hidden, profil: profilZleho.status,
+}, { sebe: 400, banned: 1, sessions: 0, hidden: 1, profil: 404 }));
+const [prejmenovat, obsazeno] = [await spravce('user', 'aa01', { id: 'hrac', action: 'rename', handle: 'Slušný' }),
+    await spravce('user', 'aa01', { id: 'zly', action: 'rename', handle: 'sef' })];
+test('správa: přejmenování přepíše autora, obsazené neprojde', () => assert.deepEqual(
+    [prejmenovat.status, sql.prepare("SELECT author FROM definitions WHERE id = 'n1'").get().author, obsazeno.status],
+    [200, 'Slušný', 409]));
+
 /* ---------------- avatar (hra i worker) ---------------- */
 
 // Kód jde z localStorage i z POST /api/me/avatar rovnou do innerHTML —

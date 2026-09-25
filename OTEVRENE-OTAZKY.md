@@ -23,12 +23,9 @@ umí rozhodit kdokoli s curlem. Navázání na účet to spraví, ale nepřihlá
 Můj názor: nechat otevřené a přestat to prezentovat jako žebříček.
 
 ### 1.4 Kdo prochází nahlášené významy?
-**Stav:** čeká na rozhodnutí.
-Automatické skrytí při třech nahlášeních funguje, ale **nic neumí skrytí
-vrátit** — omylem nahlášený význam jde oživit jen ručně přes
-`wrangler d1 execute`. Při nule hráčů to stačí, při stovkách ne.
-
-Otázka: stačí ti ruční SQL, nebo chceš jednoduchý admin pohled?
+**Stav:** vyřešeno 2026-09-25, správa na `/admin` (viz `worker/README.md`).
+Nahlášené a skryté významy jde vrátit, skrýt nebo smazat, hráče zablokovat,
+přejmenovat nebo mu skrýt profil. Správce určuje secret `ADMIN_EMAILS`.
 
 ### 1.5 Mají se významy ukazovat i v denní výzvě?
 **Stav:** čeká na rozhodnutí.

@@ -86,6 +86,35 @@ Kdyby šlo psát anonymně pod libovolným jménem, mohli by dva lidé publikova
 jako „Michal" a po zavedení účtů by si nikdo nemohl být jistý, kdo je kdo.
 **Dokud nejsou nastavené secrety níže, nejde přidat význam vůbec.**
 
+## Správa (`/admin`)
+
+Stránka `public/admin.html`, API `/api/admin/*` v `src/admin.js`. Umí:
+
+- **Přehled:** počty (nahlášené, skryté, účty, hlasy…), posledních 7 dní
+  denní výzvy a všechno ke kontrole, tedy nahlášené a skryté významy.
+- **Významy:** nejnovější, hledání ve slově, autorovi i textu. U každého
+  *Vrátit / V pořádku* (smaže i nahlášení, jinak by ho další jedno skrylo
+  znovu), *Skrýt* a *Smazat* (i s hlasy).
+- **Hráči:** hledání přezdívky, u každého kolik má významů, kolik jich mu
+  nahlásili a kolik sám nahlásil (tři účty skryjí cokoli). *Zablokovat*
+  odhlásí všechna jeho zařízení, skryje jeho významy i veřejný profil.
+  *Odblokovat* významy nevrací, vrátit jde každý zvlášť. Dál *Přejmenovat*
+  (přepíše i autora u významů) a *Skrýt profil*. Sám sebe zablokovat nejde.
+
+Kdo je správce, určuje secret `ADMIN_EMAILS` (e-maily oddělené čárkou).
+E-mail se v DB neukládá, porovnává se hash s pepřem. Správce se přihlásí
+normálně ve hře a pak otevře `https://20slov.cz/admin`. Všem ostatním
+`/api/admin/*` vrací 404 jako neznámá cesta.
+
+```bash
+npx wrangler secret put ADMIN_EMAILS     # zadej svůj e-mail z účtu ve hře
+```
+
+Lokálně: `ADMIN_EMAILS=tester@20slov.test` do `.dev.vars`, pak
+`/api/dev/login` a `http://localhost:8787/admin`. Wrangler 4 s `routes`
+posílá workeru adresu `20slov.cz`, takže dev login vrací 404, dokud se
+nespustí `npx wrangler dev --port 8787 --local-upstream localhost:8787`.
+
 ## Účty (magic link) — zapnutí
 
 **Zapnuté od 2026-09-25** na `20slov.cz` (Resend, secrety nastavené). Bez secretů kód **spí**. Do té doby vrací

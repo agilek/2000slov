@@ -2,6 +2,28 @@
 
 ## 2026-09-25
 
+### Správa hry na /admin
+Nová stránka `/admin` (`public/admin.html`, API `worker/src/admin.js`) nahrazuje
+ruční SQL. Přehled ukazuje čísla, posledních 7 dní denní výzvy a nahlášené
+i skryté významy ke kontrole. Významy jde hledat a vrátit, skrýt nebo smazat.
+Hráče jde hledat, zablokovat, přejmenovat nebo jim skrýt profil. Správce se
+přihlásí normálně ve hře, pozná ho secret `ADMIN_EMAILS`.
+
+**Root cause / approach:** Admin rozhraní dosud neexistovalo v repu, v nasazeném
+workeru ani na GitHubu. Moderace šla jen přes `wrangler d1 execute`. Správce
+se nepozná tokenem, ale existující session: e-mail v DB není, takže se
+porovnávají hashe s pepřem (`peppered`, nově exportované z auth.js).
+Ostatním vrací `/api/admin/*` 404. Opravené mezery z auditu: vrácení
+významu maže i jeho nahlášení (jinak by další jedno skrylo význam znovu)
+a zablokovaný hráč už nemá veřejný profil (`loadProfile`). Blokace ho navíc
+odhlásí a skryje mu významy. Cache významů (`defCacheKey`, `dropDefCache`) se
+přesunula do `src/defcache.js`, aby ji mohl používat i admin.js. Testy
+v `test.mjs` jedou proti SQLite. Celé rozhraní je proklikané v `wrangler dev`
+s dev seedem. Dev login ve Wrangleru 4 potřebuje `--local-upstream localhost:8787`,
+jinak worker dostane adresu `20slov.cz` a stráž vrátí 404.
+
+→ *No new memory entries.*
+
 ### Úspěch z denní výzvy až po ní, ne uprostřed
 Na iPhonu v Safari (neregistrovaný hráč, první hra) po návratu z jiné
 aplikace čekal uprostřed rozehrané denní výzvy sheet „Nový úspěch!“

@@ -19,7 +19,7 @@ const REQUEST_TTL_MS = 15 * 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
 const MAX_PER_EMAIL_HOUR = 5;
 const MAX_PER_IP_HOUR = 20;
-const HANDLE_RE = /^[\p{L}\p{N}_.-]{3,20}$/u;
+export const HANDLE_RE = /^[\p{L}\p{N}_.-]{3,20}$/u;
 
 const now = () => Date.now();
 const hex = (buf) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -29,7 +29,7 @@ async function sha256(text) {
     return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
 }
 
-const peppered = (env, value) => sha256(String(value) + (env.HASH_PEPPER || 'no-pepper'));
+export const peppered = (env, value) => sha256(String(value) + (env.HASH_PEPPER || 'no-pepper'));
 
 // Lokální vývoj: DEV=1 v .dev.vars (ten se nikdy nenasazuje). Přihlášení pak
 // jede i bez Resendu — kód a odkaz se místo e-mailu vypíšou do terminálu
@@ -39,7 +39,7 @@ export const devMode = (env) => env.DEV === '1';
 // Přihlášení je zapnuté, jen když je čím poslat e-mail (nebo ve vývoji).
 export const authEnabled = (env) => devMode(env) || !!(env.RESEND_KEY && env.MAIL_FROM);
 
-const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
+export const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
 const validEmail = (e) => /^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$/.test(e);
 
 /* ---------------- session ---------------- */
