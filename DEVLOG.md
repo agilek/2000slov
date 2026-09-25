@@ -2,6 +2,34 @@
 
 ## 2026-09-25
 
+### Veřejný profil: náhled 4 úspěchů s odkazem na všechny, statistiky sladěné se soukromým
+Veřejný profil ukazoval všechny získané úspěchy najednou — s aktivním
+hráčem to rostlo bez konce. Teď je vidět jen posledních 4, s odkazem
+„Všechny úspěchy" (stejné jméno jako tlačítko v aplikaci) na `?ach=1` —
+samostatná stránka se všemi, po skupinách jako v aplikaci (Začátky, Série,
+Denní výzva, …). Statistiky sloučené jako u soukromého profilu: „slov
+v denní výzvě" a „úspěšnost" byly dvě dlaždice se stejnou informací
+dvakrát, teď jedna široká „úspěšnost z X slov v denní výzvě".
+
+**Root cause / approach:** „Poslední" bere čas z `user_achievements.created_at`
+— hra ho nahlásí při každé synchronizaci (`syncAchievements`), a to i za
+úspěchy, které server spočítá sám ze statistik (dny, série, …), takže časové
+razítko má prakticky každý získaný odznak, ne jen ty čistě klientské
+(sdílení, Bleskovka). Bez záznamu (starý účet, úspěch nikdy nenahlášený)
+se řadí jako nejstarší. `achievementsSection` teď vrací náhled + odkaz,
+nový `achievementsPageBody` celý seznam seskupený přes `Achievements.GROUPS`
+— stejný vzor jako `renderAchievements` v game.js. `profilePage` routuje
+`?ach=1` (a `?cast=1&ach=1` pro SPA) přes stejný `page()` wrapper jako
+hlavní profil, se zpětným odkazem nahoře. Ikony a odkazy v novém markupu
+mají absolutní cesty (`/designs/...`) — na `/u/handle?ach=1` by relativní
+`designs/...` mířilo o úroveň vedle. Test „veřejný profil ukáže i odznaky
+z klienta" přepsaný na nové chování (náhled ≤ 4, `?ach=1` má všechno).
+Ověřeno v `wrangler dev` s dev seedem (Tester, 8 úspěchů): náhled 4 dlaždice
++ odkaz, `?ach=1` všech 8 po skupinách, zpět funguje, SPA vestavěná verze
+beze změny chování a bez chyb v konzoli.
+
+→ *No new memory entries.*
+
 ### Profil: méně mezery pod Moje významy, obecnější výzva, smazání účtu jako odkaz
 Mezera mezi prázdnou kartou „Moje významy" a řádkem zpětné vazby byla dvojitá
 (22 px mezera sekcí + 40 px vlastní `margin-top`) — teď jen 22 px jako mezi

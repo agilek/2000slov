@@ -161,12 +161,23 @@ test('úspěchy: prahy a veřejný stav', () => {
 });
 // Veřejný profil: odznaky, které zná jen klient (tajné, sdílení), přijdou
 // z user_achievements; ostatní server dopočítá sám (autor má význam = Pisálek).
+// Hlavní profil ukáže jen náhled (nejvýš 4) s odkazem na všechny; celý
+// seznam je na ?ach=1, po skupinách jako v aplikaci.
 run("INSERT INTO users (id, email_hash, handle, handle_lc, created_at) VALUES ('autor', 'h', 'Autor', 'autor', 0)");
 run("INSERT INTO user_achievements VALUES ('autor', 'nocni-sova', 0), ('autor', 'chlouba', 0)");
-const verejny = await (await profilePage(null, { DB: d1 }, new URL('https://x/u/Autor?cast=1'))).text();
-test('úspěchy: veřejný profil ukáže i odznaky z klienta', () => {
-    for (const jmeno of ['Noční sova', 'Chlouba', 'Pisálek']) assert.ok(verejny.includes(`ach-name">${jmeno}<`), jmeno);
+const [verejny, vsechny] = await Promise.all([
+    profilePage(null, { DB: d1 }, new URL('https://x/u/Autor?cast=1')).then(r => r.text()),
+    profilePage(null, { DB: d1 }, new URL('https://x/u/Autor?cast=1&ach=1')).then(r => r.text()),
+]);
+test('úspěchy: hlavní profil má jen náhled (≤4) a odkaz na všechny', () => {
+    assert.equal((verejny.match(/class="ach-tile/g) || []).length, 4);
+    assert.match(verejny, /ach-grid.*>[\s\S]{0,400}Všechny úspěchy/);
     assert.ok(!verejny.includes('ach-name">Bleskovka<'));
+});
+test('úspěchy: ?ach=1 ukáže úplně všechny, i ty z klienta', () => {
+    for (const jmeno of ['Noční sova', 'Chlouba', 'Pisálek']) assert.ok(vsechny.includes(`ach-name">${jmeno}<`), jmeno);
+    assert.ok(!vsechny.includes('ach-name">Bleskovka<'));
+    assert.match(vsechny, /Zpět na profil/);
 });
 test('úspěchy: unikátní id a každá ikona existuje', () => {
     assert.equal(new Set(Achievements.LIST.map(a => a.id)).size, Achievements.LIST.length);

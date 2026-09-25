@@ -104,9 +104,16 @@ async function loadProfile(env, handle) {
             ORDER BY d.votes DESC, d.created_at DESC LIMIT ?2`).bind(user.id, DEFS_SHOWN).all(),
         env.DB.prepare('SELECT COUNT(*) AS n FROM definitions WHERE user_id = ?1 AND hidden = 0').bind(user.id).all(),
         points(env, user.id),
-        env.DB.prepare('SELECT ach FROM user_achievements WHERE user_id = ?1').bind(user.id).all(),
+        env.DB.prepare('SELECT ach, created_at FROM user_achievements WHERE user_id = ?1').bind(user.id).all(),
     ]);
-    return { user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n, points: body, ach: new Set(ach.map(r => r.ach)) };
+    return {
+        user, rows, stats: stats(rows), defs, defsTotal: cnt[0].n, points: body,
+        ach: new Set(ach.map(r => r.ach)),
+        // Čas nahlášení — hra ho posílá při každé synchronizaci (syncAchievements),
+        // i za odznaky, které server spočítá sám ze statistik. Nepřesné (přihlášení
+        // k jinému účtu je nahlásí znovu), ale na řazení „poslední" na profilu stačí.
+        achDates: new Map(ach.map(r => [r.ach, r.created_at])),
+    };
 }
 
 export async function apiProfile(request, env, url) {
@@ -124,17 +131,51 @@ const num = (n) => n.toLocaleString('cs-CZ');
 
 // Úspěchy na veřejném profilu: co server spočítá sám, plus co hra nahlásila
 // k účtu (user_achievements: sdílení, Bleskovka, tajné, …). Neklikací, bez JS.
-function achievementsSection(data) {
+function achievementsState(data) {
     const st = Achievements.publicState(data.stats, data.points, Avatar.valid(data.user.avatar));
     // nahlášený odznak zvedne svůj klíč na práh, ať se vykreslí jako získaný
     for (const a of Achievements.LIST) if (data.ach.has(a.id)) st[a.v] = Math.max(st[a.v] || 0, a.goal);
     const got = Achievements.LIST.filter(a => Achievements.done(a, st));
+    const byRecency = got.slice().sort((a, b) => (data.achDates.get(b.id) || 0) - (data.achDates.get(a.id) || 0));
+    return { st, got, byRecency };
+}
+
+const ACH_PREVIEW = 4;
+
+// Náhled: poslední čtyři (podle nahlášení, viz achievementsState), s odkazem
+// na všechny, když jich hráč má víc — stejné jméno tlačítka jako v aplikaci.
+function achievementsSection(data) {
+    const { st, got, byRecency } = achievementsState(data);
     if (!got.length) return '';
     const avatar = Avatar.svg(data.user.avatar);
+    const more = got.length > ACH_PREVIEW
+        ? `<a class="btn btn-secondary" href="/u/${encodeURIComponent(data.user.handle)}?ach=1">Všechny úspěchy</a>`
+        : '';
     return `<div class="profile-section">
         <h3 class="profile-section-title">Úspěchy <small>${got.length}</small></h3>
-        <div class="ach-grid">${got.map(a => Achievements.tile(a, st, { avatar, tag: 'span' })).join('')}</div>
+        <div class="ach-grid">${byRecency.slice(0, ACH_PREVIEW).map(a => Achievements.tile(a, st, { avatar, tag: 'span' })).join('')}</div>
+        ${more}
       </div>`;
+}
+
+// Celý seznam získaných úspěchů, po skupinách jako v aplikaci (renderAchievements
+// v game.js) — jen skupiny, kde hráč aspoň jeden má; zamčené se veřejně neukazují.
+function achievementsPageBody(data) {
+    const { st, got } = achievementsState(data);
+    const avatar = Avatar.svg(data.user.avatar);
+    const groups = Achievements.GROUPS.map(([g, title]) => {
+        const list = got.filter(a => a.g === g);
+        if (!list.length) return '';
+        return `<div class="profile-section"><h3 class="profile-section-title">${title} <small>${list.length}</small></h3>
+            <div class="ach-grid">${list.map(a => Achievements.tile(a, st, { avatar, tag: 'span' })).join('')}</div></div>`;
+    }).join('');
+    return `<div class="profile-head">
+        <a class="icon-btn-circle icon-btn-circle--bare" href="/u/${encodeURIComponent(data.user.handle)}" aria-label="Zpět na profil"><img src="/designs/kostky/zpet.svg" alt=""></a>
+        <div class="profile-avatar" aria-hidden="true">${avatar || esc(data.user.handle.charAt(0).toUpperCase())}</div>
+        <div class="profile-name">${esc(data.user.handle)}</div>
+        <div class="profile-sub">Úspěchy · ${got.length} z ${Achievements.LIST.length}</div>
+      </div>
+      ${groups || '<div class="empty-card">Zatím žádný úspěch.</div>'}`;
 }
 const plural = (n, one, few, many) => n === 1 ? one : n >= 2 && n <= 4 ? few : many;
 const MESICE = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
@@ -205,8 +246,7 @@ function profileBody(data) {
         <div class="stat-grid">
           ${statTile(num(s.serie), 'dní v řadě', s.serie ? '' : ' stat-tile--off')}
           ${statTile(num(s.dny), 'odehraných dní')}
-          ${statTile(num(s.slova), 'slov v denní výzvě')}
-          ${statTile(`${s.uspesnost} %`, 'úspěšnost')}
+          ${statTile(`${s.uspesnost} %`, s.dny ? `úspěšnost z ${num(s.dny * PER_DAY)} slov v denní výzvě` : 'úspěšnost', ' stat-tile--wide')}
         </div>
       </div>
       ${achievementsSection(data)}
@@ -246,11 +286,20 @@ export async function profilePage(request, env, url) {
             <div class="profile-sub">Tenhle hráč tu není, nebo má profil skrytý.</div></div>`;
         return html(cast ? body : page('Profil nenalezen', body, ''), 404, 'no-store');
     }
+    const jmeno = esc(data.user.handle);
+
+    // Všechny úspěchy na vlastní podstránce (?ach=1), ať náhled na hlavním
+    // profilu neroste s každým dalším odznakem — link na ni dává achievementsSection.
+    if (url.searchParams.has('ach')) {
+        const body = achievementsPageBody(data);
+        if (cast) return html(body, 200, 'no-store');
+        return html(page(`Úspěchy — ${jmeno} — 20 slov`, body, ''), 200, 'public, max-age=300');
+    }
+
     // Hra chce vidět čerstvé číslo hned po dohrání dne, sdílený odkaz snese 5 minut.
     if (cast) return html(profileBody(data), 200, 'no-store');
 
     const s = data.stats;
-    const jmeno = esc(data.user.handle);
     const popis = `${s.dny} odehraných dní · série ${s.serie} · ${s.perfektnich}× všech 20 slov`;
     const meta = `
       <meta property="og:title" content="${jmeno} — 20 slov">
