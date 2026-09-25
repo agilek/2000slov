@@ -1876,9 +1876,8 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
 /* nulová série: plamen zhasne (šedý, bez plápolání) jako v Duolingu */
 .stat-tile.stat-tile--off::before { background-image: url(designs/kostky/plamen.svg); filter: grayscale(1); opacity: .45; }
 .stat-tile:nth-child(2)::before { background-image: url(designs/kostky/kalendar.svg); }
-.stat-tile:nth-child(3)::before { background-image: url(designs/kostky/kostka.svg); }
-.stat-tile:nth-child(4)::before { background-image: url(designs/kostky/terc.svg); }
-.stat-tile:nth-child(5)::before { background-image: url(designs/kostky/cinka.svg); }
+.stat-tile:nth-child(3)::before { background-image: url(designs/kostky/terc.svg); }
+.stat-tile:nth-child(4)::before { background-image: url(designs/kostky/cinka.svg); }
 .stat-value { font-weight: 700; font-size: 24px; }
 .stat-label { font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--muted-text); }
 .empty-card {

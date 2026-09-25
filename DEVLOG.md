@@ -2,6 +2,21 @@
 
 ## 2026-09-25
 
+### Statistiky v profilu: počet slov jen jako rozpis úspěšnosti, ne vlastní dlaždice
+Dlaždice „slov v denní výzvě“ ukazovala celkový počet uhodnutých slov ze
+všech odehraných dní — číslo samo o sobě nic neříkalo (kdo hraje déle, má
+ho víc, bez ohledu na to, jak mu to jde). Teď je to jen rozpis v popisku
+dlaždice úspěšnosti: „82 % — 640 z 780 slov v denní výzvě“. Bez odehraného
+dne zůstane jen „úspěšnost“.
+
+**Root cause / approach:** V `renderProfile` zmizela samostatná dlaždice
+`words`, `pct` dostala širokou dlaždici s popisem podle vzoru tréninkové
+dlaždice pod ní. Ikony `.stat-tile:nth-child()` přečíslované (terč teď na
+3. místě u úspěšnosti — sedí líp než dřívější kostka k holému počtu, dýnko
+na 4.). Ověřeno v Chromiu při 0, 3 a 5 odehraných dnech.
+
+→ *No new memory entries.*
+
 ### Poznámka pod přihlašovacím tlačítkem na střed a s odstupem
 Text „Pošleme ti odkaz a kód…“ pod tlačítkem Poslat přihlašovací odkaz byl
 zarovnaný vlevo a nalepený hned pod tlačítko. Teď je na střed a s větším
