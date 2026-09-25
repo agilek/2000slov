@@ -604,9 +604,10 @@ function navAnimate(from, to, kind) {
     const done = () => { from.classList.remove('screen-leaving', 'screen-over'); from.style.top = ''; to.classList.remove('screen-over'); };
     if (REDUCED_MOTION.matches || kind === 'none') return done();
     const opt = { duration: NAV_MS, easing: NAV_EASE };
+    const vw = window.innerWidth + 'px';
     const pair = {
-        push:    [[{ translate: '100% 0' }, { translate: '0 0' }], [{ translate: '0 0', opacity: 1 }, { translate: '-30% 0', opacity: .6 }]],
-        pop:     [[{ translate: '-30% 0', opacity: .6 }, { translate: '0 0', opacity: 1 }], [{ translate: '0 0' }, { translate: '100% 0' }]],
+        push:    [[{ translate: `${vw} 0` }, { translate: '0 0' }], [{ translate: '0 0', opacity: 1 }, { translate: '-30% 0', opacity: .6 }]],
+        pop:     [[{ translate: '-30% 0', opacity: .6 }, { translate: '0 0', opacity: 1 }], [{ translate: '0 0' }, { translate: `${vw} 0` }]],
         present: [[{ scale: .94, opacity: 0 }, { scale: 1, opacity: 1 }], [{ opacity: 1 }, { opacity: 0 }]],
         dismiss: [[{ opacity: 0 }, { opacity: 1 }], [{ scale: 1, opacity: 1 }, { scale: .94, opacity: 0 }]],
         fade:    [[{ opacity: 0, translate: '0 12px' }, { opacity: 1, translate: '0 0' }], [{ opacity: 1 }, { opacity: 0 }]],
