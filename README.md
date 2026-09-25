@@ -32,7 +32,7 @@ Díky tomu je všechno na jedné doméně — žádné CORS a session může bý
 `HttpOnly` cookie.
 
 ```bash
-npx wrangler d1 execute slov2000 --local --file=worker/schema.sql   # jednou
+npx wrangler d1 execute 20slov --local --file=worker/schema.sql   # jednou
 npx wrangler dev --port 8787
 # → http://localhost:8787
 ```

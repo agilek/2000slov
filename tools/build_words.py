@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Vygeneruje words.js — slovník pro 2000 slov.
+"""Vygeneruje words.js — slovník pro 20 slov.
 
     pip install wordfreq
     python3 tools/build_words.py            # ze zdrojů, stahuje z internetu
@@ -43,7 +43,7 @@ import urllib.parse, urllib.request
 
 API = "https://cs.wiktionary.org/w/api.php"
 MORPHODITA = "https://lindat.mff.cuni.cz/services/morphodita/api/analyze"
-UA = {"User-Agent": "2000slov-vocab/1.0 (+https://github.com/agilek/2000slov)"}
+UA = {"User-Agent": "20slov-vocab/1.0 (+https://github.com/agilek/20slov)"}
 
 DAYS, PER_DAY = 365, 20
 POOL_SIZE, DAILY_SIZE = 15000, DAYS * PER_DAY
@@ -53,7 +53,7 @@ SEED = 20260921
 # zvědavý hráč nepřečetl zítřek rovnou ze zdrojáku. Je to obfuskace, ne
 # šifrování — klíč je v balíčku. Stejná aritmetika musí běžet v Pythonu i v JS,
 # proto se všechno drží v 32bitových bezznaménkových číslech.
-SALT = "2000slov"
+SALT = "20slov"
 
 
 def _u32(x):
@@ -101,7 +101,7 @@ DECODER = r"""// Denní slova jsou zamíchaná schválně: kdo si otevře zdroj�
 // přečíst zítřek. Klíč je ale tady v souboru — brání to zvědavému pohledu,
 // ne odhodlanému člověku. Skutečné utajení by znamenalo servírovat den
 // z workeru, čímž by padla hra offline.
-const SALT = "2000slov";
+const SALT = "20slov";
 
 function seedOf(idx) {
     let h = 0x811C9DC5;

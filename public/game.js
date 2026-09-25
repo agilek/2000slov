@@ -24,10 +24,10 @@ const LETTER_RE = /[a-záčďéěíňóřšťúůýž]/;
 // hratelná písmena hesla (bez mezer, teček, pomlček — ty jsou ve slotech pevně)
 const lettersOf = w => [...w].filter(c => LETTER_RE.test(c)).join('');
 const fmtNum = n => n.toLocaleString('cs-CZ');
-const STORAGE_KEY = 'slov2000_v2';
+const STORAGE_KEY = '20slov';
 // Použije se jen při otevření z file:// nebo localhostu; po navázání
 // vlastní domény sem patří ona.
-const FALLBACK_URL = 'https://slov2000.slov2000.workers.dev/';
+const FALLBACK_URL = 'https://20slov.cz/';
 
 // Backend běží na stejné doméně jako hra (jeden Worker servíruje statiku
 // i /api/*, viz wrangler.toml), takže stačí relativní cesty — žádné CORS.

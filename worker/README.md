@@ -31,10 +31,10 @@ protože jeden Worker servíruje statiku (`public/`) i API.
 ```bash
 npx wrangler login          # otevře prohlížeč, přihlas se/založ účet
 
-npx wrangler d1 create slov2000
+npx wrangler d1 create 20slov
 # výstup obsahuje "database_id" — zkopíruj ho do wrangler.toml
 
-npx wrangler d1 execute slov2000 --remote --file=worker/schema.sql
+npx wrangler d1 execute 20slov --remote --file=worker/schema.sql
 
 npx wrangler deploy
 # vypíše URL, na které běží hra i API dohromady
@@ -87,12 +87,12 @@ jako „Michal" a po zavedení účtů by si nikdo nemohl být jistý, kdo je kd
 
 ## Účty (magic link) — zapnutí
 
-Kód je hotový a nasazený, ale **spí**, dokud nejsou secrety. Do té doby vrací
+**Zapnuté od 2026-09-25** na `20slov.cz` (Resend, secrety nastavené). Bez secretů kód **spí**. Do té doby vrací
 `/api/me` `auth:false`, `/api/auth/start` končí na 503 a aplikace sekci účtu
 vůbec neukáže — hra jede anonymně dál. Zapnutí je tohle, nic v kódu se nemění:
 
 ```bash
-# 1) doména v Cloudflare + Custom Domain na workeru slov2000
+# 1) doména v Cloudflare + Custom Domain na workeru 20slov
 # 2) v Resendu ověřit doménu (SPF + DKIM záznamy, které Resend vypíše)
 npx wrangler secret put RESEND_KEY     # API klíč z Resendu
 npx wrangler secret put MAIL_FROM      # např. "20 slov <hra@tvojedomena.cz>"
@@ -143,7 +143,7 @@ a `RESEND_URL` na vlastní mock — `DEV=1` pak poštu nevypisuje, ale posílá.
 ## Lokální testování bez nasazení
 
 ```bash
-npx wrangler d1 execute slov2000 --local --file=worker/schema.sql
+npx wrangler d1 execute 20slov --local --file=worker/schema.sql
 npx wrangler dev --port 8787
 ```
 
@@ -167,7 +167,7 @@ Nasazení navíc oproti krokům výše:
 ```bash
 (cd worker && npm install)           # stáhne @pushforge/builder
 
-npx wrangler d1 execute slov2000 --remote --file=worker/schema.sql
+npx wrangler d1 execute 20slov --remote --file=worker/schema.sql
 # (znovu — přidává tabulku subscriptions; je idempotentní, results nesáhne)
 
 npx @pushforge/builder vapid
@@ -187,7 +187,7 @@ jako percentily výš.
 
 ## Údržba
 
-- **Přehled dat**: `npx wrangler d1 execute slov2000 --remote --command "SELECT day, COUNT(*) FROM results GROUP BY day ORDER BY day"`
+- **Přehled dat**: `npx wrangler d1 execute 20slov --remote --command "SELECT day, COUNT(*) FROM results GROUP BY day ORDER BY day"`
 - **Smazání starých dat** (nikdy potřeba, tabulka je maličká i při tisících hráčích): `DELETE FROM results WHERE updated_at < ...`
 - Žádná osobní data se neukládají — jen den, skóre a náhodné ID, takže GDPR
   zátěž je minimální (ale pokud to bude řešit produkčně, přidej do hry

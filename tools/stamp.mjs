@@ -20,7 +20,7 @@ export function stamp() {
     const all = createHash('sha256').update(html);
     for (const u of shell.slice(1)) all.update(read(u.slice(1).split('?')[0]));
     const sw = read('sw.js').toString()
-        .replace(/const CACHE = '[^']*';/, `const CACHE = 'slov2000-${all.digest('hex').slice(0, 8)}';`)
+        .replace(/const CACHE = '[^']*';/, `const CACHE = '20slov-${all.digest('hex').slice(0, 8)}';`)
         .replace(/const SHELL = \[[\s\S]*?\];/, `const SHELL = [\n${shell.map(u => `    '${u}',`).join('\n')}\n];`);
     return { html, sw };
 }

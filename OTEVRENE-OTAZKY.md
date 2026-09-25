@@ -1,7 +1,7 @@
 # Otevřené otázky
 
 Věci, na které čekám odpověď, a co se nedá dodělat bez rozhodnutí.
-Poslední aktualizace: 2026-09-24.
+Poslední aktualizace: 2026-09-25.
 
 > Pravidlo: cokoli, co potřebuje rozhodnutí uživatele, patří sem — hned, jak to
 > vyjde najevo. Ne až na konci, ne jen v odpovědi v chatu. Zodpovězené se
@@ -10,17 +10,6 @@ Poslední aktualizace: 2026-09-24.
 ---
 
 ## 1. Blokuje to ostatní
-
-### 1.1 Doména + Resend
-**Stav:** čeká na tebe.
-Bez secretů `RESEND_KEY`, `MAIL_FROM` a `HASH_PEPPER` se nedá přihlásit. Řetězec
-důsledků: nikdo nemá přezdívku → **nikdo nemůže přidat význam** → neexistuje
-jediný veřejný profil. Celá komunitní část je v produkci mrtvá, i když je
-hotová a nasazená.
-
-Postup je v `worker/README.md`, sekce „Účty (magic link) — zapnutí".
-`HASH_PEPPER` se po nastavení **nesmí nikdy změnit** — je to sůl pro hash
-e-mailu, po změně se nikdo nedostane ke svému účtu.
 
 ### 1.2 Má `/api/result` vyžadovat přihlášení?
 **Stav:** čeká na rozhodnutí.
@@ -108,6 +97,7 @@ Můžu udělat, až řekneš.
 | Pořadí dne „Den N“ (2026-09-24) | hráč ho nevidí nikde: sdílení a Sbírka ukazují datum, profil „N/7 300 slov“, výsledek sérii | číslo dne nic neřekne, podle data si hráči porovnají výsledky |
 | „Má ho X % hráčů“ (2026-09-24) | počítá server z hlášení zařízení, od 15 zařízení | i bez účtu; klient si to tvrdí sám, jde jen o orientační číslo |
 | Přihlášení | magic link + 6místný kód | odkaz z mailu neotevře PWA |
+| Doména a pošta (2026-09-25) | `20slov.cz` u Wedosu, DNS v Cloudflare, odesílání přes Resend (eu-west-1), příjem přes Cloudflare Email Routing (`ahoj@`, `prihlaseni@` → `m@acler.cz`) | přihlášení je od 2026-09-25 zapnuté |
 | Avatary | generované z přezdívky | žádný upload, žádná moderace obrázků |
 | Hosting | vše z jednoho Workeru | jedna doména → žádné CORS, `HttpOnly` cookie |
 | Otevření významů v tréninku | jen **pozastaví** odpočet | hráč se má vrátit do hry |
@@ -116,7 +106,7 @@ Můžu udělat, až řekneš.
 | Úprava významu | smaže hlasy, pokud nějaké byly | jinak jde vyhlasovat jeden text a nahradit ho jiným |
 | Ukládání e-mailu | jen `sha256(adresa + pepř)` | cena: hráčům nejde nic poslat mimo přihlášení |
 | Veřejný profil | HTML z workeru, ne SPA | kvůli náhledu při sdílení |
-| Název hry | **20 slov** (2026-09-21) | přejmenováno jen v textech pro hráče; identifikátory (`slov2000`, `slov2000_v2`, repo, workers.dev URL) zůstaly — změna by znamenala nový worker a ztrátu postupu všech hráčů |
+| Název hry | **20 slov** (2026-09-21) | texty pro hráče 2026-09-21; identifikátory 2026-09-25 (worker, D1, localStorage `20slov`, cache, sůl slov, repo `agilek/20slov`). Zůstala jen subdoména účtu workers.dev `slov2000` — sdílí ji `barcelonacardfamily-com` |
 | Body za aktivitu (2026-09-24) | váhy den 10 · slovo tréninku 1 · význam 5 · získaný hlas 2 · daný hlas 1; stropy 10 slov a 10 hlasů za den | strop je tichý: hráč ho nikde nevidí, další body se jen nezapočtou. Body i úspěchy jsou vidět i na veřejném profilu |
 | Zvuk posledních sekund (2026-09-24) | **ano, tlukot srdce**: od 5 s „lub-dub“, zrychluje ze 72 na 160 tepů/min; v tréninku i v denní výzvě | vysoké tiky byly pisklavé, trojúhelníkové srdce plechové; teď sinus + tlumený šum pod 220 Hz podle fonokardiogramu, tišší než písmenka |
 | Vizuální směr | **Kostky** (2026-09-24, větev `kostky-trenink`) | ze šesti průzkumných směrů (`design/genz-directions`, `/designs.html`); ostatní na téhle větvi smazané |

@@ -1,5 +1,21 @@
 # Devlog
 
+## 2026-09-25
+
+### Doména 20slov.cz: Cloudflare, Resend, Email Routing, přihlášení zapnuté
+`20slov.cz` je registrovaná u Wedosu (NSSET `CLOUDFLARE-GO`: anna + keanu) a zóna běží v Cloudflare. Worker `20slov` ji má jako custom domain, `www` přesměrovává na hlavní doménu 301 (Single Redirect), Always Use HTTPS je zapnuté. `SITE_URL` a `FALLBACK_URL` míří na `https://20slov.cz/`. Resend má ověřený DKIM a SPF (region eu-west-1). Na workeru jsou `RESEND_KEY`, `MAIL_FROM` a `HASH_PEPPER`, takže přihlášení je zapnuté. Email Routing je zapnutý, přeposílání čeká na ověření cílové adresy. DNSSEC je v Cloudflare `pending`, dokud se klíč nezadá ve Wedosu.
+
+**Root cause / approach:** Resend nabízí Auto configure jen tehdy, když doména veřejně ukazuje na Cloudflare. U čerstvé `.cz` domény chvíli trvá, než ji CZ.NIC zveřejní, do té doby vrací NXDOMAIN. Stav „Partially Verified“ v Resendu způsobuje zapnutý přepínač Receiving, nikoli odesílání. `dig +short NS … @a.ns.nic.cz` vrací u delegace prázdný výstup (odpověď je v AUTHORITY), proto hlídání čekalo zbytečně. Email Routing vyžaduje aktivní zónu a pravidlo jde vytvořit jen pro ověřenou cílovou adresu.
+
+→ *Memory saved: `domain_20slov_setup.md`, `cloudflare_do_it_yourself.md`*
+
+### Přejmenování i identifikátorů na 20slov: worker, D1, repo, sůl slov
+Hru zatím nikdo nehraje, takže se po textech pro hráče (2026-09-21) přejmenovaly i identifikátory. Worker je `20slov` (na `https://20slov.slov2000.workers.dev/`), D1 `20slov`, klíč v localStorage `20slov`, cache SW `20slov-…`, sůl denních slov `20slov` a repo `agilek/20slov`. Denní slova zůstala stejná, jen se přebalila novou solí. Stará D1 `slov2000` zatím leží netknutá.
+
+**Root cause / approach:** Worker jde přejmenovat na místě: `PATCH /accounts/:a/workers/workers/:id {"name"}` mu nechá secrety, cron i verze. D1 přejmenovat nejde, takže `d1 export` → `d1 create` → `d1 execute --file`. Lokální D1 má soubor pojmenovaný podle `database_id`, proto se dev data přesunula přejmenováním sqlite souboru. Subdoména workers.dev (`slov2000`) patří celému účtu a sdílí ji `barcelonacardfamily-com`, zůstala tedy beze změny.
+
+→ *Memory saved: `cloudflare_rename.md`*
+
 ## 2026-09-24
 
 ### Styleguide: scrollování a stará CSS ze service workeru

@@ -157,9 +157,9 @@ for (let i = 1; i <= 12; i++) {
     if (i % 3 === 0) sql.push(`INSERT INTO training_days (user_id, played_on, words) VALUES ('dev-user-tester', ${q(playedOn)}, ${[4, 25, 8, 12][i / 3 - 1]});`);
 }
 
-const file = join(tmpdir(), 'slov2000-seed-dev.sql');
+const file = join(tmpdir(), '20slov-seed-dev.sql');
 writeFileSync(file, sql.join('\n') + '\n');
-const wrangler = (args) => execFileSync('npx', ['wrangler', 'd1', 'execute', 'slov2000', '--local', ...args], { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
+const wrangler = (args) => execFileSync('npx', ['wrangler', 'd1', 'execute', '20slov', '--local', ...args], { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
 wrangler([`--file=${join(root, 'worker/schema.sql')}`]);
 wrangler([`--file=${file}`]);
 

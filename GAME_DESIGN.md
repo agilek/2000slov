@@ -221,14 +221,14 @@ Stejný soubor používá hra, worker (veřejný profil) i `dev-uspechy.html`.
 ## 4. Roadmapa
 
 1. ~~**Skutečný percentil**~~ — **hotovo a nasazeno.** Cloudflare Worker + D1
-   (`worker/`) na `https://slov2000.slov2000.workers.dev` počítá
+   (`worker/`) na `https://20slov.cz` počítá
    skutečné „Top X % hráčů dneška" ze skutečných výsledků. Dokud den nemá
    aspoň 15 odeslaných výsledků, hra tiše zůstává u statického odhadu.
    Kdyby worker někdy spadl, hra to potichu ustojí — `fetchRealPercentile()`
    při jakékoli chybě vrací `null` a zůstane statický odhad.
    Deploy/redeploy: `worker/README.md`.
 2. **Souboj přes odkaz** `?vyzva=<den>` — kamarád si zahraje tvůj den a porovnáte se.
-3. OG obrázek výsledku, PWA manifest + push „🔥 Nepřijdeš o sérii?", `#2000slov`.
+3. OG obrázek výsledku, PWA manifest + push „🔥 Nepřijdeš o sérii?", `#20slov`.
 4. Lehká obfuskace slovníku (aktuálně čitelný — pro casual hru OK).
 
 ## 5. Technika
@@ -238,7 +238,7 @@ Stejný soubor používá hra, worker (veřejný profil) i `dev-uspechy.html`.
   `[assets]`, `/api/*` si bere `worker/src/index.js` (viz `wrangler.toml`).
   Jedna doména → žádné CORS a session může být `HttpOnly` cookie.
 - `public/index.html` + `style.css` + `game.js` + `words.js` (WORDS + PRACTICE_WORDS + ALTS).
-- Stav v `localStorage` (`slov2000_v2`): `results` (index dne → skóre), série,
+- Stav v `localStorage` (`20slov`): `results` (index dne → skóre), série,
   statistiky, rozehraný den. Číslo dne se nedrží ve stavu — počítá se z data.
 - Slovník: 25 398 hesel z Kategorie:Česká substantiva (cs.wiktionary.org, MediaWiki
   API), zúženo na jednoslovná malá písmena délky 3+, odfiltrovány

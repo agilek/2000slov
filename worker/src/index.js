@@ -17,10 +17,10 @@ import Achievements from '../../public/achievements.js';
 const MIN_SAMPLE = 15; // pod tento počet hráčů dne se vrátí { real: false } a hra použije statický odhad
 const MAX_DAY = 5000;
 const DAYS = 365;
-const ADMIN_CONTACT = 'https://github.com/agilek/2000slov'; // VAPID "sub" kontakt, viz RFC 8292
+const ADMIN_CONTACT = 'https://github.com/agilek/20slov'; // VAPID "sub" kontakt, viz RFC 8292
 // Kam vede klepnutí na push notifikaci. V cronu není request, ze kterého by
 // šlo origin odvodit, takže je natvrdo — po navázání vlastní domény přepsat.
-const SITE_URL = 'https://slov2000.slov2000.workers.dev/';
+const SITE_URL = 'https://20slov.cz/';
 
 // Cesty. Statiku servírují [assets] ve wrangler.toml, sem doteče jen to, co
 // sedí na run_worker_first — proto tu nejsou žádné soubory.

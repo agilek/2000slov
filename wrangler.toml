@@ -2,10 +2,11 @@
 # /api/* (a později /prihlaseni a /u/*), zbytek propadne na soubory.
 # Díky tomu je hra i API na stejné doméně → žádné CORS a session může být
 # HttpOnly cookie, kterou JS nepřečte.
-name = "slov2000"
+name = "20slov"
 main = "worker/src/index.js"
 compatibility_date = "2026-01-01"
 workers_dev = true
+routes = [{ pattern = "20slov.cz", custom_domain = true }]
 
 [assets]
 directory = "./public"
@@ -14,8 +15,8 @@ run_worker_first = ["/api/*", "/prihlaseni", "/u/*"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "slov2000"
-database_id = "485f2582-4efd-4d9e-abee-cbd4e32aa61b"
+database_name = "20slov"
+database_id = "45f2e2ce-3da8-42f6-87be-00120dc5c006"
 
 [triggers]
 # 7:00 UTC ≈ 8-9 ráno v ČR — jednou denně pošle Web Push připomínku odběratelům.
