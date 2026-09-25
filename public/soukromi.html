@@ -12,10 +12,13 @@
 <link rel="stylesheet" href="/style.css">
 <style>
     /* Obrazovky hry mají pevnou výšku a scroll vypnutý. Tahle stránka scrolluje
-       celým viewportem jako profil (#profile, #publicProfile ve style.css). */
-    html, body { overflow-y: auto; height: auto; min-height: 100dvh; overscroll-behavior-y: contain; }
+       celým viewportem jako profil (#profile, #publicProfile ve style.css).
+       Scrolluje jen html: body jako vlastní (nescrollující) scroll kontejner by
+       spolklo tah prstem a nedrželo by ani tlačítko dole (.page-cta, sticky). */
+    html { overflow-y: auto; height: auto; min-height: 100dvh; overscroll-behavior-y: contain; }
+    body { overflow: visible; height: auto; min-height: 100dvh; overscroll-behavior-y: contain; }
     .screen.privacy-page { height: auto; min-height: 100dvh; overflow: visible; touch-action: auto; justify-content: flex-start;
-        gap: 22px; padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+        gap: 22px; }
     .privacy { width: 100%; text-align: left; }
     .screen .privacy h1 { margin-bottom: 4px; }
     .screen .privacy h2 { font-size: 20px; margin: 28px 0 8px; }
@@ -72,7 +75,7 @@
 <p>Údaje zpracovávám, abych ti mohl poskytovat hru a účet, o které sis řekl. U anonymních statistik a ochrany proti zneužití jde o oprávněný zájem na provozu hry.</p>
 <p>Máš právo na přístup ke svým údajům, jejich opravu a výmaz a můžeš vznést námitku. Stačí napsat na <a href="mailto:ahoj@20slov.cz">ahoj@20slov.cz</a>. Stížnost můžeš podat u <a href="https://uoou.gov.cz">Úřadu pro ochranu osobních údajů</a>.</p>
 </article>
-<a class="btn btn-play" href="/">Zpět do hry</a>
+<div class="page-cta"><a class="btn btn-play" href="/">Zpět do hry</a></div>
 </div>
 <script src="/squircle.js"></script>
 <script src="/page.js"></script>

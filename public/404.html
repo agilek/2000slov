@@ -13,7 +13,13 @@
 <style>
     /* Neznámou cestu vrací Cloudflare s touhle stránkou (not_found_handling
        ve wrangler.toml). Cesta může být jakkoli hluboká, proto všechno z kořene. */
-    .nf-page { gap: 0; }
+    /* Obsah uprostřed nad tlačítkem, tlačítko dole (.page-cta ve style.css).
+       Na malém displeji (320×568) se obsah nevejde: stránka pak scrolluje
+       celým viewportem (jen html, ne body, viz soukromi.html) a tlačítko drží dole. */
+    html { overflow-y: auto; height: auto; min-height: 100dvh; overscroll-behavior-y: contain; }
+    body { overflow: visible; height: auto; min-height: 100dvh; overscroll-behavior-y: contain; }
+    .screen.nf-page { gap: 0; justify-content: flex-start; height: auto; min-height: 100dvh; touch-action: auto; }
+    .nf-page > .nf-head { margin-top: auto; }
     .nf-head {
         font-family: var(--display);
         font-weight: 300;
@@ -23,7 +29,7 @@
         color: var(--muted-text);
         margin-bottom: 18px;
     }
-    .nf-scene { position: relative; display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
+    .nf-scene { position: relative; display: flex; flex-direction: column; align-items: center; margin-bottom: 22px; }
     /* Duch z avatarů hry se vznáší nad kostkami. Vlnitý spodek, podle kterého
        je to duch, zůstává vidět, proto nekouká zpoza dlaždic. */
     .nf-avatar { width: 140px; height: 140px; margin-bottom: 14px; animation: nfPeek .6s .25s var(--spring) both, nfFloat 4s .9s ease-in-out infinite; }
@@ -70,7 +76,7 @@
     .screen p.nf-hint { font-size: 15px; font-weight: 700; color: var(--muted-text); margin: 18px 0 0; min-height: 1.5em; }
     .screen p.nf-hint.pulse { animation: pulse .3s; }
     .nf-page h1 { margin-bottom: 12px; }
-    .screen p.nf-text { font-size: 18px; color: var(--muted-text); margin-bottom: 30px; max-width: 340px; margin-left: auto; margin-right: auto; }
+    .screen p.nf-text { font-size: 18px; color: var(--muted-text); margin-bottom: 0;   /* mezeru nad tlačítkem dává .page-cta */ max-width: 340px; margin-left: auto; margin-right: auto; }
 
     @keyframes nfPeek { from { translate: 0 40px; opacity: 0; } }
     @keyframes nfPop { from { scale: 0; opacity: 0; } }
@@ -114,7 +120,7 @@
 
     <h1>Tohle slovo nemáme</h1>
     <p class="nf-text">Z písmen 4, 0 a 4 žádné podstatné jméno nesložíš. Duch to zkoušel celých 30&nbsp;sekund.</p>
-    <a class="btn btn-play" href="/">Zpět do hry</a>
+    <div class="page-cta"><a class="btn btn-play" href="/">Zpět do hry</a></div>
 </div>
 <script src="/squircle.js"></script>
 <script src="/page.js"></script>

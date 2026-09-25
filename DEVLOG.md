@@ -2,6 +2,26 @@
 
 ## 2026-09-25
 
+### Zpět do hry drží u spodního okraje na zásadách, profilu i 404
+Na dlouhých stránkách (zásady soukromí, veřejný profil /u/) bylo tlačítko
+zpět do hry až na konci pod textem a nebylo vidět. Teď drží u spodního okraje
+po celou dobu čtení a text pod ním mizí do pozadí. Na 404 sedí dole jako Hrát
+na úvodu.
+
+**Root cause / approach:** Nová třída `.page-cta` ve style.css: sticky pruh
+u spodního okraje s přechodem do pozadí, tlačítko 30 px + safe area od spodku
+jako Hrát. Obaluje tlačítko na soukromi.html, 404.html i v `page()` v profile.js.
+Na zásadách se sticky nejdřív nechytil, protože jejich styl dělal z `body`
+scroll kontejner (`overflow-y: auto`), který se nikdy nescrolluje. Scrolluje
+teď jen html, jak radí záznam ze 24. 9. U profilu přebíjel `#publicProfile`
+spodní okraj, pomohl `#publicProfile.public-page`. Stránka 404 se na
+320×568 (SE se zvětšeným zobrazením) nevešla a nešla scrollovat, tlačítko
+pak překrylo text. Teď scrolluje a mezery se zmenšily, takže se na běžné
+telefony vejde celá. Změřeno v Chromiu na SE, 8, 13 i 15 Pro Max: tlačítko
+je nahoře, uprostřed i na konci stránky 30 px od spodku.
+
+→ *No new memory entries.*
+
 ### Tlačítka na 404, zásadách soukromí a veřejném profilu se zamáčknou jako ve hře
 „Zpět do hry“ (404, zásady soukromí) a „Zahrát si taky“ (profil /u/) na
 iPhonu při stisku nic neukazovaly. Teď se zamáčknou o ret jako tlačítka

@@ -613,7 +613,23 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
    samostatná stránka se stejným markupem a styly — viz worker/src/profile.js. */
 #publicProfileBody { display: contents; }   /* sekce jsou přímo v mezerách obrazovky */
 .public-page { padding-top: calc(36px + env(safe-area-inset-top)); }
-.public-page > .btn-play { width: 100%; max-width: 400px; margin: 8px auto 0; text-decoration: none; }
+/* Samostatné stránky (zásady soukromí, veřejný profil, 404): tlačítko zpět do
+   hry drží u spodního okraje po celou dobu čtení, text pod ním mizí do pozadí.
+   Na konci stránky sedí pod obsahem, na krátké ho margin-top: auto pošle dolů.
+   Odsazení zdola jako u Hrát na úvodu (30 px + safe area). */
+.screen.public-page, #publicProfile.public-page { padding-bottom: 0; }   /* id: přebije okraj profilu výš */
+.page-cta {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    align-self: stretch;
+    margin: auto -22px 0;
+    padding: 24px 22px calc(30px + env(safe-area-inset-bottom));
+    background: linear-gradient(to bottom, transparent, var(--bg) 24px);
+}
+.page-cta > .btn-play { width: 100%; max-width: 400px; margin: 0; text-decoration: none; }
 /* Rok denních výzev svisle: týden = řádek Po–Ne přes celou šířku sloupce,
    vlevo měsíc jako otočený popisek na podkladu přes všechny své řádky. */
 .year-cal {
