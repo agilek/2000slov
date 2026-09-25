@@ -2,6 +2,12 @@
 
 ## 2026-09-25
 
+### Tlačítko Denní výzva: jen „Uhodnutá slova", bez počtu
+Tlačítko v profilu ukazovalo počet i slovo („53 uhodnutých slov"). Teď má
+pevný text „Uhodnutá slova", bez čísla.
+
+→ *No new memory entries.*
+
 ### Obrazovka Úspěchy: počet v záhlaví místo velkého bloku pod ním
 Pod záhlavím „Úspěchy" byl samostatný řádek s velkým číslem „5 z 27" a
 širokým pruhem — zabíral místo, než začaly první úspěchy. Teď je počet

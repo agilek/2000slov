@@ -1364,7 +1364,7 @@ function renderProfile() {
     const days = played;
     const words = Object.values(persist.results).reduce((a, b) => a + b, 0);
     const pct = days ? Math.round(words / (days * WORDS_PER_DAY) * 100) : 0;
-    $('collectionChip').textContent = `${fmtNum(words)} ${plural(words, 'uhodnuté slovo', 'uhodnutá slova', 'uhodnutých slov')}`;
+    $('collectionChip').textContent = 'Uhodnutá slova';
 
     // Účty zatím neběží, takže je profil lokální — statistiky jsou skutečné,
     // jen se počítají z localStorage tohohle zařízení.
