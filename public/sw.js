@@ -11,7 +11,7 @@
 //
 // CACHE a SHELL skládá `node tools/stamp.mjs` z index.html — ručně je neupravuj.
 
-const CACHE = '20slov-1c99c96e';
+const CACHE = '20slov-980a38e1';
 const SHELL = [
     '/',
     '/icons/icon.svg',
@@ -22,7 +22,7 @@ const SHELL = [
     '/fonts/Nunito-latin-ext.woff2',
     '/fonts/SlovkaOne-Regular.woff2',
     '/fonts/SlovkaOne-Light.woff2',
-    '/style.css?v=fd37e7c0',
+    '/style.css?v=267463bb',
     '/designs/kostky/profil.svg',
     '/designs/kostky/cinka.svg',
     '/designs/kostky/zpet.svg',
@@ -30,7 +30,7 @@ const SHELL = [
     '/words.js?v=726cd556',
     '/avatar.js?v=5bda5401',
     '/achievements.js?v=04a11446',
-    '/game.js?v=6521185d',
+    '/game.js?v=25492e88',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
 ];

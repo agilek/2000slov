@@ -1298,7 +1298,7 @@ function renderSignedIn(box) {
     };
     const fine = el('p', 'account-fine');
     fine.append(del, ' · ', privacyLink());
-    $('accountEnd').replaceChildren(out, el('hr', 'account-divider'), fine);
+    $('accountEnd').replaceChildren(out, fine);
     $('accountEnd').hidden = false;
 }
 
@@ -1391,8 +1391,8 @@ function renderProfile() {
     const tiles = [
         [fmtNum(liveStreak()), 'dní v řadě', liveStreak() ? '' : 'stat-tile--off'],
         [fmtNum(days), 'odehraných dní'],
-        [pct + ' %', successLabel, 'stat-tile--wide'],
-        [fmtNum(practiceSeenCount()), `uhodnutých slov v tréninku, to je ${practiceSeenPct()} % slovníku`, 'stat-tile--wide'],
+        [pct + ' %', successLabel],
+        [fmtNum(practiceSeenCount()), `uhodnutých slov v tréninku, to je ${practiceSeenPct()} % slovníku`],
     ];
     $('profileStats').replaceChildren(...tiles.map(([value, label, extra]) => {
         const tile = el('div', extra ? 'stat-tile ' + extra : 'stat-tile');

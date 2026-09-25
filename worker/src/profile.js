@@ -246,7 +246,7 @@ function profileBody(data) {
         <div class="stat-grid">
           ${statTile(num(s.serie), 'dní v řadě', s.serie ? '' : ' stat-tile--off')}
           ${statTile(num(s.dny), 'odehraných dní')}
-          ${statTile(`${s.uspesnost} %`, s.dny ? `úspěšnost z ${num(s.dny * PER_DAY)} slov v denní výzvě` : 'úspěšnost', ' stat-tile--wide')}
+          ${statTile(`${s.uspesnost} %`, s.dny ? `úspěšnost z ${num(s.dny * PER_DAY)} slov v denní výzvě` : 'úspěšnost')}
         </div>
       </div>
       ${achievementsSection(data)}

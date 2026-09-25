@@ -2,6 +2,24 @@
 
 ## 2026-09-25
 
+### Statistiky profilu: dlaždice vedle sebe, ne pod sebou; smazání účtu bez čáry
+Dvě „široké" dlaždice (úspěšnost, trénink) na soukromém profilu stály pod
+sebou přes celou šířku — teď sedí vedle sebe jako ostatní, čistá mřížka
+2×2. Odhlásit se / Smazat účet na soukromém profilu odděluje jen odstup,
+ne čára navíc.
+
+**Root cause / approach:** `stat-tile--wide` u obou dlaždic pryč, `.stat-grid`
+teď dlaždici sama rozšíří na celý řádek, jen když je poslední a lichá
+(`:last-child:nth-child(odd)`) — u soukromého profilu (4 dlaždice, sudý
+počet) se to netýká ničeho, u veřejného (3 dlaždice: série, dny, úspěšnost)
+zůstane úspěšnost přes celou šířku jako dřív, bez ruční značky v kódu.
+`<hr class="account-divider">` mezi Odhlásit se a spodní řádkou pryč,
+`.account-fine` má `margin-top: 24px` místo čáry. Ověřeno v Chromiu:
+soukromý profil 2×2, veřejný 2+1 přes celou šířku, mezera nad Smazat
+účet 36 px.
+
+→ *No new memory entries.*
+
 ### Veřejný profil: náhled 4 úspěchů s odkazem na všechny, statistiky sladěné se soukromým
 Veřejný profil ukazoval všechny získané úspěchy najednou — s aktivním
 hráčem to rostlo bez konce. Teď je vidět jen posledních 4, s odkazem
