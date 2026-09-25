@@ -73,7 +73,13 @@ export default {
             return profilePage(request, env, url);
         }
         const handler = ROUTES[`${request.method} ${url.pathname}`];
-        if (!handler) return json({ error: 'not found' }, 404);
+        if (!handler) {
+            // Sem dojde i každá adresa, pro kterou [assets] nenašly soubor: s workerem
+            // se not_found_handling sám neuplatní. Mimo API ji proto vrátí statika,
+            // ta už podle wrangler.toml pošle public/404.html se stavem 404.
+            const page = (request.method === 'GET' || request.method === 'HEAD') && !url.pathname.startsWith('/api/');
+            return page && env.ASSETS ? env.ASSETS.fetch(request) : json({ error: 'not found' }, 404);
+        }
         // CSRF: cizí stránka neumí poslat náš Content-Type bez preflightu (a ten
         // bez CORS hlaviček neprojde), Origin navíc musí sedět na vlastní doménu.
         if (request.method !== 'GET' && !sameOrigin(request, url)) {

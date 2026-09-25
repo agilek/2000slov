@@ -2,6 +2,21 @@
 
 ## 2026-09-25
 
+### Stránka 404 se na webu opravdu ukáže
+Po nasazení vracela neznámá adresa na 20slov.cz holé `{"error":"not found"}`
+místo stránky s duchem. Teď dostane `public/404.html` se stavem 404.
+Neznámé `/api/…` dál vrací JSON.
+
+**Root cause / approach:** Když má projekt worker, Cloudflare mu pošle každou
+adresu, pro kterou `[assets]` nenašly soubor. `not_found_handling = "404-page"`
+se tak samo neuplatní a worker vrátil svou JSON chybu. Nově worker neznámou
+GET/HEAD adresu mimo `/api/` předá `env.ASSETS.fetch(request)` a teprve
+statika podle wrangler.toml pošle 404.html. Ověřeno ve `wrangler dev`:
+`/tohle-neexistuje` a `/a/b/c` → 404 s duchem (i písmo a avatar.js z kořene),
+`/api/neexistuje` → JSON 404, `/u/nikdo` → vlastní 404 profilu, ostatní beze změny.
+
+→ *No new memory entries.*
+
 ### Stránka 404: duch z avatarů hry místo sovy
 Na stránce 404 je místo sovy avatar ze hry: levandulový duch (`17-9-6-5`,
 tvar duch, oči stranou, zmatená vlnka), jak hledá stránku, která není.
