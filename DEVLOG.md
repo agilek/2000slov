@@ -2,6 +2,22 @@
 
 ## 2026-09-25
 
+### Obrazovka Úspěchy: víc odstupu kolem Na dosah; Denní výzva: počet v hlavičce
+„Na dosah" mělo od první skupiny úspěchů pod sebou jen 22 px místo 26 px,
+které mají skupiny mezi sebou — teď `#achievements` používá stejných 26 px,
+takže „Na dosah" vypadá jako každá jiná sekce. U Denní výzvy byl počet
+odehraných dní vlevo od pruhu; teď je v záhlaví vedle „Denní výzva" (stejný
+vzor jako „Úspěchy 27/27") a pruh zůstává sám na svém řádku.
+
+**Root cause / approach:** Když se počet přesunul z `.ach-sum.challenge-sum`
+(řádkové flex, počet + pruh vedle sebe) přímo do sloupcové hlavičky
+(`#collectionModal .modal-header`), zůstalo na `.ach-bar` `flex: 1 1 0%` —
+ve sloupci to je hlavní osa (výška), takže bez volného místa k rozdělení
+spadla na 0 px místo svých `height: 16px`. Oprava: `#collectionModal
+.modal-header .ach-bar { flex: none; }`, ať platí explicitní výška.
+
+→ *No new memory entries.*
+
 ### Odkaz Všechny úspěchy: tah po stránce ho stiskl a blokoval scroll
 Na samostatných stránkách (404, zásady soukromí, veřejný profil) se
 u odkazu „Všechny úspěchy" na veřejném profilu tah prstem přes něj

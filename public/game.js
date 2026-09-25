@@ -3196,7 +3196,7 @@ function buildDayItem(lvl, today) {
 let collectionCache = null;   // { key, today }
 function showCollection() {
     const played = playedDays();
-    $('collectionCount').innerHTML = `${fmtNum(played)} <small>z ${TOTAL_LEVELS} dní</small>`;
+    $('collectionCount').textContent = `${fmtNum(played)}/${TOTAL_LEVELS}`;
     $('collectionBar').style.width = played / TOTAL_LEVELS * 100 + '%';
     const today = dayIndex();
     const key = today + ':' + JSON.stringify(persist.results);
