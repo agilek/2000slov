@@ -2,6 +2,29 @@
 
 ## 2026-09-25
 
+### Denní výzva: černá obrazovka po gestu zpět
+Během denní výzvy občas na telefonu zčernala obrazovka, zmizela všechna
+tlačítka a hra přestala reagovat, třeba u posledního slova. V denní výzvě
+už gesto zpět od levého okraje na iOS nezačne. Ven vede křížek, Android
+a tlačítko zpět v prohlížeči se dál ptají přes potvrzení.
+
+**Root cause / approach:** Od zapojení historie prohlížeče (5b18a93) přidává
+start hry záznam `#hra`, takže tah od levého okraje je na iOS gesto Zpět
+(v Safari i v aplikaci na ploše). Při rychlém ťukání do písmen se spustí
+omylem. Safari při gestu ukáže snímek předchozí obrazovky, a když ho nemá,
+jen pozadí stránky, což je v tmavém vzhledu černá. Obsluha `popstate`
+v denní výzvě gesto hned vracela `pushState` a otevřela potvrzení konce
+(čas stojí). Nový záznam uprostřed návratu nejspíš Safari nechal snímek
+viset, a pod ním nebylo vidět nic. V Chromiu se chyba nedá vyvolat, na
+iPhonu to ověřené není. Oprava má dvě vrstvy: nepasivní `touchstart`
+s `preventDefault` v pásu 24 px u levého okraje, jen v denní výzvě
+a mimo tlačítka a písmena, gesto zruší (iOS 13.4+). Na 320px displeji se
+zvětšeným zobrazením sahají písmena až k okraji, klepnutí na ně zůstává.
+Kdyby gesto přesto prošlo, vrací se záznam `#hra` až po dokončení návratu
+(`setTimeout`), ne přímo v `popstate`.
+
+→ *No new memory entries.*
+
 ### Úvodní obrazovka: tlačítko dole, plynulé přechody
 Top-bar odstraněn z absolutní pozice a zařazen do flex flow; `welcome-body` s `flex:1` centruje střední obsah; `welcome-actions` zůstává u spodního okraje na libovolně velké obrazovce. Přechody push/pop opraveny — příchozí obrazovka nově přijíždí z `window.innerWidth` (celý viewport), ne jen z 440 px od středu, kde byla na desktopu viditelně uvnitř okna.
 

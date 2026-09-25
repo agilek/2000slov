@@ -547,13 +547,30 @@ window.addEventListener('popstate', e => {
     const cur = document.querySelector('.screen.active');
     if (cur && cur.id === 'game') {
         if (state.mode === 'practice') return navPop(exitPractice);
-        history.pushState(navState('game'), '', navUrl('game'));   // zůstat ve hře, pokud potvrzení zruší
+        // Zůstat ve hře, pokud potvrzení zruší. Záznam až po dokončení návratu:
+        // Safari po gestu zpět drží snímek předchozí obrazovky, dokud návrat
+        // nedoběhne, a nový záznam přímo v popstate mu ho může nechat viset.
+        setTimeout(() => history.pushState(navState('game'), '', navUrl('game')));
         return openQuit();
     }
     closeModal();
     const s = e.state || parseHash();                     // ručně přepsaná adresa za # nemá stav
     navPop(() => openRoute(s.s || 'welcome', s.h));
 });
+
+// iOS: tah od levého okraje je gesto Zpět a v denní výzvě se při rychlém
+// ťukání spustí snadno omylem. Safari pak místo hry ukáže snímek předchozí
+// obrazovky (bez snímku jen tmavé pozadí), hra pod ním se zastaví na
+// potvrzení konce a nic nereaguje. Ve hře proto gesto nezačne: preventDefault
+// na touchstart u okraje ho zruší (iOS 13.4+). Ven vede křížek. Vpravo nic
+// nehrozí, ze hry nevede žádný záznam vpřed. Tlačítka a písmena (na úzkém
+// displeji sahají až k okraji) klepnutí nesmí ztratit.
+const EDGE_SWIPE_PX = 24;
+document.addEventListener('touchstart', e => {
+    if (state.mode !== 'daily' || !$('game').classList.contains('active')) return;
+    if (e.changedTouches[0].clientX >= EDGE_SWIPE_PX || e.target.closest('button, .letter')) return;
+    e.preventDefault();
+}, { passive: false });
 
 function parseHash() {
     const m = location.hash.match(/^#([\w-]+)(?:\/(.*))?$/);

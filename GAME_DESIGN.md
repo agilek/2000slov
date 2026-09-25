@@ -116,7 +116,9 @@ Jako v mobilních appkách, ať hráč ví, kde je a jak se tam dostal
 - **Historie prohlížeče** kopíruje zásobník. Každá obrazovka má adresu za #:
   `#profil`, `#uspechy`, `#moje-vyznamy`, `#upravit-profil`, `#hrac/<přezdívka>`,
   `#hra`. Gesto a tlačítko zpět vrací o obrazovku, ve hře zpět = křížek
-  (trénink skončí, denní výzva se zeptá). Reload vrátí hráče na stejnou
+  (trénink skončí, denní výzva se zeptá). V denní výzvě gesto od levého
+  okraje na iOS vůbec nezačne, při ťukání do písmen se spouštělo omylem
+  a po něm mohla zůstat černá obrazovka. Reload vrátí hráče na stejnou
   obrazovku: záznam nese celý zásobník, nic se nepřidá. Odkaz s # z venku
   dá pod obrazovku domov (a Profil), ať zpět nevede pryč. Hra se reloadem
   neobnoví, skončí doma.
