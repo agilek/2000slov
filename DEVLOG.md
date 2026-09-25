@@ -2,6 +2,19 @@
 
 ## 2026-09-25
 
+### Stránka 404: duch z avatarů hry místo sovy
+Na stránce 404 je místo sovy avatar ze hry: levandulový duch (`17-9-6-5`,
+tvar duch, oči stranou, zmatená vlnka), jak hledá stránku, která není.
+Vznáší se nad kostkami 4 0 4 a otazníky zůstaly.
+
+**Root cause / approach:** Avatar se kreslí přes `public/avatar.js`
+(`Avatar.svg`), takže mrká stejně jako v profilu. Vlnitý spodek, podle
+kterého je to duch, by kostky zakryly. Proto duch nekouká zpoza dlaždic
+jako sova, ale vznáší se nad nimi (`nfFloat`). Texty se sovou přepsané
+na ducha.
+
+→ *No new memory entries.*
+
 ### Stránka 404: sova nad kostkami 4 0 4
 Neznámá adresa už nevrací holou chybu Cloudflaru, ale stránku ve stylu hry:
 „Slovo 404 · neexistuje", sova se zdviženým obočím kouká přes kostky 4 0 4
