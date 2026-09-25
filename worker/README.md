@@ -10,7 +10,7 @@ volitelné vylepšení, nic se tím nerozbije.
 
 ## Jak to funguje
 
-- Po dohrání dne pošle hra `POST /api/result` s (den, skóre, anonymní ID
+- Po dohrání dne pošle hra `POST /api/result` s (den, skóre, náhodné ID
   prohlížeče). Worker si to uloží a hned vrátí percentil.
 - Dokud den nemá aspoň **15 odeslaných výsledků**, vrátí se `{ real: false }`
   a hra tiše zůstane u statického odhadu — aby noví hráči neviděli
@@ -18,8 +18,9 @@ volitelné vylepšení, nic se tím nerozbije.
 - Percentil se v UI dopíše **na pozadí**, bez čekání — výsledková obrazovka
   se zobrazí okamžitě jako dřív, číslo se jen tiše upřesní, jakmile dorazí
   odpověď (do ~1,5 s, jinak se to tiše vzdá a zůstane statický odhad).
-- Anonymní ID je náhodné UUID uložené v `localStorage`, nikde se neváže
-  na e-mail, jméno ani IP adresu.
+- ID je náhodné UUID uložené v `localStorage`. Bez účtu se neváže na e-mail,
+  jméno ani IP adresu. Po přihlášení se k účtu uloží ID zařízení, ze kterého
+  vznikl (`users.client_id`), takže jeho výsledky jdou účtu přiřadit.
 
 ## Nasazení (jednorázově)
 
@@ -189,6 +190,14 @@ jako percentily výš.
 
 - **Přehled dat**: `npx wrangler d1 execute 20slov --remote --command "SELECT day, COUNT(*) FROM results GROUP BY day ORDER BY day"`
 - **Smazání starých dat** (nikdy potřeba, tabulka je maličká i při tisících hráčích): `DELETE FROM results WHERE updated_at < ...`
-- Žádná osobní data se neukládají — jen den, skóre a náhodné ID, takže GDPR
-  zátěž je minimální (ale pokud to bude řešit produkčně, přidej do hry
-  zmínku v „O aplikaci" a možnost si své ID/výsledky nechat smazat).
+- **Osobní údaje se ukládají**, i když e-mail ani IP ne v čitelné podobě.
+  Pro GDPR jsou to pseudonymní osobní údaje:
+  - bez účtu: náhodné ID zařízení s výsledky a úspěchy,
+    při zapnutých notifikacích i push adresa prohlížeče,
+  - s účtem navíc: `sha256(e-mail + HASH_PEPPER)`, přezdívka, avatar,
+    odehrané dny, trénink, úspěchy, významy slov, hlasy a nahlášení,
+  - při přihlašování: hash e-mailu a IP v `login_requests` (kvůli limitům),
+    cron je maže den po vypršení žádosti (`purgeAuth`).
+  Smazání účtu (`meDelete`) smaže účet i jeho data, jen významy slov zůstanou
+  bez autora. Text pro hráče je na `/soukromi` (`public/soukromi.html`). Když
+  se změní, co se ukládá, uprav i ho.

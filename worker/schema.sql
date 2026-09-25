@@ -1,7 +1,8 @@
 -- Skutečné percentily pro "Top X % hráčů dneška".
 -- Jeden řádek = jeden výsledek jednoho hráče pro daný den hry: pořadí dne od
 -- 21. 9. 2026 (1, 2, …), po roce se NEopakuje, i když slova ano.
--- clientId je náhodné anonymní UUID vygenerované v prohlížeči, žádná osobní data.
+-- clientId je náhodné UUID vygenerované v prohlížeči. Samo nikoho neidentifikuje,
+-- ale přes users.client_id se dá svázat s účtem, takže je to pseudonymní osobní údaj.
 CREATE TABLE IF NOT EXISTS results (
   day INTEGER NOT NULL,
   score INTEGER NOT NULL,
@@ -22,14 +23,14 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   created_at INTEGER NOT NULL
 );
 
--- Komunitní významy slov. Autorství zatím drží anonymní client_id (stejné,
--- jaké používají results) — účty přijdou později a client_id se na ně naváže.
+-- Komunitní významy slov. Psát smí jen přihlášený (user_id), client_id zařízení
+-- zůstává kvůli zneužití. Po smazání účtu význam zůstane bez autora.
 CREATE TABLE IF NOT EXISTS definitions (
   id         TEXT PRIMARY KEY,
   word       TEXT NOT NULL,
   text       TEXT NOT NULL,          -- 10–200 znaků
   client_id  TEXT,                   -- zařízení, ze kterého to přišlo (kvůli zneužití)
-  user_id    TEXT NOT NULL,          -- psát smí jen přihlášený
+  user_id    TEXT,                   -- psát smí jen přihlášený; NULL = autor smazal účet
   author     TEXT,                   -- snímek přezdívky z účtu v době zápisu
   votes      INTEGER NOT NULL DEFAULT 0,
   reports    INTEGER NOT NULL DEFAULT 0,
@@ -62,7 +63,7 @@ CREATE TABLE IF NOT EXISTS users (
   email_hash TEXT NOT NULL UNIQUE,
   handle     TEXT,                   -- zobrazovaná podoba, NULL než si ji hráč zvolí
   handle_lc  TEXT UNIQUE,            -- SQLite bere víc NULL v UNIQUE jako různé
-  client_id  TEXT,                   -- anonymní ID, ze kterého se účet vytvořil
+  client_id  TEXT,                   -- ID zařízení, ze kterého se účet vytvořil
   created_at INTEGER NOT NULL,
   banned     INTEGER NOT NULL DEFAULT 0,
   hide_profile INTEGER NOT NULL DEFAULT 0,

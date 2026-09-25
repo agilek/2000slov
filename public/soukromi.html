@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Zásady soukromí — 20 slov</title>
+<meta name="description" content="Jaké údaje hra 20 slov ukládá, proč, jak dlouho a jak je smazat.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131f24" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<link rel="preload" href="/fonts/SlovkaOne-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<style>
+    /* Obrazovky hry mají pevnou výšku a scroll vypnutý. Tahle stránka scrolluje
+       celým viewportem jako profil (#profile, #publicProfile ve style.css). */
+    html, body { overflow-y: auto; height: auto; min-height: 100dvh; overscroll-behavior-y: contain; }
+    .screen.privacy-page { height: auto; min-height: 100dvh; overflow: visible; touch-action: auto; justify-content: flex-start;
+        gap: 22px; padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+    .privacy { width: 100%; text-align: left; }
+    .screen .privacy h1 { margin-bottom: 4px; }
+    .screen .privacy h2 { font-size: 20px; margin: 28px 0 8px; }
+    .screen .privacy p, .screen .privacy li { font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.5; margin: 0 0 10px; }
+    .privacy ul { padding-left: 20px; margin: 0 0 10px; }
+    .privacy a { color: inherit; }
+    .privacy .updated { opacity: .7; }
+</style>
+</head>
+<body>
+<div class="screen active public-page privacy-page">
+<article class="privacy">
+<h1>Zásady soukromí</h1>
+<p class="updated">Platné od 25. 9. 2026</p>
+
+<p>Hra 20 slov ukládá co nejméně. E-mail ani IP adresu nemá v databázi v čitelné podobě. Hrát jde i bez účtu a účet můžeš kdykoli smazat.</p>
+
+<h2>Kdo údaje zpracovává</h2>
+<p>Michal Acler, který hru provozuje. Napiš mi na <a href="mailto:ahoj@20slov.cz">ahoj@20slov.cz</a>.</p>
+
+<h2>Když hraješ bez účtu</h2>
+<ul>
+    <li>Výsledky, série a nastavení zůstávají jen v tvém prohlížeči.</li>
+    <li>Po dohrání dne se na server odešle den, skóre a náhodné ID zařízení. Z toho se počítá, kolik procent hráčů jsi předběhl.</li>
+    <li>Stejně se k ID zařízení odešlou získané úspěchy, kvůli údaji „Má ho X % hráčů“.</li>
+    <li>Když zapneš připomínky, uloží se adresa, přes kterou tvůj prohlížeč přijímá notifikace (služba Apple, Googlu nebo Mozilly). Když je v prohlížeči vypneš, adresa přestane platit a při dalším odesílání ji smažu.</li>
+</ul>
+
+<h2>Když máš účet</h2>
+<ul>
+    <li><strong>E-mail neukládám.</strong> V databázi je jen jeho otisk (hash), podle kterého tě při dalším přihlášení poznám. Adresu předám službě Resend, která ti pošle přihlašovací e-mail. Resend o odeslaných e-mailech vede záznam.</li>
+    <li>K účtu se ukládá přezdívka, avatar, odehrané dny a jejich skóre, počet slov z tréninku, úspěchy, významy slov, které napíšeš, a tvoje hlasy. Uloží se i ID zařízení, ze kterého ses poprvé přihlásil.</li>
+    <li>Veřejný profil na adrese <code>20slov.cz/u/přezdívka</code> ukazuje přezdívku, avatar, body, sérii, odehrané dny a úspěchy. U významů slov je vidět tvoje přezdívka.</li>
+    <li>Kvůli ochraně proti zneužití se při přihlašování na krátko uloží otisk IP adresy a e-mailu. Mažou se nejpozději do dvou dnů.</li>
+    <li>Přihlášení drží jedna cookie. Platí rok nebo do odhlášení. Jiné cookies ani sledovací nástroje hra nepoužívá.</li>
+</ul>
+
+<h2>Smazání účtu</h2>
+<p>Tlačítko <strong>Smazat účet</strong> v profilu smaže účet, přezdívku, avatar, odehrané dny, trénink, úspěchy, hlasy i přihlášení. <strong>Významy slov, které jsi napsal, zůstanou</strong> ostatním hráčům, jen bez tvého jména. Nahlášení cizích významů zůstanou kvůli ochraně proti zneužití, ale bez vazby na tebe. Výsledky vázané jen na náhodné ID zařízení zůstanou v anonymních statistikách.</p>
+
+<h2>Zpětná vazba</h2>
+<p>Formulář „Jak se ti hraje?“ odesílá zprávu přes službu FormSubmit (formsubmit.co) na můj e-mail. E-mail v něm je nepovinný.</p>
+
+<h2>Kdo další data zpracovává</h2>
+<ul>
+    <li><strong>Cloudflare</strong>: hosting a databáze. Při provozu vidí IP adresy.</li>
+    <li><strong>Resend</strong>: přihlašovací e-maily.</li>
+    <li><strong>FormSubmit</strong>: zpětná vazba.</li>
+    <li><strong>Push služba tvého prohlížeče</strong>: doručení připomínek.</li>
+</ul>
+<p>Nic z toho neslouží k reklamě a data neprodávám.</p>
+
+<h2>Proč a tvoje práva</h2>
+<p>Údaje zpracovávám, abych ti mohl poskytovat hru a účet, o které sis řekl. U anonymních statistik a ochrany proti zneužití jde o oprávněný zájem na provozu hry.</p>
+<p>Máš právo na přístup ke svým údajům, jejich opravu a výmaz a můžeš vznést námitku. Stačí napsat na <a href="mailto:ahoj@20slov.cz">ahoj@20slov.cz</a>. Stížnost můžeš podat u <a href="https://uoou.gov.cz">Úřadu pro ochranu osobních údajů</a>.</p>
+</article>
+<a class="btn btn-play" href="/">Zpět do hry</a>
+</div>
+</body>
+</html>

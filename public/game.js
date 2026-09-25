@@ -71,7 +71,7 @@ function defaultPersist() {
         pendingLogin: null, // { id, expiresAt } — rozjetá žádost o přihlášení
         nudgedAt: 0,        // série, u které jsme naposled připomněli účet
         day: null,           // { date, dayIdx, wordIdx, marks, time, done, perfect, realTopPct }
-        clientId: genClientId(), // anonymní ID pro leaderboard backend (jen počítadlo, žádná osobní data)
+        clientId: genClientId(), // náhodné ID zařízení pro percentily a úspěchy; po přihlášení se uloží k účtu
         a2hsPromptDismissed: false, // "přidej na plochu" nabídka na iOS se ukáže jen do prvního zavření
     };
 }
@@ -1185,8 +1185,15 @@ function renderSignedOut(box) {
         renderAccount();
         startLoginPolling();
     };
-    box.append(form, el('p', 'profile-note',
-        'Pošleme ti odkaz a kód. Účet propojí tvoje významy napříč zařízeními.'));
+    const note = el('p', 'profile-note', 'Pošleme ti odkaz a kód. Účet propojí tvoje významy napříč zařízeními. ');
+    note.append(privacyLink());
+    box.append(form, note);
+}
+
+function privacyLink() {
+    const a = el('a', null, 'Zásady soukromí');
+    a.href = '/soukromi';
+    return a;
 }
 
 function renderAwaitingCode(box) {
@@ -1273,7 +1280,9 @@ function renderSignedIn(box) {
         showToast('Účet smazán.');
     };
     // Odhlášení a nevratné smazání úplně dole na profilu, ne mezi běžnými akcemi.
-    $('accountEnd').replaceChildren(out, del);
+    const note = el('p', 'profile-note');
+    note.append(privacyLink());
+    $('accountEnd').replaceChildren(out, del, note);
     $('accountEnd').hidden = false;
 }
 

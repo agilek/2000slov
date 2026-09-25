@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { clean, defTextError, validClient, DEF_MIN, DEF_MAX } from './worker/src/validate.js';
-import { authEnabled, devLogin } from './worker/src/auth.js';
+import { authEnabled, devLogin, meDelete } from './worker/src/auth.js';
 import { points, profilePage } from './worker/src/profile.js';
 import { DatabaseSync } from 'node:sqlite';
 import Avatar from './public/avatar.js';
@@ -133,6 +133,27 @@ run("INSERT INTO definitions (id, word, text, user_id, votes, hidden, created_at
 const autor = await points({ DB: d1 }, 'autor');
 test('úspěchy: nejlepší výklad a nejvíc hlasů na jednom významu', () =>
     assert.deepEqual([autor.nejlepsi, autor.maxHlasu], [1, 9]));
+
+/* ---------------- smazání účtu ---------------- */
+
+// Zásady soukromí slibují, že po smazání zůstanou jen významy bez autora.
+const tokenHash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('ab12')))]
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+run("INSERT INTO users (id, email_hash, handle, handle_lc, created_at) VALUES ('smaz', 'h', 'Smaz', 'smaz', 0)");
+run("INSERT INTO sessions VALUES (?, 'smaz', 0, ?)", tokenHash, Date.now() + DEN);
+run("INSERT INTO profile_days VALUES ('smaz', '2026-09-01', 0, 20, 0)");
+run("INSERT INTO definitions (id, word, text, user_id, author, votes, created_at) VALUES ('s1', 'kolo', 't', 'smaz', 'Smaz', 0, 0)");
+run("INSERT INTO votes VALUES ('w2', 'smaz', 0)");
+run("UPDATE definitions SET votes = votes + 1 WHERE id = 'w2'");
+const hlasyPred = sql.prepare("SELECT votes FROM definitions WHERE id = 'w2'").get().votes;
+await meDelete(new Request('https://x/api/me/delete', { method: 'POST', headers: { Cookie: 'sid=ab12' } }),
+    { DB: d1, RESEND_KEY: 'x', MAIL_FROM: 'x' });
+const zbylo = (t, col) => sql.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE ${col} = 'smaz'`).get().n;
+test('smazání účtu: data pryč, významy bez autora, hlasy odečtené', () => assert.deepEqual({
+    users: zbylo('users', 'id'), sessions: zbylo('sessions', 'user_id'), dny: zbylo('profile_days', 'user_id'),
+    hlasy: zbylo('votes', 'client_id'), hlasuW2: sql.prepare("SELECT votes FROM definitions WHERE id = 'w2'").get().votes,
+    vyznam: { ...sql.prepare("SELECT user_id, author FROM definitions WHERE id = 's1'").get() },
+}, { users: 0, sessions: 0, dny: 0, hlasy: 0, hlasuW2: hlasyPred - 1, vyznam: { user_id: null, author: null } }));
 test('úspěchy: prahy a veřejný stav', () => {
     const st = Achievements.publicState({ dny: 7, nejdelsi: 7, perfektnich: 0 }, autor, true);
     const got = Achievements.LIST.filter(a => Achievements.done(a, st)).map(a => a.id);

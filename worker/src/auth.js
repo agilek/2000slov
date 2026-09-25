@@ -278,7 +278,10 @@ export async function meDelete(request, env, url) {
     await env.DB.batch([
         // významy zůstanou komunitě, jen se z nich sundá autorství
         env.DB.prepare("UPDATE definitions SET user_id = NULL, author = NULL, client_id = 'deleted' WHERE user_id = ?1").bind(u.id),
+        // hlasy smazaného hráče nesmí dál viset v počtu hlasů (a v bodech autorů)
+        env.DB.prepare('UPDATE definitions SET votes = votes - 1 WHERE id IN (SELECT definition_id FROM votes WHERE client_id = ?1)').bind(u.id),
         env.DB.prepare('DELETE FROM votes WHERE client_id = ?1').bind(u.id),
+        env.DB.prepare('DELETE FROM profile_days WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM training_days WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM user_achievements WHERE user_id = ?1').bind(u.id),
         env.DB.prepare('DELETE FROM sessions WHERE user_id = ?1').bind(u.id),

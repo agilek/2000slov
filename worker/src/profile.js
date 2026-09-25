@@ -257,7 +257,10 @@ export async function profilePage(request, env, url) {
       <meta property="og:description" content="${esc(popis)}">
       <meta property="og:type" content="profile">
       <meta property="og:url" content="${site}/u/${encodeURIComponent(data.user.handle)}">
-      <meta name="twitter:card" content="summary">`;
+      <meta property="og:image" content="${site}/og.png">
+      <meta property="og:image:width" content="1200">
+      <meta property="og:image:height" content="630">
+      <meta name="twitter:card" content="summary_large_image">`;
     return html(page(`${jmeno} — 20 slov`, profileBody(data), meta), 200, 'public, max-age=300');
 }
 

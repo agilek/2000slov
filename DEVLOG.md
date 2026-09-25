@@ -2,6 +2,13 @@
 
 ## 2026-09-25
 
+### Zásady soukromí, náhled odkazu (og.png) a pravdivé smazání účtu
+Nová stránka `/soukromi` (`public/soukromi.html`, shell jako veřejný profil). Správce je Michal Acler, kontakt `ahoj@20slov.cz`. Odkaz na ni je u přihlašovacího formuláře a v profilu. Hra i profily mají `og:image` 1200×630 (`public/og.png`), obrázek se kreslí na `public/dev-og.html` stejnými kostkami jako karta ke sdílení. Tvrzení „žádná osobní data“ v README, `schema.sql` a `game.js` nahradil popis toho, co se skutečně ukládá. DNSSEC na `20slov.cz` je aktivní a validovaný (`ad` na 1.1.1.1, 8.8.8.8 i 9.9.9.9).
+
+**Root cause / approach:** Text o soukromí sliboval víc, než kód dělal. `meDelete` nechával `profile_days` a hlasy smazaného hráče zůstávaly v `definitions.votes`. Navíc `schema.sql` mělo `definitions.user_id NOT NULL`, takže na čerstvé databázi padalo smazání účtu s významy na constraintu. Produkce má sloupec z `ALTER TABLE`, a tedy nullable. Chytil to nový test v `test.mjs`. Service worker ukládal každou navigaci jako `/`, takže otevřená `/soukromi` nebo dev stránka by offline nahradila hru. Teď se ukládá jen `/`.
+
+→ *No new memory entries.*
+
 ### Doména 20slov.cz: Cloudflare, Resend, Email Routing, přihlášení zapnuté
 `20slov.cz` je registrovaná u Wedosu (NSSET `CLOUDFLARE-GO`: anna + keanu) a zóna běží v Cloudflare. Worker `20slov` ji má jako custom domain, `www` přesměrovává na hlavní doménu 301 (Single Redirect), Always Use HTTPS je zapnuté. `SITE_URL` a `FALLBACK_URL` míří na `https://20slov.cz/`. Resend má ověřený DKIM a SPF (region eu-west-1). Na workeru jsou `RESEND_KEY`, `MAIL_FROM` a `HASH_PEPPER`, takže přihlášení je zapnuté. Email Routing je zapnutý, přeposílání čeká na ověření cílové adresy. DNSSEC je v Cloudflare `pending`, dokud se klíč nezadá ve Wedosu.
 

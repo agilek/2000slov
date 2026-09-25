@@ -22,17 +22,6 @@ umí rozhodit kdokoli s curlem. Navázání na účet to spraví, ale nepřihlá
 
 Můj názor: nechat otevřené a přestat to prezentovat jako žebříček.
 
-### 1.3 Co má stát v textu o soukromí?
-**Stav:** čeká na tebe, text napíšu.
-Potřebuju potvrdit dvě věci:
-1. Že **smazání účtu významy nemaže** — jen z nich sundá jméno. Tak je to
-   naprogramované a člověk to musí vědět **před** potvrzením.
-2. Kdo je správce údajů a na jaký kontakt se mají lidi obracet.
-
-Souvisí: `worker/README.md:185` a `worker/schema.sql:3` pořád tvrdí „žádná
-osobní data se neukládají". Od zavedení účtů to není pravda (ukládá se hash
-e-mailu, přezdívka, hash IP na 24 h).
-
 ### 1.4 Kdo prochází nahlášené významy?
 **Stav:** čeká na rozhodnutí.
 Automatické skrytí při třech nahlášeních funguje, ale **nic neumí skrytí
@@ -57,13 +46,11 @@ Můžu udělat, až řekneš.
   času, hlas, sheety) a ztlumit je jde jen hlasitostí telefonu. Na iOS je
   ztiší i přepínač ticha, jinde nic. Stačí jedna položka v `persist` a stráž
   v `playTone`.
-- **Text o soukromí + přepínač „skrýt profil"** — poslední kus P5. Sloupec
-  `users.hide_profile` v databázi je, UI k němu ne.
-- **Oprava nepravdivých tvrzení** v `worker/README.md:185` a `worker/schema.sql:3`.
+- **Přepínač „skrýt profil"** — poslední kus P5. Sloupec
+  `users.hide_profile` v databázi je, UI k němu ne. Text o soukromí je hotový
+  (`/soukromi`), po přidání přepínače v něm doplnit.
 - **Souboj přes odkaz `?vyzva=<den>`** — v `GAME_DESIGN.md` od začátku, nikdy
   nepostavené.
-- **OG obrázek výsledku** — sdílený odkaz na hru nemá náhled (profil `/u/<handle>`
-  og tagy má, hra ne).
 - **Přepínač světlý/tmavý režim** — CSS háky `data-theme` existují, nic je
   nenastavuje.
 - **Významy jdou upravit, ale ne smazat.**
@@ -74,9 +61,6 @@ Můžu udělat, až řekneš.
 - **Úprava přezdívky v profilu:** po doběhnutí `refreshAuth()` se znovu ukáže
   tlačítko „Změnit přezdívku" vedle rozepsaného formuláře — `renderProfile()`
   mu vrací `display`.
-- **Smazání účtu nechává `profile_days`** a nepřepočítá `definitions.votes`
-  významů, kterým smazaný hráč dal hlas. Autoři tak mají v počtu hlasů
-  (a v bodech) i hlasy, které už neexistují. Oprava je v `meDelete` o dva řádky.
 - **Úspěchy (běží, 2026-09-24):** 27 odznaků, seznam v `public/achievements.js`,
   náhled v `public/dev-uspechy.html`. Zbývá: seznam a prahy (přidat,
   škrtnout, přejmenovat?).
@@ -97,6 +81,7 @@ Můžu udělat, až řekneš.
 | Pořadí dne „Den N“ (2026-09-24) | hráč ho nevidí nikde: sdílení a Sbírka ukazují datum, profil „N/7 300 slov“, výsledek sérii | číslo dne nic neřekne, podle data si hráči porovnají výsledky |
 | „Má ho X % hráčů“ (2026-09-24) | počítá server z hlášení zařízení, od 15 zařízení | i bez účtu; klient si to tvrdí sám, jde jen o orientační číslo |
 | Přihlášení | magic link + 6místný kód | odkaz z mailu neotevře PWA |
+| Zásady soukromí (2026-09-25) | správce Michal Acler, kontakt `ahoj@20slov.cz`; smazání účtu nechá významy slov bez autora | text na `/soukromi`, odkaz u přihlášení a v profilu |
 | Doména a pošta (2026-09-25) | `20slov.cz` u Wedosu, DNS v Cloudflare, odesílání přes Resend (eu-west-1), příjem přes Cloudflare Email Routing (`ahoj@`, `prihlaseni@` → `m@acler.cz`) | přihlášení je od 2026-09-25 zapnuté |
 | Avatary | generované z přezdívky | žádný upload, žádná moderace obrázků |
 | Hosting | vše z jednoho Workeru | jedna doména → žádné CORS, `HttpOnly` cookie |

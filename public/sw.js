@@ -11,7 +11,7 @@
 //
 // CACHE a SHELL skládá `node tools/stamp.mjs` z index.html — ručně je neupravuj.
 
-const CACHE = '20slov-58029626';
+const CACHE = '20slov-246b01f7';
 const SHELL = [
     '/',
     '/icons/icon.svg',
@@ -22,7 +22,7 @@ const SHELL = [
     '/fonts/Nunito-latin-ext.woff2',
     '/fonts/SlovkaOne-Regular.woff2',
     '/fonts/SlovkaOne-Light.woff2',
-    '/style.css?v=6acbd9a2',
+    '/style.css?v=3ffc065a',
     '/designs/kostky/profil.svg',
     '/designs/kostky/cinka.svg',
     '/designs/kostky/zpet.svg',
@@ -30,7 +30,7 @@ const SHELL = [
     '/words.js?v=726cd556',
     '/avatar.js?v=5bda5401',
     '/achievements.js?v=04a11446',
-    '/game.js?v=cf9115f9',
+    '/game.js?v=a1125171',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
 ];
@@ -66,8 +66,11 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(req)
                 .then(res => {
-                    const copy = res.clone();
-                    caches.open(CACHE).then(c => c.put('/', copy)).catch(() => {});
+                    // jen hra sama; /soukromi a dev stránky by jinak přepsaly offline verzi hry
+                    if (url.pathname === '/' && res.ok) {
+                        const copy = res.clone();
+                        caches.open(CACHE).then(c => c.put('/', copy)).catch(() => {});
+                    }
                     return res;
                 })
                 .catch(() => caches.match('/').then(r => r || Response.error()))

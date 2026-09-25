@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Náhled odkazu og.png (dev)</title>
+<meta name="robots" content="noindex">
+<!-- Kreslí public/og.png (1200×630, og:image hry i profilů) v řeči karty ke
+     sdílení z game.js: kostky s retem, Slovka One, sytá plocha.
+     Přegenerování: otevři stránku a ulož PNG tlačítkem, nebo
+     agent-browser eval "ogPng()" a base64 zapiš do public/og.png. -->
+<script>if (navigator.serviceWorker?.controller) navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))).then(() => location.reload());</script>
+<style>
+    @font-face { font-family: 'Slovka One'; src: url(fonts/SlovkaOne-Regular.woff2) format('woff2'); font-weight: 400 900; }
+    @font-face { font-family: 'Nunito'; src: url(fonts/Nunito-latin.woff2) format('woff2'); font-weight: 200 1000; }
+    body { margin: 0; padding: 16px; background: #f4f1ec; font: 14px system-ui, sans-serif; }
+    canvas { display: block; width: 100%; max-width: 1200px; height: auto; border-radius: 12px; }
+    a { display: inline-block; margin-top: 12px; }
+</style>
+</head>
+<body>
+<canvas id="og" width="1200" height="630"></canvas>
+<a id="save" download="og.png">Uložit og.png</a>
+<script>
+// cardTile a turned jsou kopie z game.js (karta ke sdílení), ať se obrázek kreslí stejně
+function cardTile(g, x, y, w, h, r, face, lip, lipH) {
+    g.fillStyle = lip; g.beginPath(); g.roundRect(x, y + lipH, w, h, r); g.fill();
+    g.fillStyle = face; g.beginPath(); g.roundRect(x, y, w, h, r); g.fill();
+}
+function turned(g, cx, cy, deg, draw) {
+    g.save(); g.translate(cx, cy); g.rotate(deg * Math.PI / 180); draw(); g.restore();
+}
+
+const DISPLAY = '"Slovka One", Nunito, sans-serif';
+const t = { bg: '#4cb82b', shape: '#42a723', ink: '#ffffff', lip: '#2f7d14' };   // CARD_THEMES.top
+
+async function draw() {
+    await Promise.all([document.fonts.load(`100px ${DISPLAY}`), document.fonts.load('800 40px Nunito')]);
+    const W = 1200, H = 630, X = 80;
+    const g = document.getElementById('og').getContext('2d');
+    g.fillStyle = t.bg; g.fillRect(0, 0, W, H);
+    turned(g, 1150, 70, 16, () => { g.fillStyle = t.shape; g.beginPath(); g.roundRect(-190, -190, 380, 380, 80); g.fill(); });
+    turned(g, 30, 640, -12, () => { g.fillStyle = t.shape; g.beginPath(); g.roundRect(-170, -170, 340, 340, 72); g.fill(); });
+
+    // „20 SLOV" z kostek písmen, každá trochu nakřivo
+    const TS = 124, tilt = [-7, 4, -4, 6, -3, 5];
+    let x = X, k = 0;
+    for (const ch of '20 SLOV') {
+        if (ch === ' ') { x += 36; continue; }
+        turned(g, x + TS / 2, 96 + TS / 2, tilt[k++], () => {
+            cardTile(g, -TS / 2, -TS / 2, TS, TS, 28, '#ffffff', '#d3dce0', 11);
+            g.fillStyle = '#2b3a42'; g.font = `82px ${DISPLAY}`;
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(ch, 0, 4);
+        });
+        x += TS + 14;
+    }
+
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillStyle = t.ink; g.font = `64px ${DISPLAY}`;
+    g.fillText('Každý den 20 slov.', X, 360);
+    g.fillText('Kolik jich stihneš?', X, 440);
+    g.font = '800 44px Nunito, sans-serif';
+    g.globalAlpha = .85; g.fillText('20slov.cz', X, 552); g.globalAlpha = 1;
+
+    // mřížka dne na tmavé desce, nakřivo jako nalepená
+    const CS = 52, GAP = 11, PAD = 24, miss = [3, 9, 14, 18];
+    const bw = 5 * CS + 4 * GAP + 2 * PAD, bh = 4 * CS + 3 * GAP + 2 * PAD;
+    turned(g, 975, 430, -4, () => {
+        cardTile(g, -bw / 2, -bh / 2, bw, bh, 30, '#131f24', '#0a1418', 12);
+        for (let i = 0; i < 20; i++) {
+            const ok = !miss.includes(i);
+            const cx = -bw / 2 + PAD + (i % 5) * (CS + GAP), cy = -bh / 2 + PAD + Math.floor(i / 5) * (CS + GAP);
+            cardTile(g, cx, cy, CS, CS, 14, ok ? '#4cb82b' : '#ff5a5a', ok ? '#38931a' : '#c93636', 6);
+        }
+    });
+    document.getElementById('save').href = g.canvas.toDataURL('image/png');
+}
+const ready = draw();
+window.ogPng = () => ready.then(() => document.getElementById('og').toDataURL('image/png').split(',')[1]);
+</script>
+</body>
+</html>
