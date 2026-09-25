@@ -2,6 +2,37 @@
 
 ## 2026-09-25
 
+### Tlačítko Denní výzva: uhodnutá slova, a otevírá se rychleji
+Tlačítko v profilu ukazovalo „Odehráno N dní“. Teď ukazuje „N uhodnutých
+slov“ (celkem ze všech dní, stejné číslo jako v dlaždici úspěšnosti).
+Otevření kalendáře (`showCollection`) bylo taky znatelně pomalejší než
+ostatní tlačítka na obrazovce — v Safari bez nativní podpory `corner-shape`
+citelně.
+
+**Root cause / approach:** Tři věci najednou. (1) `showCollection` stavěla
+365 `<li>` vždy znovu při KAŽDÉM otevření, i beze změny dat — teď se
+sestavený seznam cachuje podle otisku `persist.results` a data, druhé
+otevření beze změny jen ukáže hotový sheet. (2) Slova dne (20 dlaždic na
+každý odehraný den) se stavěla dopředu pro každý odehraný den, i skryté —
+teď se sestaví líně, až na klepnutí (`revealDayWords`). (3) 365 kolečkových
+odznaků skóre (`.archive-score`, rádius 999px = plná pilulka) navíc
+procházelo `squircle.js` — v Safari bez nativní podpory `corner-shape` to
+pro každý spočítá ořez přes `getComputedStyle` a trigonometrii. U plné
+pilulky je čtverec vs. přesná squircle křivka k nerozeznání, takže
+`.archive-score` přibyl do `SKIP` v `squircle.js`. Nezasahoval jsem do
+mechanismu `squircle.js`, který po jakékoli změně třídy na rodiči (tady
+otevření sheetu) přepočítá i celý podstrom bez ohledu na to, co se doopravdy
+změnilo — reálně přispívá k opakovanému otevření taky, ale je to široké
+místo mimo rozsah týhle opravy a nejde ověřit bez skutečného Safari.
+
+Změřeno v Chromiu s vynuceným squircle fallbackem (200 odehraných dní):
+první otevření 422 → 274 ms, druhé (cache) 340 → 112 ms — pořád víc než
+ostatní tlačítka (~60 ms), ale citelně méně. Bez fallbacku (nativní
+`corner-shape`, jako v Chromiu bez úpravy) byl dopad menší, tam dělal
+většinu rozdílu jen fragment a líná slova.
+
+→ *No new memory entries.*
+
 ### Statistiky v profilu: počet slov jen jako rozpis úspěšnosti, ne vlastní dlaždice
 Dlaždice „slov v denní výzvě“ ukazovala celkový počet uhodnutých slov ze
 všech odehraných dní — číslo samo o sobě nic neříkalo (kdo hraje déle, má

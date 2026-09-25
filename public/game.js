@@ -1356,10 +1356,10 @@ function showProfile() {
 
 function renderProfile() {
     const played = playedDays();
-    $('collectionChip').textContent = `${plural(played, 'Odehrán', 'Odehrány', 'Odehráno')} ${fmtNum(played)} ${plural(played, 'den', 'dny', 'dní')}`;
     const days = played;
     const words = Object.values(persist.results).reduce((a, b) => a + b, 0);
     const pct = days ? Math.round(words / (days * WORDS_PER_DAY) * 100) : 0;
+    $('collectionChip').textContent = `${fmtNum(words)} ${plural(words, 'uhodnuté slovo', 'uhodnutá slova', 'uhodnutých slov')}`;
 
     // Účty zatím neběží, takže je profil lokální — statistiky jsou skutečné,
     // jen se počítají z localStorage tohohle zařízení.
@@ -3141,46 +3141,70 @@ function cycleDate(lvl, today = dayIndex()) {
     return d;
 }
 
+// Slova dne se skládají a vykreslují až na klepnutí, ne dopředu pro
+// každý odehraný den — s roky hraní by to sestavení kalendáře znatelně
+// zpomalilo (stovky×20 prvků navíc, viz devlog).
+function revealDayWords(li, lvl) {
+    if (li.querySelector('.archive-words')) return;
+    const words = document.createElement('div');
+    words.className = 'archive-words';
+    dayWords(lvl).forEach(w => {
+        const s = document.createElement('span');
+        s.textContent = w;
+        words.appendChild(s);
+    });
+    li.appendChild(words);
+}
+
+function buildDayItem(lvl, today) {
+    const li = document.createElement('li');
+    li.className = 'archive-item';
+    const score = persist.results[lvl];
+    const played = score !== undefined;
+    const current = lvl === today;
+    const label = document.createElement('span');
+    label.className = 'archive-date';
+    label.textContent = cycleDate(lvl, today).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
+    const badge = document.createElement('span');
+    badge.className = 'archive-score';
+    if (played) {
+        badge.textContent = `${score === WORDS_PER_DAY ? '✓ ' : ''}${score} ${plural(score, 'slovo', 'slova', 'slov')}`;
+        li.append(label, badge);
+        li.onclick = () => { revealDayWords(li, lvl); li.classList.toggle('open'); };
+    } else {
+        badge.classList.add('not-played');
+        setEmojiText(badge, current ? 'dnes' : '🔒');
+        li.classList.toggle('locked', !current);
+        li.append(label, badge);
+        // Dny se drží kalendáře: minulé už nedohraješ, budoucí ještě nepřišly.
+        if (!current) li.onclick = () => showToast(lvl < today
+            ? 'Tenhle den ti utekl — vrátí se za rok.'
+            : 'Ještě nepřišel na řadu!');
+    }
+    return li;
+}
+
+// 365 zaoblených dlaždic najednou (i .archive-score, viz squircle.js) je
+// v Safari bez nativní podpory corner-shape znát — proto se staví jen při
+// první otevření nebo když se výsledky od minule opravdu změnily, jinak
+// zůstává hotový DOM ze zásobníku a další otevření je stejně rychlé jako
+// ostatní tlačítka na obrazovce.
+let collectionCache = null;   // { key, today }
 function showCollection() {
     const played = playedDays();
     $('collectionCount').innerHTML = `${fmtNum(played)} <small>z ${TOTAL_LEVELS} dní</small>`;
     $('collectionBar').style.width = played / TOTAL_LEVELS * 100 + '%';
-    const list = $('collectionList');
-    list.innerHTML = '';
     const today = dayIndex();
-    for (let lvl = 0; lvl < TOTAL_LEVELS; lvl++) {
-        const li = document.createElement('li');
-        li.className = 'archive-item';
-        const score = persist.results[lvl];
-        const played = score !== undefined;
-        const current = lvl === today;
-        const label = document.createElement('span');
-        label.className = 'archive-date';
-        label.textContent = cycleDate(lvl, today).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' });
-        const badge = document.createElement('span');
-        badge.className = 'archive-score';
-        if (played) {
-            badge.textContent = `${score === WORDS_PER_DAY ? '✓ ' : ''}${score} ${plural(score, 'slovo', 'slova', 'slov')}`;
-            const words = document.createElement('div');
-            words.className = 'archive-words';
-            dayWords(lvl).forEach(w => {
-                const s = document.createElement('span');
-                s.textContent = w;
-                words.appendChild(s);
-            });
-            li.append(label, badge, words);
-            li.onclick = () => li.classList.toggle('open');
-        } else {
-            badge.classList.add('not-played');
-            setEmojiText(badge, current ? 'dnes' : '🔒');
-            li.classList.toggle('locked', !current);
-            li.append(label, badge);
-            // Dny se drží kalendáře: minulé už nedohraješ, budoucí ještě nepřišly.
-            if (!current) li.onclick = () => showToast(lvl < today
-                ? 'Tenhle den ti utekl — vrátí se za rok.'
-                : 'Ještě nepřišel na řadu!');
-        }
-        list.appendChild(li);
+    const key = today + ':' + JSON.stringify(persist.results);
+    const list = $('collectionList');
+    if (!collectionCache || collectionCache.key !== key) {
+        list.innerHTML = '';
+        // Do fragmentu, ne rovnou do stránky: 365 appendChild na živý DOM by
+        // znamenalo 365 přepočtů layoutu místo jednoho.
+        const frag = document.createDocumentFragment();
+        for (let lvl = 0; lvl < TOTAL_LEVELS; lvl++) frag.appendChild(buildDayItem(lvl, today));
+        list.appendChild(frag);
+        collectionCache = { key, today };
     }
     openModal('collectionModal');
     // aktuální den nascrollovat do záběru

@@ -106,7 +106,11 @@
     // Tyhle prvky zůstanou v Safari s obyčejným zaoblením. Výplně ubývajících
     // pruhů mění šířku v každém snímku: ResizeObserver by jim pořád skládal
     // novou masku a Safari ji mezitím zahodí, pruh bliká. Ořízne je rodič.
-    var SKIP = '.ach, .ach-medal, .avatar-btn, .time-bar-fill, .ach-bar i';   // .avatar-btn: tužka vyčnívá přes kruh
+    // .archive-score: 365 kolečkových odznaků kalendáře denní výzvy najednou
+    // (viz showCollection v game.js) — plně kulatý „pilulkový" tvar (rádius
+    // = polovina výšky) je squircle vs. obyčejné zaoblení k nerozeznání, ale
+    // stovky navíc by šly znát. .avatar-btn: tužka vyčnívá přes kruh.
+    var SKIP = '.ach, .ach-medal, .avatar-btn, .time-bar-fill, .ach-bar i, .archive-score';
 
     function rounded(el) {
         if (SKIP_TAGS[el.tagName] || el.matches(SKIP)) return false;
