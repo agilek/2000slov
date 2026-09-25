@@ -2,6 +2,28 @@
 
 ## 2026-09-25
 
+### Odkaz Všechny úspěchy: tah po stránce ho stiskl a blokoval scroll
+Na samostatných stránkách (404, zásady soukromí, veřejný profil) se
+u odkazu „Všechny úspěchy" na veřejném profilu tah prstem přes něj
+choval jinak než u ostatních tlačítek v appce — místo scrollu stránky
+se odkaz „stiskl" a scroll se zablokoval.
+
+**Root cause / approach:** Dvě mezery proti sobě. (1) `<a href>` je na
+iOS/iPadOS Safari nativně „draggable" (odkaz jde odtáhnout jako sdílený
+prvek, např. do Split View) — konkurující gesto proti scrollu stránky,
+vlastní jen odkazům uprostřed scrollovatelného obsahu, ne tlačítkům
+v appce (skutečné `<button>`) ani sticky patičce (`.page-cta`), na
+kterou se přirozený tah stránkou tolik netrefí. Přidáno `-webkit-user-drag:
+none` vedle stávajícího `-webkit-touch-callout: none` v `*` (style.css) —
+stejná dvojice, jakou appka na iOS už potlačuje u podržení prstu.
+(2) `page.js` (samostatné stránky bez game.js) měl jen prázdný
+`touchstart` posluchač kvůli `:active` stylu, chyběla mu ochrana
+`touchFrom` z game.js, která ruší `click`, když mezi dotykem a puštěním
+prst posunul stránku — teď je stejný mechanismus i v `page.js`.
+
+→ *No new memory entries.*
+
+
 ### Tlačítko Denní výzva: jen „Uhodnutá slova", bez počtu
 Tlačítko v profilu ukazovalo počet i slovo („53 uhodnutých slov"). Teď má
 pevný text „Uhodnutá slova", bez čísla.
