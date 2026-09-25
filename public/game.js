@@ -1196,7 +1196,7 @@ function renderSignedOut(box) {
         renderAccount();
         startLoginPolling();
     };
-    const note = el('p', 'profile-note', 'Pošleme ti odkaz a kód. Účet propojí tvoje významy napříč zařízeními. ');
+    const note = el('p', 'profile-note profile-note--login', 'Pošleme ti odkaz a kód. Účet propojí tvoje významy napříč zařízeními. ');
     note.append(privacyLink());
     box.append(form, note);
 }

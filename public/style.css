@@ -316,6 +316,7 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
 #accountBox a.btn { text-decoration: none; }
 #accountBox { display: flex; flex-direction: column; gap: 12px; }
 #accountBox .feedback-form { gap: 10px; }
+
 .streak-nudge { padding: 16px; margin: 18px auto 0; max-width: 400px; }
 .streak-nudge p { margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: var(--ink); }
 #profile .profile-note, #myDefs .profile-note, #achievements .profile-note, #publicProfile .profile-note { text-align: left; line-height: 1.5; color: var(--muted-text); }
@@ -1840,6 +1841,10 @@ body:has(#profile.active, #myDefs.active, #achievements.active, #publicProfile.a
     .ach--legend::after, .ach-stage::before, .ach-stage.pop .ach, .ach-stage.pop::after { animation: none; }
 }
 #profile .profile-note, #myDefs .profile-note, #achievements .profile-note, #publicProfile .profile-note { font-size: 14px; font-weight: 600; margin: -6px 0 0; }
+/* Vysvětlivka pod tlačítkem přihlášení, ne štítek nad formulářem jako ostatní
+   .profile-note (odtud ta záporná -6px — pod nadpisem sekce) — proto zvlášť
+   na střed a s odstupem od tlačítka nad ní, ne nalepená. */
+#profile .profile-note--login { text-align: center; margin: 14px 0 0; }
 .profile-section { gap: 12px; }
 .profile-section-title {
     font-size: 20px;

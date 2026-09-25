@@ -2,6 +2,21 @@
 
 ## 2026-09-25
 
+### Poznámka pod přihlašovacím tlačítkem na střed a s odstupem
+Text „Pošleme ti odkaz a kód…“ pod tlačítkem Poslat přihlašovací odkaz byl
+zarovnaný vlevo a nalepený hned pod tlačítko. Teď je na střed a s větším
+odstupem shora.
+
+**Root cause / approach:** `.profile-note` sdílí desítka míst v profilu
+(štítky nad formulářem, jako „Vyber si přezdívku“) a má schválně `margin:
+-6px` — táhne se pod nadpis sekce. Tahle poznámka je jediná, co stojí pod
+tlačítkem, ne nad formulářem, proto novmeasure modifikátor
+`.profile-note--login` jen na ní (`#profile .profile-note--login`, ať
+přebije specifičtější `#profile .profile-note`). Ostatní místa se stejnou
+třídou beze změny (ověřeno v Chromiu).
+
+→ *No new memory entries.*
+
 ### Výzva ke zpětné vazbě říká, s čím a proč psát
 V profilu místo „Díky za hru! Můžeš mi poslat zpětnou vazbu.“ stojí: „Něco
 nefunguje, slovo ti nesedí, nebo tě napadlo, co přidat? **Napiš mi.** Každou
