@@ -2,6 +2,13 @@
 
 ## 2026-09-25
 
+### Úvodní obrazovka: tlačítko dole, plynulé přechody
+Top-bar odstraněn z absolutní pozice a zařazen do flex flow; `welcome-body` s `flex:1` centruje střední obsah; `welcome-actions` zůstává u spodního okraje na libovolně velké obrazovce. Přechody push/pop opraveny — příchozí obrazovka nově přijíždí z `window.innerWidth` (celý viewport), ne jen z 440 px od středu, kde byla na desktopu viditelně uvnitř okna.
+
+**Root cause / approach:** `translate: '100% 0'` je 100 % šířky elementu (440 px), ne viewportu — na velkých obrazovkách animace začínala viditelně uprostřed. `will-change: transform, opacity` přidáno na `.screen-leaving` a `.screen-over` pro GPU kompozici před startem animace.
+
+→ *No new memory entries.*
+
 ### Zásady soukromí, náhled odkazu (og.png) a pravdivé smazání účtu
 Nová stránka `/soukromi` (`public/soukromi.html`, shell jako veřejný profil). Správce je Michal Acler, kontakt `ahoj@20slov.cz`. Odkaz na ni je u přihlašovacího formuláře a v profilu. Hra i profily mají `og:image` 1200×630 (`public/og.png`), obrázek se kreslí na `public/dev-og.html` stejnými kostkami jako karta ke sdílení. Tvrzení „žádná osobní data“ v README, `schema.sql` a `game.js` nahradil popis toho, co se skutečně ukládá. DNSSEC na `20slov.cz` je aktivní a validovaný (`ad` na 1.1.1.1, 8.8.8.8 i 9.9.9.9).
 

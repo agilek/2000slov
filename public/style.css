@@ -229,6 +229,8 @@ body:has(#result.active, #profile.active, #myDefs.active, #achievements.active, 
 #welcome, #result { position: relative; }
 #welcome { justify-content: space-between; padding-top: max(30px, calc(env(safe-area-inset-top) + 14px)); }
 #result { padding-top: calc(max(14px, env(safe-area-inset-top)) + 96px); }   /* pod lištu */
+/* na úvodu lišta teče nad obsahem, na výsledku visí přes odsazení nahoře (stejná výška jako na úvodu) */
+#result > .top-bar { position: absolute; top: max(30px, calc(env(safe-area-inset-top) + 14px)); left: 22px; right: 22px; width: auto; }
 .top-bar {
     display: flex;
     justify-content: space-between;
